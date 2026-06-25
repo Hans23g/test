@@ -6,15 +6,16 @@
 <style>
   body{font-family:Segoe UI,sans-serif;max-width:600px;margin:30px auto;padding:20px;background:#fff5f0}
   h1{color:#e76f51;text-align:center}
- .card{background:white;padding:25px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.1);margin-bottom:20px}
+.card{background:white;padding:25px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.1);margin-bottom:20px}
   button{background:#e76f51;color:white;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;margin:5px}
   button:disabled{background:#ccc;cursor:not-allowed}
- .benar{color:green;font-weight:bold}
- .salah{color:red}
+.benar{color:green;font-weight:bold}
+.salah{color:red}
   input[type=text]{padding:10px;width:95%;border:2px solid #f4a261;border-radius:8px;margin:10px 0}
-  #timer{font-size:24px;font-weight:bold;color:#e76f51;text-align:center;margin:10px 0}
- .hidden{display:none}
- .skor{font-size:28px;color:#e76f51;text-align:center;font-weight:bold}
+  #timer{font-size:28px;font-weight:bold;color:#e76f51;text-align:center;margin:10px 0}
+.hidden{display:none}
+.skor{font-size:28px;color:#e76f51;text-align:center;font-weight:bold}
+.warning{color:#d65a3a;font-size:14px}
 </style>
 </head>
 <body>
@@ -27,19 +28,21 @@
 </div>
 
 <div id="kuisBox" class="hidden">
-  <div id="timer">30</div>
+  <div id="timer">60</div>
+  <p class="warning">Waktu: 60 detik per soal</p>
   <div id="areaKuis"></div>
 </div>
 
 <div id="hasilBox" class="hidden card">
   <h2 style="text-align:center">Selesai!</h2>
   <p class="skor" id="skorAkhir"></p>
-  <button onclick="downloadHasil()">📥 Download Hasil peserta.txt</button>
+  <button onclick="downloadHasilPribadi()">📥 Download Hasil Kamu</button>
+  <button onclick="downloadSemuaHasil()">📊 Download Semua Peserta</button>
   <button onclick="location.reload()">Ulangi Kuis</button>
 </div>
 
 <script>
-let soalList = [], nomor = 0, skor = 0, timer, waktu = 30, nama = '';
+let soalList = [], nomor = 0, skor = 0, timer, waktu = 60, nama = '';
 
 function mulaiKuis(){
   nama = document.getElementById('namaPeserta').value.trim();
@@ -64,33 +67,35 @@ function tampilSoal(){
     return;
   }
 
-  waktu = 30;
+  waktu = 60; // TIMER 60 DETIK
   document.getElementById('timer').innerText = waktu;
   timer = setInterval(() => {
     waktu--;
     document.getElementById('timer').innerText = waktu;
     if(waktu <= 0){
       clearInterval(timer);
-      cekJawaban('', 'Habis waktu!');
+      jawab('', true);
     }
   }, 1000);
 
   const s = soalList[nomor];
   let html = `<div class="card"><b>Soal ${nomor+1}/${soalList.length}: ${s.tanya}</b><br>`;
   s.opsi.forEach(opt => {
-    html += `<button onclick="jawab('${opt}')">${opt}</button>`;
+    html += `<button onclick="jawab('${opt}', false)">${opt}</button>`;
   });
   html += `<div id="hasil"></div></div>`;
   document.getElementById('areaKuis').innerHTML = html;
 }
 
-function jawab(jawaban){
+function jawab(jawaban, timeout){
   clearInterval(timer);
   const s = soalList[nomor];
   const hasil = document.getElementById('hasil');
   document.querySelectorAll('#areaKuis button').forEach(b=>b.disabled=true);
 
-  if(jawaban === s.benar){
+  if(timeout){
+    hasil.innerHTML = `<p class="salah">⏰ Habis waktu! Jawaban: ${s.benar}</p>`;
+  } else if(jawaban === s.benar){
     skor++;
     hasil.innerHTML = '<p class="benar">✅ Benar!</p>';
   } else {
@@ -106,10 +111,17 @@ function jawab(jawaban){
 function selesaiKuis(){
   document.getElementById('kuisBox').classList.add('hidden');
   document.getElementById('hasilBox').classList.remove('hidden');
-  document.getElementById('skorAkhir').innerText = `Nama: ${nama}\nSkor: ${skor}/${soalList.length}`;
+  const persen = Math.round(skor/soalList.length*100);
+  document.getElementById('skorAkhir').innerText = `Nama: ${nama}\nSkor: ${skor}/${soalList.length} = ${persen}%`;
+
+  // Simpan ke localStorage untuk rekap gabungan
+  const dataPeserta = {nama, skor, total: soalList.length, persen, waktu: new Date().toLocaleString('id-ID')};
+  let semua = JSON.parse(localStorage.getItem('hasilKuis') || '[]');
+  semua.push(dataPeserta);
+  localStorage.setItem('hasilKuis', JSON.stringify(semua));
 }
 
-function downloadHasil(){
+function downloadHasilPribadi(){
   const tgl = new Date().toLocaleString('id-ID');
   const data = `HASIL KUIS TOKO HANA
 Nama Peserta: ${nama}
@@ -118,10 +130,25 @@ Skor Akhir: ${skor}/${soalList.length}
 Presentase: ${Math.round(skor/soalList.length*100)}%
 
 Terima kasih sudah ikut kuis!`;
-  const blob = new Blob([data], {type: 'text/plain;charset=utf-8'});
+  downloadFile(data, 'peserta_'+nama.replace(/\s/g,'_')+'.txt');
+}
+
+function downloadSemuaHasil(){
+  let semua = JSON.parse(localStorage.getItem('hasilKuis') || '[]');
+  if(semua.length === 0) return alert('Belum ada data peserta');
+
+  let data = `REKAP HASIL KUIS TOKO HANA\nTanggal Export: ${new Date().toLocaleString('id-ID')}\nTotal Peserta: ${semua.length}\n${'='.repeat(40)}\n\n`;
+  semua.forEach((p,i) => {
+    data += `${i+1}. Nama: ${p.nama}\n Skor: ${p.skor}/${p.total} = ${p.persen}%\n Waktu: ${p.waktu}\n\n`;
+  });
+  downloadFile(data, 'semua_peserta.txt');
+}
+
+function downloadFile(teks, namaFile){
+  const blob = new Blob([teks], {type: 'text/plain;charset=utf-8'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'peserta.txt';
+  a.download = namaFile;
   a.click();
 }
 </script>
