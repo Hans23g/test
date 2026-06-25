@@ -6,58 +6,124 @@
 <style>
   body{font-family:Segoe UI,sans-serif;max-width:600px;margin:30px auto;padding:20px;background:#fff5f0}
   h1{color:#e76f51;text-align:center}
-.soal{background:white;padding:20px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.1);margin-top:20px}
+ .card{background:white;padding:25px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.1);margin-bottom:20px}
   button{background:#e76f51;color:white;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;margin:5px}
-  button:hover{background:#d65a3a}
-.benar{color:green;font-weight:bold}
-.salah{color:red}
-.kosong{text-align:center;padding:50px;color:#888}
+  button:disabled{background:#ccc;cursor:not-allowed}
+ .benar{color:green;font-weight:bold}
+ .salah{color:red}
+  input[type=text]{padding:10px;width:95%;border:2px solid #f4a261;border-radius:8px;margin:10px 0}
+  #timer{font-size:24px;font-weight:bold;color:#e76f51;text-align:center;margin:10px 0}
+ .hidden{display:none}
+ .skor{font-size:28px;color:#e76f51;text-align:center;font-weight:bold}
 </style>
 </head>
 <body>
 <h1>📝 Kuis Toko Hana</h1>
-<div id="areaKuis"></div>
+
+<div id="startBox" class="card">
+  <h3>Masukkan Nama Kamu</h3>
+  <input type="text" id="namaPeserta" placeholder="Nama lengkap">
+  <button onclick="mulaiKuis()">Mulai Kuis</button>
+</div>
+
+<div id="kuisBox" class="hidden">
+  <div id="timer">30</div>
+  <div id="areaKuis"></div>
+</div>
+
+<div id="hasilBox" class="hidden card">
+  <h2 style="text-align:center">Selesai!</h2>
+  <p class="skor" id="skorAkhir"></p>
+  <button onclick="downloadHasil()">📥 Download Hasil peserta.txt</button>
+  <button onclick="location.reload()">Ulangi Kuis</button>
+</div>
 
 <script>
-function muatSoal(){
-  const teks = localStorage.getItem('soalKuis');
-  if(!teks){
-    document.getElementById('areaKuis').innerHTML =
-      `<div class="kosong">Belum ada soal 😅<br>Admin harus upload soal dulu di halaman admin</div>`;
-    return;
-  }
+let soalList = [], nomor = 0, skor = 0, timer, waktu = 30, nama = '';
 
-  const soalList = teks.split('\n').filter(b => b.trim()!='').map(baris => {
+function mulaiKuis(){
+  nama = document.getElementById('namaPeserta').value.trim();
+  if(nama === '') return alert('Isi nama dulu ya');
+
+  const teks = localStorage.getItem('soalKuis');
+  if(!teks) return alert('Belum ada soal. Admin harus upload dulu');
+
+  soalList = teks.split('\n').filter(b => b.trim()!='').map(baris => {
     const [tanya, a, b, c, benar] = baris.split('|');
     return {tanya, opsi:[a,b,c], benar};
   });
-  tampilSoal(soalList);
+
+  document.getElementById('startBox').classList.add('hidden');
+  document.getElementById('kuisBox').classList.remove('hidden');
+  tampilSoal();
 }
 
-function tampilSoal(soalList){
-  let html = '';
-  soalList.forEach((s,i) => {
-    html += `<div class="soal"><b>${i+1}. ${s.tanya}</b><br>`;
-    s.opsi.forEach(opt => {
-      html += `<button onclick="cekJawaban(${i},'${opt}','${s.benar}',this)">${opt}</button>`;
-    });
-    html += `<div id="hasil${i}"></div></div>`;
+function tampilSoal(){
+  if(nomor >= soalList.length){
+    selesaiKuis();
+    return;
+  }
+
+  waktu = 30;
+  document.getElementById('timer').innerText = waktu;
+  timer = setInterval(() => {
+    waktu--;
+    document.getElementById('timer').innerText = waktu;
+    if(waktu <= 0){
+      clearInterval(timer);
+      cekJawaban('', 'Habis waktu!');
+    }
+  }, 1000);
+
+  const s = soalList[nomor];
+  let html = `<div class="card"><b>Soal ${nomor+1}/${soalList.length}: ${s.tanya}</b><br>`;
+  s.opsi.forEach(opt => {
+    html += `<button onclick="jawab('${opt}')">${opt}</button>`;
   });
+  html += `<div id="hasil"></div></div>`;
   document.getElementById('areaKuis').innerHTML = html;
 }
 
-function cekJawaban(i, jawaban, benar, btn){
-  const hasil = document.getElementById('hasil'+i);
-  btn.parentElement.querySelectorAll('button').forEach(b=>b.disabled=true);
+function jawab(jawaban){
+  clearInterval(timer);
+  const s = soalList[nomor];
+  const hasil = document.getElementById('hasil');
+  document.querySelectorAll('#areaKuis button').forEach(b=>b.disabled=true);
 
-  if(jawaban === benar){
+  if(jawaban === s.benar){
+    skor++;
     hasil.innerHTML = '<p class="benar">✅ Benar!</p>';
   } else {
-    hasil.innerHTML = `<p class="salah">❌ Salah. Jawaban: ${benar}</p>`;
+    hasil.innerHTML = `<p class="salah">❌ Salah. Jawaban: ${s.benar}</p>`;
   }
+
+  setTimeout(() => {
+    nomor++;
+    tampilSoal();
+  }, 1500);
 }
 
-muatSoal();
+function selesaiKuis(){
+  document.getElementById('kuisBox').classList.add('hidden');
+  document.getElementById('hasilBox').classList.remove('hidden');
+  document.getElementById('skorAkhir').innerText = `Nama: ${nama}\nSkor: ${skor}/${soalList.length}`;
+}
+
+function downloadHasil(){
+  const tgl = new Date().toLocaleString('id-ID');
+  const data = `HASIL KUIS TOKO HANA
+Nama Peserta: ${nama}
+Tanggal: ${tgl}
+Skor Akhir: ${skor}/${soalList.length}
+Presentase: ${Math.round(skor/soalList.length*100)}%
+
+Terima kasih sudah ikut kuis!`;
+  const blob = new Blob([data], {type: 'text/plain;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'peserta.txt';
+  a.click();
+}
 </script>
 </body>
 </html>
