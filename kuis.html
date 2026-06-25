@@ -6,46 +6,32 @@
 <style>
   body{font-family:Segoe UI,sans-serif;max-width:600px;margin:30px auto;padding:20px;background:#fff5f0}
   h1{color:#e76f51;text-align:center}
- .upload-box{background:white;padding:20px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.1);text-align:center;margin-bottom:20px}
-  input[type=file]{margin:10px 0}
- .soal{background:white;padding:20px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.1);margin-top:20px}
+.soal{background:white;padding:20px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.1);margin-top:20px}
   button{background:#e76f51;color:white;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;margin:5px}
   button:hover{background:#d65a3a}
- .benar{color:green;font-weight:bold}
- .salah{color:red}
- .contoh{font-size:13px;color:#555;margin-top:10px;text-align:left}
+.benar{color:green;font-weight:bold}
+.salah{color:red}
+.kosong{text-align:center;padding:50px;color:#888}
 </style>
 </head>
 <body>
 <h1>📝 Kuis Toko Hana</h1>
-
-<div class="upload-box">
-  <b>1. Upload file soal.txt kamu di sini</b><br>
-  <input type="file" id="fileInput" accept=".txt" onchange="bacaFile(event)">
-  <button onclick="downloadTemplate()">Download Template soal.txt</button>
-  <div class="contoh">
-    Format di soal.txt: Pertanyaan|Opsi1|Opsi2|Opsi3|JawabanBenar<br>
-    Contoh: Warna logo Toko Hana?|Coral|Biru|Hijau|Coral
-  </div>
-</div>
-
-<div id="areaKuis"><p style="text-align:center;color:#888">Belum ada soal. Upload soal.txt dulu ya 👆</p></div>
+<div id="areaKuis"></div>
 
 <script>
-function bacaFile(event){
-  const file = event.target.files[0];
-  if(!file) return;
+function muatSoal(){
+  const teks = localStorage.getItem('soalKuis');
+  if(!teks){
+    document.getElementById('areaKuis').innerHTML =
+      `<div class="kosong">Belum ada soal 😅<br>Admin harus upload soal dulu di halaman admin</div>`;
+    return;
+  }
 
-  const reader = new FileReader();
-  reader.onload = function(e){
-    const teks = e.target.result;
-    const soalList = teks.split('\n').filter(b => b.trim()!='').map(baris => {
-      const [tanya, a, b, c, benar] = baris.split('|');
-      return {tanya, opsi:[a,b,c], benar};
-    });
-    tampilSoal(soalList);
-  };
-  reader.readAsText(file, 'UTF-8');
+  const soalList = teks.split('\n').filter(b => b.trim()!='').map(baris => {
+    const [tanya, a, b, c, benar] = baris.split('|');
+    return {tanya, opsi:[a,b,c], benar};
+  });
+  tampilSoal(soalList);
 }
 
 function tampilSoal(soalList){
@@ -53,15 +39,17 @@ function tampilSoal(soalList){
   soalList.forEach((s,i) => {
     html += `<div class="soal"><b>${i+1}. ${s.tanya}</b><br>`;
     s.opsi.forEach(opt => {
-      html += `<button onclick="cekJawaban(${i},'${opt}','${s.benar}')">${opt}</button>`;
+      html += `<button onclick="cekJawaban(${i},'${opt}','${s.benar}',this)">${opt}</button>`;
     });
     html += `<div id="hasil${i}"></div></div>`;
   });
   document.getElementById('areaKuis').innerHTML = html;
 }
 
-function cekJawaban(i, jawaban, benar){
+function cekJawaban(i, jawaban, benar, btn){
   const hasil = document.getElementById('hasil'+i);
+  btn.parentElement.querySelectorAll('button').forEach(b=>b.disabled=true);
+
   if(jawaban === benar){
     hasil.innerHTML = '<p class="benar">✅ Benar!</p>';
   } else {
@@ -69,16 +57,7 @@ function cekJawaban(i, jawaban, benar){
   }
 }
 
-function downloadTemplate(){
-  const contoh = `Ibu kota Indonesia?|Jakarta|Bandung|Surabaya|Jakarta
-Warna logo Toko Hana?|Coral|Biru|Hijau|Coral
-Bahan dasar tempe?|Kedelai|Kacang|Beras|Kedelai`;
-  const blob = new Blob([contoh], {type: 'text/plain;charset=utf-8'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'soal.txt';
-  a.click();
-}
+muatSoal();
 </script>
 </body>
 </html>
