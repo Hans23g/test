@@ -1,0 +1,1551 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#003D7A" />
+<meta name="description" content="OmniPOS Toko Hana — Grocery Warungnya Rakyat ID. Kasir offline + toko online terpusat Supabase." />
+<title>OmniPOS · Toko Hana — Grocery Warungnya Rakyat ID</title>
+<link rel="manifest" href="./manifest.webmanifest" />
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='96' fill='%23003D7A'/%3E%3Ctext x='256' y='340' font-size='280' text-anchor='middle' fill='%23fff' font-family='Arial' font-weight='bold'%3EH%3C/text%3E%3C/svg%3E" />
+<style>
+/* ============================ THEME (BCA-inspired) ============================ */
+:root{
+  --navy:#003D7A; --navy-2:#00538C; --blue:#0061B1; --blue-l:#E8F1FA; --blue-ll:#F4F8FC;
+  --accent:#0090E0; --accent-2:#00BFA6; --gold:#F5A623; --rose:#E11D48;
+  --green:#1FA463; --green-l:#E6F6EE; --amber:#F59E0B; --amber-l:#FEF3C7;
+  --ink:#10243B; --ink-2:#41586F; --ink-3:#7C8CA0; --line:#E4EAF1;
+  --bg:#F4F6F9; --card:#fff; --shadow:0 1px 2px rgba(16,36,59,.05),0 6px 18px rgba(16,36,59,.06);
+  --shadow-lg:0 10px 40px rgba(16,36,59,.16); --r:16px; --r-s:10px;
+  --maxw:1180px; --bar-h:60px; --safe-b:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,-apple-system,Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink);
+  font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
+img{max-width:100%;display:block}
+a{color:var(--blue);text-decoration:none}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+input,select,textarea{font-family:inherit;font-size:15px}
+h1,h2,h3,h4{margin:0;font-weight:800;letter-spacing:-.01em}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 16px;width:100%}
+.muted{color:var(--ink-3)}.small{font-size:12.5px}
+.rupiah{font-variant-numeric:tabular-nums}
+.tag{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;font-size:11.5px;font-weight:700;background:var(--blue-l);color:var(--blue)}
+.tag.green{background:var(--green-l);color:var(--green)} .tag.amber{background:var(--amber-l);color:#A5640A}
+.tag.rose{background:#FDE8EC;color:var(--rose)} .tag.gray{background:#EEF2F7;color:var(--ink-3)}
+.row{display:flex;align-items:center;gap:10px}.between{justify-content:space-between}.col{flex:1;min-width:0}.grow{flex:1}
+.grid{display:grid;gap:12px}.hide{display:none!important}.center{text-align:center}
+.spin{width:34px;height:34px;border:3px solid var(--blue-l);border-top-color:var(--blue);border-radius:50%;animation:sp 1s linear infinite;margin:40px auto}
+@keyframes sp{to{transform:rotate(360deg)}}
+.skel{background:linear-gradient(90deg,#eef2f7 25%,#f7fafc 37%,#eef2f7 63%);background-size:400% 100%;animation:sk 1.4s infinite}
+@keyframes sk{0%{background-position:100% 0}100%{background-position:-100% 0}}
+
+/* ============================ BUTTONS ============================ */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 16px;border-radius:12px;font-weight:700;
+  background:var(--navy);color:#fff;transition:.15s;font-size:14.5px;white-space:nowrap}
+.btn:hover{filter:brightness(1.08);transform:translateY(-1px)}
+.btn:active{transform:none}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.btn.blue{background:var(--blue)} .btn.green{background:var(--green)} .btn.amber{background:var(--amber)} .btn.rose{background:var(--rose)}
+.btn.accent{background:var(--accent)} .btn.dark{background:var(--ink)}
+.btn.ghost{background:#fff;color:var(--navy);box-shadow:inset 0 0 0 1.5px var(--line)}
+.btn.ghost:hover{box-shadow:inset 0 0 0 1.5px var(--blue);color:var(--blue)}
+.btn.sm{padding:8px 12px;font-size:13px;border-radius:10px}
+.btn.xs{padding:5px 9px;font-size:12px;border-radius:8px}
+.btn.block{width:100%}
+.iconbtn{width:42px;height:42px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;background:#fff;box-shadow:inset 0 0 0 1.5px var(--line);color:var(--ink-2)}
+.iconbtn:hover{color:var(--blue)}
+.fab{position:fixed;right:16px;bottom:calc(74px + var(--safe-b));z-index:40;width:58px;height:58px;border-radius:50%;background:var(--navy);color:#fff;
+  box-shadow:0 8px 24px rgba(0,61,122,.4);display:flex;align-items:center;justify-content:center}
+.fab svg{width:26px;height:26px}
+
+/* ============================ APP BAR ============================ */
+.topbar{position:sticky;top:0;z-index:30;background:linear-gradient(120deg,var(--navy),var(--navy-2));color:#fff;box-shadow:0 2px 14px rgba(0,40,80,.2)}
+.topbar .wrap{display:flex;align-items:center;gap:10px;height:var(--bar-h)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:16px}
+.brand .logo{width:38px;height:38px;border-radius:11px;background:#fff;color:var(--navy);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:20px;box-shadow:0 2px 6px rgba(0,0,0,.2)}
+.brand small{display:block;font-weight:600;opacity:.85;font-size:10.5px;letter-spacing:.02em}
+.topbar .spacer{flex:1}
+.chip-points{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.16);padding:7px 12px;border-radius:999px;font-weight:800;font-size:13px}
+.chip-points svg{width:16px;height:16px;color:var(--gold)}
+
+/* ============================ LAYOUT ============================ */
+.shell{display:grid;grid-template-columns:230px 1fr;min-height:calc(100vh - var(--bar-h))}
+.sidebar{background:#fff;border-right:1px solid var(--line);padding:14px 12px;position:sticky;top:var(--bar-h);height:calc(100vh - var(--bar-h));overflow:auto}
+.nav-item{display:flex;align-items:center;gap:12px;padding:11px 13px;border-radius:12px;color:var(--ink-2);font-weight:700;font-size:14px;margin-bottom:3px;cursor:pointer}
+.nav-item:hover{background:var(--blue-ll)}
+.nav-item.active{background:var(--navy);color:#fff}
+.nav-item svg{width:20px;height:20px;flex:none}
+.nav-sec{font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);padding:14px 13px 6px}
+.main{padding:18px 16px 100px;min-width:0}
+.content{max-width:var(--maxw);margin:0 auto}
+
+/* mobile bottom nav */
+.bottomnav{position:fixed;left:0;right:0;bottom:0;z-index:35;background:#fff;border-top:1px solid var(--line);
+  display:none;padding:6px 6px calc(6px + var(--safe-b));justify-content:space-around}
+.bn-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0;color:var(--ink-3);font-size:10.5px;font-weight:700;border-radius:10px}
+.bn-item.active{color:var(--navy)} .bn-item svg{width:22px;height:22px}
+.bn-badge{position:absolute;background:var(--rose);color:#fff;font-size:10px;font-weight:800;min-width:17px;height:17px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px}
+
+/* ============================ CARDS / GRID ============================ */
+.card{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:16px}
+.section-title{display:flex;align-items:center;justify-content:space-between;margin:18px 0 12px}
+.section-title h2{font-size:18px} .section-title a{font-size:13px;font-weight:700}
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.stat{background:#fff;border-radius:var(--r);box-shadow:var(--shadow);padding:15px}
+.stat .lbl{font-size:12px;color:var(--ink-3);font-weight:700;display:flex;align-items:center;gap:6px}
+.stat .lbl .ic{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;background:var(--blue-l);color:var(--blue)}
+.stat .val{font-size:22px;font-weight:800;margin-top:9px;letter-spacing:-.02em}
+.stat .sub{font-size:11.5px;color:var(--green);font-weight:700;margin-top:2px}
+
+/* promo / product grid (BCA style) */
+.cats{display:flex;gap:8px;overflow-x:auto;padding:4px 0 10px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.cats::-webkit-scrollbar{display:none}
+.cat-pill{flex:none;display:flex;align-items:center;gap:7px;padding:9px 15px;border-radius:999px;background:#fff;box-shadow:inset 0 0 0 1.5px var(--line);font-weight:700;font-size:13px;color:var(--ink-2);cursor:pointer}
+.cat-pill.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+.prod-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:13px}
+.prod{background:#fff;border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow);cursor:pointer;transition:.15s;display:flex;flex-direction:column}
+.prod:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg)}
+.prod .ph{aspect-ratio:1/1;background:var(--blue-ll);position:relative;overflow:hidden}
+.prod .ph .emoji{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:46px}
+.prod .ph img{width:100%;height:100%;object-fit:cover}
+.prod .disc-badge{position:absolute;left:8px;top:8px;background:var(--rose);color:#fff;font-size:11px;font-weight:800;padding:3px 8px;border-radius:7px}
+.prod .fav{position:absolute;right:8px;top:8px;width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.92);display:flex;align-items:center;justify-content:center;color:var(--ink-3)}
+.prod .info{padding:10px 11px 12px;flex:1;display:flex;flex-direction:column}
+.prod .nm{font-weight:800;font-size:13.5px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:34px}
+.prod .unit{font-size:11px;color:var(--ink-3);margin-top:2px}
+.prod .pr{font-weight:800;color:var(--navy);margin-top:6px;font-size:15px}
+.prod .old{font-size:11.5px;color:var(--ink-3);text-decoration:line-through;font-weight:600}
+.prod .add{margin-top:8px;width:100%}
+
+/* ============================ POS ============================ */
+.pos-grid{display:grid;grid-template-columns:1fr 380px;gap:14px;align-items:start}
+.pos-search{display:flex;gap:8px;margin-bottom:10px}
+.search-box{flex:1;display:flex;align-items:center;gap:9px;background:#fff;border-radius:12px;box-shadow:inset 0 0 0 1.5px var(--line);padding:0 13px;height:46px}
+.search-box input{border:none;outline:none;background:none;flex:1;font-size:14.5px}
+.search-box svg{width:19px;height:19px;color:var(--ink-3)}
+.pos-prods{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;max-height:calc(100vh - 250px);overflow:auto;padding-right:4px}
+.pos-prods .prod .ph .emoji{font-size:34px} .pos-prods .prod .nm{min-height:0;font-size:12.5px}
+.pos-prods .prod .info{padding:8px 9px 9px}
+.cart-panel{background:#fff;border-radius:var(--r);box-shadow:var(--shadow);position:sticky;top:78px;display:flex;flex-direction:column;max-height:calc(100vh - 100px)}
+.cart-head{padding:14px 16px;border-bottom:1px solid var(--line)}
+.cart-items{flex:1;overflow:auto;padding:6px 16px;min-height:120px}
+.ci{display:flex;gap:10px;padding:10px 0;border-bottom:1px dashed var(--line)}
+.ci .ic{width:42px;height:42px;border-radius:10px;background:var(--blue-ll);display:flex;align-items:center;justify-content:center;font-size:22px;flex:none}
+.ci .nm{font-weight:700;font-size:13px;line-height:1.2}
+.ci .pr{font-size:12px;color:var(--ink-3);margin-top:2px}
+.qty{display:inline-flex;align-items:center;background:var(--bg);border-radius:8px;margin-top:5px}
+.qty button{width:26px;height:26px;font-weight:900;font-size:16px;color:var(--navy)}
+.qty span{min-width:28px;text-align:center;font-weight:800;font-size:13px}
+.cart-foot{padding:14px 16px;border-top:1px solid var(--line)}
+.sum-line{display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px;color:var(--ink-2)}
+.sum-line.tot{font-size:18px;font-weight:800;color:var(--ink);margin:8px 0 12px}
+
+/* ============================ TABLE ============================ */
+.tbl{width:100%;border-collapse:collapse;font-size:13.5px}
+.tbl th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);padding:10px 12px;border-bottom:1.5px solid var(--line)}
+.tbl td{padding:11px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+.tbl tr:hover td{background:var(--blue-ll)}
+.tbl .em{text-align:center;padding:30px;color:var(--ink-3)}
+.tablewrap{background:#fff;border-radius:var(--r);box-shadow:var(--shadow);overflow:auto}
+
+/* ============================ FORM ============================ */
+.field{margin-bottom:13px}
+.field label{display:block;font-size:12.5px;font-weight:700;margin-bottom:5px;color:var(--ink-2)}
+.field input,.field select,.field textarea{width:100%;padding:11px 13px;border-radius:11px;border:1.5px solid var(--line);outline:none;background:#fff;transition:.15s}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-l)}
+.field .hint{font-size:11.5px;color:var(--ink-3);margin-top:4px}
+.field.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+/* ============================ MODAL ============================ */
+.overlay{position:fixed;inset:0;background:rgba(8,20,35,.55);z-index:60;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(2px)}
+.sheet{background:#fff;width:100%;max-width:560px;border-radius:22px 22px 0 0;max-height:92vh;overflow:auto;animation:up .25s ease}
+.sheet.lg{max-width:760px}
+@keyframes up{from{transform:translateY(40px);opacity:.6}to{transform:none;opacity:1}}
+.sheet-head{position:sticky;top:0;background:#fff;padding:16px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;z-index:2;border-radius:22px 22px 0 0}
+.sheet-head h3{font-size:17px}
+.sheet-body{padding:18px}
+.grip{width:42px;height:5px;background:var(--line);border-radius:99px;margin:8px auto 0}
+.modal-c{position:fixed;inset:0;background:rgba(8,20,35,.55);z-index:60;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal{background:#fff;border-radius:18px;max-width:440px;width:100%;max-height:92vh;overflow:auto;animation:up .2s ease}
+
+/* ============================ AUTH ============================ */
+.auth-bg{min-height:100vh;background:linear-gradient(135deg,var(--navy),var(--navy-2) 55%,var(--blue));display:flex;align-items:center;justify-content:center;padding:18px}
+.auth-card{background:#fff;border-radius:24px;max-width:430px;width:100%;overflow:hidden;box-shadow:0 24px 70px rgba(0,20,50,.4)}
+.auth-hero{background:linear-gradient(120deg,var(--navy),var(--blue));color:#fff;padding:26px 24px;text-align:center}
+.auth-hero .logo{width:60px;height:60px;border-radius:18px;background:#fff;color:var(--navy);font-weight:900;font-size:30px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px}
+.auth-hero h1{font-size:21px} .auth-hero p{opacity:.9;font-size:13px;margin-top:4px}
+.auth-body{padding:22px 24px 26px}
+.tabs{display:flex;background:var(--bg);border-radius:12px;padding:4px;margin-bottom:18px}
+.tabs button{flex:1;padding:9px;border-radius:9px;font-weight:700;color:var(--ink-3);font-size:14px}
+.tabs button.active{background:#fff;color:var(--navy);box-shadow:var(--shadow)}
+
+/* ============================ MEMBER CARD ============================ */
+.membercard{background:linear-gradient(135deg,var(--navy),var(--blue));color:#fff;border-radius:20px;padding:18px;position:relative;overflow:hidden;box-shadow:var(--shadow-lg)}
+.membercard::before{content:"";position:absolute;right:-40px;top:-40px;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,.08)}
+.membercard::after{content:"";position:absolute;right:30px;bottom:-60px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.06)}
+.membercard .lvl{position:absolute;right:16px;top:14px;background:var(--gold);color:#5b3700;font-weight:800;font-size:11px;padding:4px 10px;border-radius:99px}
+.membercard .mc-logo{display:flex;align-items:center;gap:8px;font-weight:800}
+.membercard .mc-logo .l{width:30px;height:30px;border-radius:8px;background:#fff;color:var(--navy);display:flex;align-items:center;justify-content:center;font-weight:900}
+.membercard .mc-name{font-size:20px;font-weight:800;margin-top:18px}
+.membercard .mc-no{font-size:12px;opacity:.85;letter-spacing:.08em;margin-top:2px}
+.membercard .mc-bar{background:#fff;border-radius:10px;padding:8px;margin-top:14px;text-align:center}
+.membercard .mc-pts{display:flex;justify-content:space-between;margin-top:14px;font-size:12px}
+.membercard .mc-pts b{display:block;font-size:17px;margin-top:2px}
+
+/* ============================ TOAST ============================ */
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:90;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
+.toast{background:var(--ink);color:#fff;padding:11px 18px;border-radius:12px;font-size:13.5px;font-weight:600;box-shadow:var(--shadow-lg);animation:tin .3s;display:flex;align-items:center;gap:8px}
+.toast.ok{background:var(--green)} .toast.err{background:var(--rose)}
+@keyframes tin{from{opacity:0;transform:translateY(10px)}to{opacity:1}}
+.bar{height:6px;background:var(--line);border-radius:99px;overflow:hidden}.bar>i{display:block;height:100%;background:var(--blue)}
+hr.sep{border:none;border-top:1px solid var(--line);margin:14px 0}
+.kbd{font-family:monospace;background:var(--bg);padding:2px 7px;border-radius:6px;font-size:12px}
+
+/* ============================ HERO BANNER ============================ */
+.hero-banner{background:linear-gradient(115deg,var(--navy),var(--blue));color:#fff;border-radius:20px;padding:22px 24px;position:relative;overflow:hidden;margin-bottom:16px}
+.hero-banner h2{font-size:22px}.hero-banner p{opacity:.9;font-size:13px;margin-top:4px;max-width:70%}
+.hero-banner .badge-pts{position:absolute;right:18px;bottom:14px;background:var(--gold);color:#5b3700;font-weight:800;padding:8px 14px;border-radius:14px;font-size:13px;display:flex;gap:6px;align-items:center}
+
+/* ============================ SCANNER ============================ */
+#scan-region{width:100%;border-radius:14px;overflow:hidden;background:#000;min-height:260px}
+#scan-region video{border-radius:14px}
+
+/* ============================ RECEIPT ============================ */
+.receipt{font-family:'Courier New',monospace;width:300px;margin:0 auto;color:#000}
+.receipt h4{font-size:15px;text-align:center;margin:0}.receipt .c{text-align:center;font-size:11px}
+.receipt hr{border:none;border-top:1px dashed #000;margin:6px 0}.receipt .l{display:flex;justify-content:space-between;font-size:12px;margin:2px 0}
+.receipt .b{font-weight:bold;font-size:13px}
+@media print{body *{visibility:hidden}#print-area,#print-area *{visibility:visible}#print-area{position:absolute;left:0;top:0;width:100%}}
+
+/* ============================ RESPONSIVE ============================ */
+@media(max-width:1080px){.prod-grid{grid-template-columns:repeat(4,1fr)}.pos-prods{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:880px){
+  .shell{grid-template-columns:1fr}.sidebar{display:none}.main{padding:14px 14px 96px}
+  .bottomnav{display:flex}
+  .prod-grid{grid-template-columns:repeat(3,1fr)}.pos-grid{grid-template-columns:1fr}
+  .pos-prods{grid-template-columns:repeat(3,1fr);max-height:none}
+  .cart-panel{position:static;max-height:none}.stat-grid{grid-template-columns:repeat(2,1fr)}
+  .overlay{align-items:flex-end}
+}
+@media(max-width:520px){
+  .prod-grid{grid-template-columns:repeat(2,1fr)}.pos-prods{grid-template-columns:repeat(2,1fr)}
+  .brand small{display:none}.topbar .brand-text{display:none}
+  .field.row2{grid-template-columns:1fr}
+}
+.empty{text-align:center;padding:50px 20px;color:var(--ink-3)}
+.empty svg{width:54px;height:54px;opacity:.4;margin-bottom:10px}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block}.dot.on{background:var(--green)}.dot.off{background:var(--ink-3)}
+.pill-toggle{display:inline-flex;background:var(--bg);border-radius:10px;padding:3px}.pill-toggle button{padding:7px 12px;border-radius:8px;font-weight:700;font-size:12.5px;color:var(--ink-3)}.pill-toggle button.active{background:#fff;color:var(--navy);box-shadow:var(--shadow)}
+</style>
+</head>
+<body>
+
+<!-- ============================ AUTH SCREEN ============================ -->
+<div id="auth-root"></div>
+
+<!-- ============================ MAIN APP ============================ -->
+<div id="app-root" class="hide"></div>
+
+<!-- toast + scan mount -->
+<div id="toast"></div>
+<div id="print-area" class="hide"></div>
+
+<!-- ============================ LIBRARIES ============================ -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<script>
+/* =================================================================================
+   OmniPOS Toko Hana — Grocery Warungnya Rakyat ID
+   Single-file PWA · Supabase data layer + local demo fallback
+   ================================================================================= */
+
+/* ---------- CONFIG: isi dengan kredensial Supabase kamu ---------- */
+const CONFIG = {
+  SUPABASE_URL: "https://bbdddskcowcdnwyxppbi.supabase.co", // project Anda
+  SUPABASE_KEY: "sb_publishable_WK1TtlABGQy55XJan7Uphw_D_P_sKnV", // publishable/anon key
+  // jika kosong → aplikasi otomatis pakai MODE DEMO (data tersimpan di browser)
+  CURRENCY: "Rp",
+  EARN_PER_RP: 1000,       // 1 poin tiap Rp 1.000
+  REDEEM_VALUE: 10,        // 1 poin = Rp 10
+  REFERRAL_BONUS: 500,     // poin untuk pengajak
+  SIGNUP_BONUS: 250        // poin untuk yg diajak
+};
+
+const IC = {
+  cart:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>',
+  store:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l1-5h16l1 5"/><path d="M4 9v11h16V9"/><path d="M9 20v-6h6v6"/></svg>',
+  user:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+  card:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>',
+  gift:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>',
+  box:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>',
+  grid:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>',
+  list:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>',
+  chart:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
+  scan:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="3" y1="12" x2="21" y2="12"/></svg>',
+  plus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>',
+  minus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>',
+  trash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>',
+  edit:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>',
+  search:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>',
+  upload:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>',
+  download:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
+  logout:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>',
+  print:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>',
+  check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+  star:'<svg viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
+  coin:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5h4a1.5 1.5 0 0 1 0 3h-3a1.5 1.5 0 0 0 0 3h4" stroke-linecap="round"/></svg>',
+  bell:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
+  users:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+  settings:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
+  home:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
+  x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+  bag:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>',
+};
+
+/* =================================================================================
+   DATA LAYER (DB) — Supabase atau MODE DEMO (localStorage)
+   ================================================================================= */
+const DB = (() => {
+  const LS = 'omnipos_hana_v1';
+  let sb = null, isDemo = false;
+
+  function load(){ try{return JSON.parse(localStorage.getItem(LS)||'{}')}catch(e){return {}} }
+  function save(d){ localStorage.setItem(LS, JSON.stringify(d)); }
+  function ensureSeed(){
+    let d = load();
+    if(d && d.seeded){
+      // SELF-HEAL: selalu pastikan akun demo ada & password benar (untuk data lama/tersangkut)
+      const heal=(id,name,email,role,phone,ref)=>{
+        if(!d.profiles || !d.profiles[id]) (d.profiles=d.profiles||{})[id]={id,full_name:name,email,password_plain:email.split('@')[0]+'123',role,phone,points:0,referral_code:ref,referred_by:null,is_active:true,created_at:new Date().toISOString()};
+        else if(!d.profiles[id].password_plain || d.profiles[id].password_plain!==email.split('@')[0]+'123') d.profiles[id].password_plain=email.split('@')[0]+'123';
+        if(!d.profiles[id].referral_code) d.profiles[id].referral_code=ref;
+      };
+      heal('admin-1','Bu Hana (Admin)','admin@tokohana.id','admin','0812-1111-1111','ADMIN01');
+      heal('kasir-1','Pak Dodi (Kasir)','kasir@tokohana.id','kasir','0812-2222-2222','KASIR001');
+      heal('member-1','Siti Aminah','member@tokohana.id','member','0812-3333-4444','SITI8X4');
+      heal('member-2','Budi Santoso','budi@mail.id','member','0813-5555-6666','BUDI2K9');
+      save(d);
+      return d;
+    }
+    d = { seeded:true, profiles:{}, categories:{}, products:{}, orders:{}, items:{}, points:{}, referrals:{}, settings:{
+      store:{name:'Toko Hana',tagline:'Grocery Warungnya Rakyat ID',address:'Depok, Jawa Barat',phone:'0812-3000-1111'},
+      points:{earn_per_rp:1000,redeem_value:10,referral_bonus:500,signup_bonus:250}
+    }, seq:{order:1000}, session:null };
+    // staff demo
+    const mk=(id,name,email,role,phone,ref,points)=>d.profiles[id]={id,full_name:name,email,password_plain:email.split('@')[0]+'123',role,phone,points:points||0,referral_code:ref,referred_by:null,is_active:true,created_at:new Date().toISOString()};
+    mk('admin-1','Bu Hana (Admin)','admin@tokohana.id','admin','0812-1111-1111','ADMIN01',0);
+    mk('kasir-1','Pak Dodi (Kasir)','kasir@tokohana.id','kasir','0812-2222-2222','KASIR001',0);
+    mk('member-1','Siti Aminah','member@tokohana.id','member','0812-3333-4444','SITI8X4',1250);
+    mk('member-2','Budi Santoso','budi@mail.id','member','0813-5555-6666','BUDI2K9',480);
+    // kategori
+    const cats=[['Sembako','🍚',1],['Snack & Minuman','🥤',2],['Bumbu Dapur','🧂',3],['Kebutuhan Rumah','🧹',4],['Perawatan','🧼',5],['Mie Instan','🍜',6],['Roti & Kue','🍞',7],['Rokok','🚬',8]];
+    cats.forEach(([n,i,s])=>{ const id='cat-'+s; d.categories[id]={id,name:n,icon:i,sort_order:s}; });
+    // produk warung
+    const P=[
+      ['Beras Premium 5kg','8991002101010',0,65000,40,'🍚','Sembako'],
+      ['Minyak Goreng Bimoli 1L','8998001010','Bimoli',18500,60,'🛢️','Sembako'],
+      ['Gula Pasir Gulaku 1kg','89923881010','Gulaku',17000,50,'🧂','Sembako'],
+      ['Telur Ayam 1kg','2001000000017',null,32000,30,'🥚','Sembako'],
+      ['Tepung Terigu 1kg','8993175531013','Bogasari',14000,45,'🌾','Sembako'],
+      ['Susu UHT Ultra 1L','8998009010019','Ultra',18900,55,'🥛','Sembako'],
+      ['Indomie Goreng','8998866200010','Indomie',3500,200,'🍜','Mie Instan'],
+      ['Indomie Ayam Bawang','8998866200151','Indomie',3500,180,'🍜','Mie Instan'],
+      ['Sarimi Ayam Bawang','8998866101010','Sarimi',2800,150,'🍜','Mie Instan'],
+      ['Aqua Botol 600ml','8992753111014','Aqua',4000,120,'🥤','Snack & Minuman'],
+      ['Teh Botol Sosro 350ml','8992775311015','Sosro',5000,90,'🥤','Snack & Minuman'],
+      ['Coca Cola 390ml','8992696400013','Coca-Cola',7000,80,'🥤','Snack & Minuman'],
+      ['Chitato Sapi Panggang','8992753101309','Chitato',11000,70,'🥔','Snack & Minuman'],
+      ['Oreo Original','8996001305010','Oreo',8500,100,'🍪','Snack & Minuman'],
+      ['Beng Beng','8993088100018','Beng Beng',2500,160,'🍫','Snack & Minuman'],
+      ['Royco Ayam 55g','8999999021010','Royco',4200,110,'🧂','Bumbu Dapur'],
+      ['Sasa Tepung Bumbu 75g','8992388401015','Sasa',5500,60,'🧂','Bumbu Dapur'],
+      ['Kecap Bango 275ml','8999999201016','Bango',16500,75,'🥫','Bumbu Dapur'],
+      ['Saus Sambal ABC 335ml','8999999020117','ABC',12500,85,'🌶️','Bumbu Dapur'],
+      ['Sabun Lifebuoy','8992696800019','Lifebuoy',4500,130,'🧼','Perawatan'],
+      ['Shampoo Sachet Clear','8999999030018','Clear',1000,300,'🧴','Perawatan'],
+      ['Pasta Gigi Pepsodent','8992696600020','Pepsodent',9500,90,'🪥','Perawatan'],
+      ['Tissue Paseo 250s','8997012310102','Paseo',14500,70,'🧻','Kebutuhan Rumah'],
+      ['Pengharum Stella','8992828101011','Stella',13000,50,'🌸','Kebutuhan Rumah'],
+      ['Roti Tawar Sari Roti','8997099901012','Sari Roti',17000,40,'🍞','Roti & Kue'],
+      ['Donat Coklat','2001000000024',null,5000,30,'🍩','Roti & Kue'],
+      ['Sampoerna Mild 16','8999999091019','Sampoerna',32000,40,'🚬','Rokok'],
+      ['Gudang Garam Surya 12','8999999091020','GG',30000,35,'🚬','Rokok'],
+    ];
+    P.forEach(([name,barcode,brand,price,stock,emoji,cat])=>{
+      const id='p-'+barcode;
+      const cid='cat-'+({ 'Sembako':1,'Snack & Minuman':2,'Bumbu Dapur':3,'Kebutuhan Rumah':4,'Perawatan':5,'Mie Instan':6,'Roti & Kue':7,'Rokok':8 }[cat]);
+      d.products[id]={id,name,barcode,sku:barcode,category_id:cid,description:brand?(name+' '+brand):name,price,cost:Math.round(price*0.8),stock,unit:'pcs',image_url:'',emoji,brand,is_active:true,created_at:new Date().toISOString()};
+    });
+    save(d); return d;
+  }
+  const uid=()=>'id-'+Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4);
+  const now=()=>new Date().toISOString();
+
+  async function init(){
+    const forceDemo = (function(){ try{return localStorage.getItem('omnipos_force_demo')==='1'}catch(e){return false} })();
+    const wantSupa = !forceDemo && CONFIG.SUPABASE_URL && CONFIG.SUPABASE_KEY && window.supabase;
+    if(wantSupa){
+      try{
+        sb = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_KEY);
+        isDemo = false;
+      }catch(e){ console.warn('Supabase init gagal, fallback demo',e); isDemo=true; ensureSeed(); }
+    } else { isDemo=true; ensureSeed(); }
+  }
+  const demo = ()=>isDemo;
+  const setForceDemo = (on)=>{ try{ on?localStorage.setItem('omnipos_force_demo','1'):localStorage.removeItem('omnipos_force_demo'); }catch(e){} };
+  const resetDemo = ()=>{ try{ localStorage.removeItem('omnipos_hana_v1'); localStorage.removeItem('omnipos_force_demo'); }catch(e){} };
+
+  /* ---- AUTH ---- */
+  async function signIn(email,password){
+    if(!isDemo){
+      let data,error;
+      try{ ({data,error}=await sb.auth.signInWithPassword({email,password})); }
+      catch(netErr){ throw new Error('Tidak bisa terhubung ke Supabase (cek koneksi / URL). Atau pakai Mode Demo.'); }
+      if(error){
+        const m = /invalid login credentials|not confirmed|email not confirmed|user not found|credentials/i.test(error.message)
+          ? 'Akun tidak ditemukan di Supabase. Catatan: akun demo (admin/kasir/member@tokohana.id) HANYA berlaku di Mode Demo. Untuk Supabase: Daftar Member dulu, atau pakai Mode Demo.'
+          : error.message;
+        throw new Error(m);
+      }
+      return await me();
+    }
+    const d=ensureSeed(); email=(email||'').toLowerCase().trim();
+    const p=Object.values(d.profiles).find(x=>x.email.toLowerCase()===email && x.password_plain===password);
+    if(!p) throw new Error('Email / kata sandi salah. (Mode Demo: admin@tokohana.id / admin123)');
+    if(!p.is_active) throw new Error('Akun dinonaktifkan');
+    d.session=p.id; save(d); return p;
+  }
+  async function signUp({email,password,full_name,phone,role='member',referral_code}){
+    if(!isDemo){
+      const {data,error}=await sb.auth.signUp({email,password,
+        options:{data:{full_name,phone,role,referral_code}}});
+      if(error) throw error;
+      return await me();
+    }
+    const d=ensureSeed(); email=(email||'').toLowerCase().trim();
+    if(Object.values(d.profiles).some(x=>x.email.toLowerCase()===email)) throw new Error('Email sudah terdaftar');
+    const id=uid();
+    const ref=(referral_code||'').trim().toUpperCase();
+    const inviter=ref?Object.values(d.profiles).find(x=>x.referral_code===ref):null;
+    const p={id,full_name,email,password_plain:password,role,phone,points:inviter?CONFIG.SIGNUP_BONUS:0,
+      referral_code:('M'+id.slice(-6)).toUpperCase(),referred_by:inviter?inviter.referral_code:null,is_active:true,created_at:now()};
+    d.profiles[id]=p;
+    if(inviter){ inviter.points+=CONFIG.REFERRAL_BONUS;
+      const rid=uid(); d.referrals[rid]={id:rid,referrer_id:inviter.id,referred_id:id,points_awarded:CONFIG.REFERRAL_BONUS,created_at:now()};
+      d.points[uid()]={id:uid(),member_id:inviter.id,type:'referral',points:CONFIG.REFERRAL_BONUS,note:'Bonus referral '+p.full_name,created_at:now()};
+      d.points[uid()]={id:uid(),member_id:id,type:'referral',points:CONFIG.SIGNUP_BONUS,note:'Bonus gabung dari referral',created_at:now()};
+    }
+    d.session=id; save(d); return p;
+  }
+  async function signOut(){ if(!isDemo){await sb.auth.signOut();} else {const d=load();d.session=null;save(d);} }
+  async function me(){
+    if(!isDemo){
+      const {data:{user}}=await sb.auth.getUser(); if(!user) return null;
+      const {data}=await sb.from('profiles').select('*').eq('id',user.id).single();
+      return data;
+    }
+    const d=ensureSeed(); return d.session?d.profiles[d.session]:null;
+  }
+  async function updateProfile(id,patch){
+    if(!isDemo){ const {data,error}=await sb.from('profiles').update(patch).eq('id',id).select().single(); if(error)throw error; return data; }
+    const d=load(); Object.assign(d.profiles[id],patch); save(d); return d.profiles[id];
+  }
+
+  /* ---- products ---- */
+  async function listProducts({search,category,activeOnly,limit}={}){
+    if(!isDemo){ let q=sb.from('products').select('*,categories(*)');
+      if(activeOnly)q=q.eq('is_active',true); if(category)q=q.eq('category_id',category);
+      if(search)q=q.or(`name.ilike.%${search}%,barcode.ilike.%${search}%,sku.ilike.%${search}%`);
+      q=q.order('created_at',{ascending:false}); if(limit)q=q.limit(limit);
+      const {data,error}=await q; if(error)throw error; return data;
+    }
+    const d=ensureSeed(); let r=Object.values(d.products);
+    if(activeOnly)r=r.filter(x=>x.is_active);
+    if(category&&category!=='all')r=r.filter(x=>x.category_id===category);
+    if(search){const s=search.toLowerCase();r=r.filter(x=>(x.name+' '+(x.barcode||'')+' '+(x.sku||'')).toLowerCase().includes(s));}
+    return r;
+  }
+  async function getProductByBarcode(code){
+    if(!isDemo){ const {data,error}=await sb.from('products').select('*,categories(*)').eq('barcode',code).maybeSingle(); if(error)throw error; return data; }
+    const d=ensureSeed(); return Object.values(d.products).find(x=>x.barcode===code)||null;
+  }
+  async function saveProduct(p){
+    if(!isDemo){ const {data,error}=await sb.from('products').upsert(p).select().single(); if(error)throw error; return data; }
+    const d=load(); if(!p.id)p.id=uid(); if(!p.created_at)p.created_at=now(); p.updated_at=now();
+    d.products[p.id]=p; save(d); return p;
+  }
+  async function deleteProduct(id){
+    if(!isDemo){ const {e}=await sb.from('products').delete().eq('id',id); return; }
+    const d=load(); delete d.products[id]; save(d);
+  }
+  async function bulkUpsertProducts(rows){
+    if(!isDemo){ const {data,error}=await sb.from('products').upsert(rows); if(error)throw error; return (data||[]).length; }
+    const d=load(); let n=0; rows.forEach(r=>{ if(!r.name)return; if(!r.id)r.id=uid(); r.created_at=now();r.updated_at=now(); d.products[r.id]=r; n++; }); save(d); return n;
+  }
+
+  /* ---- categories ---- */
+  async function listCategories(){
+    if(!isDemo){ const {data,error}=await sb.from('categories').select('*').order('sort_order'); if(error)throw error; return data; }
+    return Object.values(ensureSeed().categories).sort((a,b)=>a.sort_order-b.sort_order);
+  }
+
+  /* ---- orders ---- */
+  async function createOrder(order, items, opts={}){
+    if(!isDemo){
+      const {data:o,error}=await sb.from('orders').insert(order).select().single(); if(error)throw error;
+      const its=items.map(it=>({...it,order_id:o.id}));
+      await sb.from('order_items').insert(its);
+      if(o.points_earned>0||o.points_used>0) await recordPoints(o, items);
+      if(o.customer_id&&(o.points_earned||o.points_used)) await sb.from('profiles').update({points:(await getMember(o.customer_id)).points + o.points_earned - o.points_used}).eq('id',o.customer_id);
+      return o;
+    }
+    const d=load(); const id=uid(); d.seq.order=(d.seq.order||1000)+1;
+    const o={...order,id,order_no:order.order_no||('INV'+d.seq.order),created_at:now(),updated_at:now()};
+    d.orders[id]=o; items.forEach(it=>{ const iid=uid(); d.items[iid]={...it,id:iid,order_id:id,created_at:now()}; });
+    if(o.customer_id){ const m=d.profiles[o.customer_id]; if(m){ m.points = (m.points||0) + (o.points_earned||0) - (o.points_used||0);
+      if(o.points_earned>0) d.points[uid()]={id:uid(),member_id:m.id,order_id:id,type:'earn',points:o.points_earned,note:'Belanja '+o.order_no,created_at:now()};
+      if(o.points_used>0) d.points[uid()]={id:uid(),member_id:m.id,order_id:id,type:'redeem',points:-o.points_used,note:'Tukar poin '+o.order_no,created_at:now()}; } }
+    // kurangi stok
+    items.forEach(it=>{ const pr=Object.values(d.products).find(p=>p.id===it.product_id); if(pr)pr.stock=Math.max(0,(pr.stock||0)-Number(it.qty)); });
+    save(d); return o;
+  }
+  async function recordPoints(o,items){ /* hook supabase */ }
+  async function listOrders(filter={}){
+    if(!isDemo){ let q=sb.from('orders').select('*,customer:profiles!orders_customer_id_fkey(full_name,phone,referral_code),cashier:profiles!orders_cashier_id_fkey(full_name)').order('created_at',{ascending:false});
+      if(filter.channel)q=q.eq('channel',filter.channel); if(filter.status)q=q.eq('status',filter.status);
+      if(filter.customer_id)q=q.eq('customer_id',filter.customer_id); if(filter.limit)q=q.limit(filter.limit);
+      const {data,error}=await q; if(error)throw error; return data; }
+    const d=ensureSeed(); let r=Object.values(d.orders).sort((a,b)=>b.created_at.localeCompare(a.created_at));
+    if(filter.channel)r=r.filter(x=>x.channel===filter.channel);
+    if(filter.status)r=r.filter(x=>x.status===filter.status);
+    if(filter.customer_id)r=r.filter(x=>x.customer_id===filter.customer_id);
+    if(filter.limit)r=r.slice(0,filter.limit);
+    return r.map(o=>({...o,customer:o.customer_id?{full_name:d.profiles[o.customer_id]?.full_name,phone:d.profiles[o.customer_id]?.phone,referral_code:d.profiles[o.customer_id]?.referral_code}:null}));
+  }
+  async function getOrder(id){
+    if(!isDemo){ const {data:o}=await sb.from('orders').select('*').eq('id',id).single();
+      const {data:items}=await sb.from('order_items').select('*').eq('order_id',id);
+      return {order:o,items}; }
+    const d=ensureSeed(); return {order:d.orders[id],items:Object.values(d.items).filter(x=>x.order_id===id)};
+  }
+  async function updateOrderStatus(id,status,patch={}){
+    if(!isDemo){ const {data,error}=await sb.from('orders').update({status,...patch}).eq('id',id).select().single(); if(error)throw error; return data; }
+    const d=load(); Object.assign(d.orders[id],{status,...patch,updated_at:now()}); save(d); return d.orders[id];
+  }
+
+  /* ---- members ---- */
+  async function listMembers(search=''){
+    if(!isDemo){ let q=sb.from('profiles').select('*').eq('role','member').order('created_at',{ascending:false});
+      if(search)q=q.or(`full_name.ilike.%${search}%,phone.ilike.%${search}%,email.ilike.%${search}%,referral_code.ilike.%${search}%`);
+      const {data,error}=await q; if(error)throw error; return data; }
+    const d=ensureSeed(); let r=Object.values(d.profiles).filter(x=>x.role==='member');
+    if(search){const s=search.toLowerCase();r=r.filter(x=>(x.full_name+' '+x.phone+' '+x.email+' '+(x.referral_code||'')).toLowerCase().includes(s));}
+    return r;
+  }
+  async function getMember(id){
+    if(!isDemo){ const {data,error}=await sb.from('profiles').select('*').eq('id',id).single(); if(error)throw error; return data; }
+    return ensureSeed().profiles[id];
+  }
+  async function listPoints(memberId){
+    if(!isDemo){ const {data,error}=await sb.from('point_transactions').select('*').eq('member_id',memberId).order('created_at',{ascending:false}); if(error)throw error; return data; }
+    return Object.values(ensureSeed().points).filter(x=>x.member_id===memberId).sort((a,b)=>b.created_at.localeCompare(a.created_at));
+  }
+  async function listReferrals(referrerId){
+    if(!isDemo){ const {data,error}=await sb.from('referrals').select('*,referred:profiles!referrals_referred_id_fkey(full_name,phone,created_at)').eq('referrer_id',referrerId); if(error)throw error; return data; }
+    const d=ensureSeed(); return Object.values(d.referrals).filter(x=>x.referrer_id===referrerId).map(r=>({...r,referred:{full_name:d.profiles[r.referred_id]?.full_name,phone:d.profiles[r.referred_id]?.phone,created_at:r.created_at}}));
+  }
+
+  /* ---- stats ---- */
+  async function stats(){
+    if(!isDemo){
+      const today=new Date(); const y=today.toISOString().slice(0,10);
+      const [{count:totSales},{count:memCount},sales]=await Promise.all([
+        sb.from('orders').select('*',{count:'exact',head:true}).in('status',['paid','completed']),
+        sb.from('profiles').select('*',{count:'exact',head:true}).eq('role','member'),
+        sb.from('orders').select('total,channel,status,created_at').in('status',['paid','completed'])
+      ]);
+      const revenue=sales.reduce((a,b)=>a+Number(b.total||0),0);
+      const todayRev=sales.filter(o=>o.created_at.startsWith(y)).reduce((a,b)=>a+Number(b.total||0),0);
+      const online=sales.filter(o=>o.channel==='online').length, offline=sales.filter(o=>o.channel==='offline').length;
+      return {revenue,orders:sales.length,members:memCount||0,todayRev,online,offline,sales};
+    }
+    const d=ensureSeed(); const sales=Object.values(d.orders).filter(o=>['paid','completed'].includes(o.status));
+    const today=new Date().toISOString().slice(0,10);
+    return { revenue:sales.reduce((a,b)=>a+Number(b.total||0),0), orders:sales.length,
+      members:Object.values(d.profiles).filter(x=>x.role==='member').length,
+      todayRev:sales.filter(o=>o.created_at.startsWith(today)).reduce((a,b)=>a+Number(b.total||0),0),
+      online:sales.filter(o=>o.channel==='online').length, offline:sales.filter(o=>o.channel==='offline').length,
+      products:Object.keys(d.products).length, sales };
+  }
+
+  async function getSettings(){
+    if(!isDemo){ const {data}=await sb.from('settings').select('*'); const o={}; (data||[]).forEach(r=>o[r.key]=r.value); return o; }
+    return ensureSeed().settings;
+  }
+  async function saveSettings(key,value){
+    if(!isDemo){ await sb.from('settings').upsert({key,value}); return; }
+    const d=load(); d.settings=d.settings||{}; d.settings[key]=value; save(d);
+  }
+
+  return {init,signIn,signUp,signOut,me,updateProfile,listProducts,getProductByBarcode,saveProduct,
+    deleteProduct,bulkUpsertProducts,listCategories,createOrder,listOrders,getOrder,updateOrderStatus,
+    listMembers,getMember,listPoints,listReferrals,stats,getSettings,saveSettings,demo,setForceDemo,resetDemo};
+})();
+
+/* =================================================================================
+   APP — UI, routing, views
+   ================================================================================= */
+const App = {
+  state:{ user:null, view:'store', cart:[], search:'', category:'all', modal:null, scanner:null },
+  isAdmin(){return this.state.user && ['admin','kasir'].includes(this.state.user.role)},
+  money(n){ n=Number(n||0); return CONFIG.CURRENCY+' '+n.toLocaleString('id-ID') },
+  async start(){
+    await DB.init();
+    document.getElementById('auth-root').innerHTML='';
+    this.state.user=await DB.me();
+    window.addEventListener('hashchange',()=>this.route());
+    if(this.state.user){ this.renderApp(); } else { this.renderPublicShell(); }
+  },
+  toast(msg,type=''){
+    const t=document.createElement('div'); t.className='toast '+(type||''); t.innerHTML=msg;
+    document.getElementById('toast').appendChild(t);
+    setTimeout(()=>{t.style.opacity='0';t.style.transition='.3s';setTimeout(()=>t.remove(),300)},2600);
+  },
+
+  /* ===================== AUTH ===================== */
+  /* ---- PUBLIC SHELL: langsung tampil katalog, tanpa wajib login ---- */
+  renderPublicShell(){
+    document.getElementById('auth-root').classList.add('hide');
+    const root=document.getElementById('app-root'); root.classList.remove('hide');
+    root.innerHTML=`
+      <div class="topbar"><div class="wrap">
+        <div class="brand"><div class="logo">H</div><div class="brand-text">Toko Hana<small>Warungnya Rakyat ID</small></div></div>
+        <div class="spacer"></div>
+        ${DB.demo()?'<span class="chip-points"><span class="dot on"></span> DEMO</span>':''}
+        <button class="btn sm" onclick="App.openLogin()">${IC.user} Masuk</button>
+      </div></div>
+      <main class="main" style="min-height:calc(100vh - var(--bar-h))"><div class="content" id="view"></div></main>`;
+    this.route();
+  },
+  /* ---- LOGIN jadi MENU (sheet) ---- */
+  openLogin(msg){
+    this.openSheet(`<div class="sheet-head"><h3>${IC.user} Masuk / Daftar</h3><button class="iconbtn" onclick="App.closeSheet()">${IC.x}</button></div>
+      <div class="sheet-body">${this.authBodyMarkup(msg)}</div>`,true);
+    this.bindAuth(()=>{ this.closeSheet(); this.toast('Berhasil masuk ✓','ok'); this.renderApp(); });
+  },
+  authBodyMarkup(msg){
+    const note = msg?`<div class="card" style="background:var(--amber-l);border:1.5px solid #FCD9A0;font-size:13px;margin-bottom:14px">⚠️ ${msg}</div>`:'';
+    return `${note}
+      <div class="tabs" id="auth-tabs">
+        <button class="active" data-t="in">Masuk</button>
+        <button data-t="up">Daftar Member</button>
+      </div>
+      <form id="auth-form">
+        <div id="up-only" class="hide">
+          <div class="field"><label>Nama Lengkap</label><input name="full_name" required placeholder="Nama lengkap"></div>
+          <div class="field"><label>No. HP / WhatsApp</label><input name="phone" placeholder="08xxxxxxxxxx"></div>
+        </div>
+        <div class="field"><label>Email</label><input name="email" type="email" required placeholder="email@contoh.com"></div>
+        <div class="field"><label>Kata Sandi</label><input name="password" type="password" required minlength="4" placeholder="••••••••"></div>
+        <div id="up-only2" class="hide">
+          <div class="field"><label>Kode Referral <span class="muted small">(opsional)</span></label><input name="referral_code" placeholder="Mis. SITI8X4"></div>
+        </div>
+        <button class="btn block" type="submit" id="auth-submit">Masuk</button>
+      </form>
+      <div class="card" style="margin-top:16px;background:var(--navy);color:#fff;padding:14px 15px">
+        <b style="font-size:14.5px">🚀 Masuk Langsung — 1 Klik (Mode Demo)</b>
+        <p style="font-size:12px;opacity:.85;margin:5px 0 11px">Tanpa ketik. Langsung masuk sebagai peran pilihan.</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+          <button class="btn green sm" onclick="App.quickLogin('admin')">👑 Admin</button>
+          <button class="btn sm" style="background:#fff;color:var(--navy)" onclick="App.quickLogin('kasir')">🧾 Kasir</button>
+          <button class="btn amber sm" onclick="App.quickLogin('member')">🛒 Member</button>
+        </div>
+        <div class="small" style="opacity:.8;margin-top:9px">admin/kasir/member@tokohana.id · admin123/kasir123/member123</div>
+      </div>
+      <div class="card" style="margin-top:16px;background:${DB.demo()?'var(--green-l)':'var(--amber-l)'};padding:13px 14px;font-size:12.5px;border:1.5px solid ${DB.demo()?'#BFE6D2':'#FCD9A0'}">
+        <div class="row between"><b>🔑 Status Koneksi</b><span class="tag ${DB.demo()?'green':'amber'}">${DB.demo()?'MODE DEMO':'MODE SUPABASE'}</span></div>
+        <div class="muted" style="margin-top:8px;line-height:1.5">
+          ${DB.demo()?'🟢 Data tersimpan di browser ini.':'⚠️ Terhubung <b>Supabase</b>. Akun demo hanya berlaku Mode Demo. Di Supabase, buat akun dulu (jalankan <b>setup_akun_supabase.sql</b>) atau daftar member baru.'}
+        </div>
+        ${DB.demo()?`<button class="btn xs ghost" style="margin-top:8px" onclick="App.resetData()">🔄 Reset Data Demo</button>`
+        :`<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap"><button class="btn xs green" onclick="App.useDemo()">🟢 Pakai Mode Demo</button><button class="btn xs ghost" onclick="App.gotoTab('up')">➕ Daftar Member</button></div>`}
+      </div>`;
+  },
+  bindAuth(onSuccess){
+    let mode='in';
+    const tabs=document.getElementById('auth-tabs');
+    if(tabs) tabs.addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b)return; mode=b.dataset.t;
+      document.querySelectorAll('#auth-tabs button').forEach(x=>x.classList.toggle('active',x===b));
+      document.getElementById('up-only').classList.toggle('hide',mode==='in');
+      document.getElementById('up-only2').classList.toggle('hide',mode==='in');
+      document.getElementById('auth-submit').textContent=mode==='in'?'Masuk':'Daftar Sekarang'; });
+    const form=document.getElementById('auth-form');
+    if(form) form.addEventListener('submit',async e=>{ e.preventDefault(); const f=new FormData(e.target);
+      const btn=document.getElementById('auth-submit'); const old=btn.textContent; btn.disabled=true; btn.textContent='Memproses…';
+      try{
+        if(mode==='in') this.state.user=await DB.signIn(f.get('email'),f.get('password'));
+        else this.state.user=await DB.signUp({email:f.get('email'),password:f.get('password'),full_name:f.get('full_name'),phone:f.get('phone'),referral_code:f.get('referral_code')});
+        onSuccess();
+      }catch(err){ this.toast('❌ '+(err.message||err),'err'); btn.disabled=false; btn.textContent=old; } });
+  },
+  renderAuth(){ // fallback layar penuh (default sekarang: langsung ke toko via renderPublicShell)
+    document.getElementById('app-root').classList.add('hide');
+    const r=document.getElementById('auth-root'); r.classList.remove('hide');
+    r.innerHTML=`<div class="auth-bg"><div class="auth-card">
+      <div class="auth-hero"><div class="logo">H</div><h1>OmniPOS · Toko Hana</h1><p>Grocery Warungnya Rakyat ID</p></div>
+      <div class="auth-body">${this.authBodyMarkup()}</div></div></div>`;
+    this.bindAuth(()=>{ this.toast('Berhasil masuk ✓','ok'); this.renderApp(); });
+  },
+  fillDemo(e,p){ const f=document.getElementById('auth-form'); const em=f.querySelector('input[name=email]'); const pw=f.querySelector('input[name=password]'); if(em)em.value=e; if(pw)pw.value=p; },
+  async quickLogin(role){
+    const map={admin:['admin@tokohana.id','admin123'],kasir:['kasir@tokohana.id','kasir123'],member:['member@tokohana.id','member123']};
+    const [e,p]=map[role]||map.member;
+    const b=event&&event.target; if(b){b.dataset.o=b.innerHTML;b.disabled=true;b.innerHTML='⏳ Memproses…';}
+    try{ this.state.user=await DB.signIn(e,p); this.toast('Berhasil masuk sebagai '+role+' ✓','ok'); this.renderApp(); }
+    catch(err){ this.toast('❌ '+(err.message||err),'err'); if(b){b.disabled=false;b.innerHTML=b.dataset.o||'Masuk';} }
+  },
+  useDemo(){ DB.setForceDemo(true); this.toast('Beralih ke Mode Demo…'); setTimeout(()=>location.reload(),500); },
+  resetData(){ if(!confirm('Reset semua data demo? (akun & data di browser akan dikembalikan ke awal)'))return; DB.resetDemo(); DB.setForceDemo(false); this.toast('Data demo direset ✓'); setTimeout(()=>location.reload(),500); },
+  gotoTab(t){ document.querySelector('#auth-tabs button[data-t="'+t+'"]').click(); window.scrollTo(0,document.body.scrollHeight); },
+
+  /* ===================== APP SHELL ===================== */
+  renderApp(){
+    document.getElementById('auth-root').classList.add('hide');
+    const root=document.getElementById('app-root'); root.classList.remove('hide');
+    if(this.isAdmin()) this.renderStaffShell(); else this.renderMemberShell();
+    this.route();
+  },
+  renderStaffShell(){
+    const u=this.state.user;
+    document.getElementById('app-root').innerHTML=`
+      <div class="topbar"><div class="wrap">
+        <div class="brand"><div class="logo">H</div><div class="brand-text">OmniPOS<small>Toko Hana · ${(u.role||'').toUpperCase()}</small></div></div>
+        <div class="spacer"></div>
+        <div class="chip-points">${DB.demo()?'<span class="dot on"></span> DEMO':''}</div>
+        <button class="iconbtn" onclick="App.doLogout()" title="Keluar">${IC.logout}</button>
+      </div></div>
+      <div class="shell">
+        <aside class="sidebar" id="side">
+          <div class="nav-sec">Operasional</div>
+          <div class="nav-item" data-v="dashboard">${IC.home} Dashboard</div>
+          <div class="nav-item" data-v="pos">${IC.scan} Kasir Offline</div>
+          <div class="nav-item" data-v="online-orders">${IC.bag} Order Online <span class="bn-badge hide" id="nb-online" style="position:relative;margin-left:auto"></span></div>
+          <div class="nav-sec">Katalog</div>
+          <div class="nav-item" data-v="products">${IC.box} Produk</div>
+          <div class="nav-item" data-v="members">${IC.users} Member</div>
+          <div class="nav-sec">Lainnya</div>
+          <div class="nav-item" data-v="reports">${IC.chart} Laporan</div>
+          ${u.role==='admin'?`<div class="nav-item" data-v="settings">${IC.settings} Pengaturan</div>`:''}
+          <div class="nav-item" data-v="storeview">${IC.store} Lihat Toko Online</div>
+        </aside>
+        <main class="main"><div class="content" id="view"></div></main>
+      </div>
+      <nav class="bottomnav">
+        <div class="bn-item" data-v="dashboard">${IC.home}Dashboard</div>
+        <div class="bn-item" data-v="pos">${IC.scan}Kasir</div>
+        <div class="bn-item" data-v="online-orders">${IC.bag}Order</div>
+        <div class="bn-item" data-v="products">${IC.box}Produk</div>
+        <div class="bn-item" data-v="members">${IC.users}Member</div>
+      </nav>`;
+    const go=v=>{location.hash=v};
+    document.querySelectorAll('.nav-item,.bn-item').forEach(el=>el.onclick=()=>go(el.dataset.v));
+    this.updateOnlineBadge();
+  },
+  renderMemberShell(){
+    const u=this.state.user;
+    document.getElementById('app-root').innerHTML=`
+      <div class="topbar"><div class="wrap">
+        <div class="brand"><div class="logo">H</div><div class="brand-text">Toko Hana<small>Warungnya Rakyat ID</small></div></div>
+        <div class="spacer"></div>
+        <button class="chip-points" data-v="points">${IC.coin} ${u.points||0} poin</button>
+        <button class="iconbtn" style="position:relative" onclick="App.goCart()">
+          ${IC.cart}<span class="bn-badge hide" id="cart-count" style="position:absolute;top:-2px;right:-2px"></span>
+        </button>
+        <button class="iconbtn" onclick="App.doLogout()" title="Keluar">${IC.logout}</button>
+      </div></div>
+      <main class="main" style="min-height:calc(100vh - var(--bar-h))"><div class="content" id="view"></div></main>
+      <nav class="bottomnav">
+        <div class="bn-item active" data-v="store">${IC.store}Toko</div>
+        <div class="bn-item" data-v="orders">${IC.list}Pesanan</div>
+        <div class="bn-item" data-v="card">${IC.card}Kartu</div>
+        <div class="bn-item" data-v="points">${IC.coin}Poin</div>
+        <div class="bn-item" data-v="profile">${IC.user}Profil</div>
+      </nav>`;
+    document.querySelectorAll('.bn-item, .chip-points').forEach(el=>el.onclick=()=>location.hash=el.dataset.v);
+    this.updateCartBadge();
+  },
+  async doLogout(){ await DB.signOut(); this.state.user=null; this.state.cart=[]; this.renderPublicShell(); },
+  goCart(){ location.hash='cart'; },
+
+  /* ===================== ROUTER ===================== */
+  route(){
+    const h=(location.hash||'').replace('#','')||'store';
+    this.state.view=h;
+    const el=document.querySelector('.sidebar')||document.querySelector('.bottomnav');
+    document.querySelectorAll('.nav-item,.bn-item').forEach(x=>x.classList.toggle('active',x.dataset.v===h));
+    if(window.scrollTo) window.scrollTo(0,0);
+    const v=document.getElementById('view'); if(!v)return;
+    // TAMU (belum login): hanya katalog publik
+    if(!this.state.user){ this.viewStore(); return; }
+    if(this.isAdmin()){
+      if(['store','cart','product'].includes(h)) { return this.viewStore(true); } // admin lihat toko
+      ({dashboard:()=>this.viewDashboard(),pos:()=>this.viewPOS(),products:()=>this.viewProducts(),
+        'online-orders':()=>this.viewOnlineOrders(),members:()=>this.viewMembers(),reports:()=>this.viewReports(),
+        settings:()=>this.viewSettings(),storeview:()=>this.viewStore(true)
+      }[h]||this.viewDashboard)();
+    } else {
+      ({store:()=>this.viewStore(),cart:()=>this.viewCart(),orders:()=>this.viewMemberOrders(),
+        card:()=>this.viewMemberCard(),points:()=>this.viewMemberPoints(),referral:()=>this.viewReferral(),
+        profile:()=>this.viewMemberProfile()
+      }[h]||this.viewStore)();
+    }
+  },
+
+  /* =======================================================================
+     MEMBER VIEWS
+     ======================================================================= */
+  async viewStore(forStaff=false){
+    const v=document.getElementById('view'); v.innerHTML=`<div class="spin"></div>`;
+    const [prods,cats]=await Promise.all([DB.listProducts({activeOnly:true}),DB.listCategories()]);
+    this.state._prods=prods; this.state._cats=cats;
+    const m=this.state.user||{}; const guest=!this.state.user;
+    v.innerHTML=`
+      ${!forStaff?`<div class="hero-banner">
+        <h2>${guest?'Selamat datang di Toko Hana! 👋':`Halo, ${m.full_name?.split(' ')[0]||'Sahabat'}! 👋`}</h2>
+        <p>Belanja kebutuhan harian praktis dari warung digital. ${guest?'Masuk untuk belanja & kumpulkan poin tiap transaksi!':'Dapat poin setiap transaksi & gratis ongkir sekitar!'}</p>
+        ${guest?`<button class="btn" style="margin-top:12px" onclick="App.openLogin()">🛒 Masuk untuk Belanja</button>`:`<div class="badge-pts">${IC.coin} ${m.points||0} poin</div>`}
+      </div>`:''}
+      <div class="search-box" style="margin-bottom:10px">${IC.search}<input id="psearch" placeholder="Cari produk / brand…" value="${this.state.search||''}"></div>
+      <div class="cats" id="catbar">
+        <div class="cat-pill ${this.state.category==='all'?'active':''}" data-c="all">🛒 Semua</div>
+        ${cats.map(c=>`<div class="cat-pill ${this.state.category===c.id?'active':''}" data-c="${c.id}">${c.icon} ${c.name}</div>`).join('')}
+      </div>
+      <div class="section-title"><h2>${forStaff?'Katalog Toko':'Produk Pilihan'}</h2><span class="muted small">${prods.length} produk</span></div>
+      <div class="prod-grid" id="pgrid"></div>`;
+    this.bindSearch(); this.bindCats(); this.renderProdGrid(prods);
+  },
+  bindSearch(){ const i=document.getElementById('psearch');
+    let t; i.oninput=()=>{clearTimeout(t);t=setTimeout(()=>{
+      this.state.search=i.value;
+      let r=this.state._prods;
+      if(this.state.category!=='all')r=r.filter(x=>x.category_id===this.state.category);
+      const s=i.value.toLowerCase();
+      if(s)r=r.filter(x=>(x.name+' '+(x.barcode||'')+' '+(x.brand||'')).toLowerCase().includes(s));
+      this.renderProdGrid(r);
+    },200);};
+  },
+  bindCats(){ document.querySelectorAll('#catbar .cat-pill').forEach(p=>p.onclick=()=>{
+    this.state.category=p.dataset.c; document.querySelectorAll('#catbar .cat-pill').forEach(x=>x.classList.toggle('active',x===p));
+    this.viewStore(this.isAdmin());
+  });},
+  renderProdGrid(prods){
+    const g=document.getElementById('pgrid');
+    if(!prods.length){ g.innerHTML=`<div class="empty" style="grid-column:1/-1">${IC.search}<p>Produk tidak ditemukan</p></div>`; return; }
+    g.innerHTML=prods.map(p=>{
+      const disc=p.cost&&p.price<p.cost; const em=p.emoji||'📦';
+      return `<div class="prod" onclick="App.openProduct('${p.id}')">
+        <div class="ph">${p.image_url?`<img src="${p.image_url}">`:`<div class="emoji">${em}</div>`}
+          ${disc?`<span class="disc-badge">HEMAT</span>`:''}
+          ${Number(p.stock||0)<=0?`<span class="disc-badge" style="background:var(--ink-3)">HABIS</span>`:''}
+        </div>
+        <div class="info">
+          <div class="nm">${p.name}</div>
+          <div class="unit">${p.brand||p.unit||''} ${p.stock!=null?`· stok ${p.stock}`:''}</div>
+          <div class="pr">${this.money(p.price)}</div>
+          <button class="btn sm ${Number(p.stock||0)<=0?'':(this.state.user?'green':'')}" ${Number(p.stock||0)<=0?'disabled':''} onclick="event.stopPropagation();${this.state.user?`App.quickAdd('${p.id}')`:`App.openLogin('Masuk dulu untuk belanja & dapat poin')`}">${Number(p.stock||0)<=0?'Habis':(this.state.user?IC.plus+' Tambah':IC.user+' Masuk')}</button>
+        </div></div>`;
+    }).join('');
+  },
+  quickAdd(id){ if(!this.state.user){ this.openLogin('Masuk dulu untuk belanja & dapat poin.'); return; } const p=this.state._prods.find(x=>x.id===id); if(!p)return;
+    const ex=this.state.cart.find(x=>x.product_id===id);
+    if(ex){ if(ex.qty>=p.stock){this.toast('Stok tidak cukup','err');return;} ex.qty++; }
+    else this.state.cart.push({product_id:p.id,name:p.name,price:p.price,qty:1,emoji:p.emoji||'📦',stock:p.stock,barcode:p.barcode});
+    this.updateCartBadge(); this.toast(`${p.name} ditambah ✓`,'ok');
+  },
+  updateCartBadge(){ const c=this.state.cart.reduce((a,b)=>a+b.qty,0); const el=document.getElementById('cart-count');
+    if(el){ if(c>0){el.classList.remove('hide');el.textContent=c;}else el.classList.add('hide');} },
+  async openProduct(id){
+    const p=this.state._prods.find(x=>x.id===id);
+    this.openSheet(`
+      <div class="sheet-head"><h3>Detail Produk</h3><button class="iconbtn" onclick="App.closeSheet()">${IC.x}</button></div>
+      <div class="sheet-body">
+        <div style="aspect-ratio:1/1;max-width:240px;margin:0 auto;background:var(--blue-ll);border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:90px">${p.emoji||'📦'}</div>
+        <h2 style="margin-top:16px">${p.name}</h2>
+        <div class="row" style="margin-top:6px"><span class="tag">${p.brand||'Produk'}</span><span class="muted small">${p.unit||'pcs'} · Stok ${p.stock}</span></div>
+        <div class="pr" style="font-size:26px;color:var(--navy);margin-top:10px">${this.money(p.price)}</div>
+        <p class="muted small" style="margin:10px 0">${p.description||'Produk kebutuhan harian berkualitas dari Toko Hana. Beli sekarang dan kumpulkan poin!'}</p>
+        <hr class="sep">
+        <div class="row small muted"><span>💰 Dapat poin</span><b style="color:var(--gold)">${Math.floor(p.price/CONFIG.EARN_PER_RP)} poin</b></div>
+        <div class="row" style="gap:10px;margin-top:16px">
+          <button class="btn ghost block" onclick="App.quickAdd('${p.id}');App.closeSheet()">${IC.cart} Keranjang</button>
+          <button class="btn green block" onclick="App.buyNow('${p.id}')">Beli Sekarang</button>
+        </div>
+      </div>`);
+  },
+  buyNow(id){ if(!this.state.user){ this.openLogin('Masuk dulu untuk beli.'); return; } this.quickAdd(id); this.closeSheet(); location.hash='cart'; },
+
+  /* ---- CART / CHECKOUT ---- */
+  viewCart(){
+    const v=document.getElementById('view'); const c=this.state.cart;
+    if(!c.length){ v.innerHTML=`<div class="empty">${IC.cart}<h3>Keranjang kosong</h3><p class="muted">Yuk belanja dulu di toko kami</p><button class="btn" style="margin-top:14px" onclick="location.hash='store'">Mulai Belanja</button></div>`; return; }
+    const sub=c.reduce((a,b)=>a+b.price*b.qty,0);
+    const pts=Math.floor(sub/CONFIG.EARN_PER_RP);
+    v.innerHTML=`
+      <div class="section-title"><h2>Keranjang Belanja</h2></div>
+      <div style="display:grid;grid-template-columns:1fr 340px;gap:16px;align-items:start" id="cart-layout">
+        <div class="card" id="ci-list">${c.map((it,i)=>`
+          <div class="ci">
+            <div class="ic">${it.emoji||'📦'}</div>
+            <div class="col"><div class="nm">${it.name}</div><div class="pr">${this.money(it.price)}</div>
+              <div class="qty"><button onclick="App.cartQty(${i},-1)">${IC.minus}</button><span>${it.qty}</span><button onclick="App.cartQty(${i},1)">${IC.plus}</button></div>
+            </div>
+            <div class="center"><b style="color:var(--navy)">${this.money(it.price*it.qty)}</b><button class="iconbtn" style="width:32px;height:32px;margin-top:6px" onclick="App.cartRemove(${i})">${IC.trash}</button></div>
+          </div>`).join('')}
+        </div>
+        <div class="card" id="checkout-box" style="position:sticky;top:78px">
+          <h3>Ringkasan</h3>
+          <div class="sum-line"><span>Subtotal</span><span>${this.money(sub)}</span></div>
+          <div class="sum-line"><span>Ongkos kirim</span><span class="green">Gratis</span></div>
+          <div class="field" style="margin:10px 0">
+            <label>Gunakan poin (1 poin = ${this.money(CONFIG.REDEEM_VALUE)})</label>
+            <div class="row"><input type="number" id="use-pts" min="0" max="${this.state.user.points||0}" value="0" oninput="App.calcCart()"><span class="tag" style="margin-left:6px">saldo ${this.state.user.points||0}</span></div>
+          </div>
+          <div class="sum-line"><span>Potongan poin</span><span id="pts-disc">- ${this.money(0)}</span></div>
+          <div class="sum-line tot"><span>Total</span><span id="grand-tot">${this.money(sub)}</span></div>
+          <div class="field"><label>Alamat pengiriman</label><textarea id="addr" rows="2" placeholder="Alamat lengkap untuk antar">${this.state.user.address||''}</textarea></div>
+          <div class="field"><label>Catatan (opsional)</label><input id="note" placeholder="Catatan untuk penjual"></div>
+          <button class="btn green block" onclick="App.placeOrder()">${IC.check} Buat Pesanan</button>
+          <p class="muted small center" style="margin-top:8px">+ ${pts} poin akan didapat dari pesanan ini</p>
+        </div>
+      </div>`;
+    this.calcCart();
+    if(window.innerWidth<=880){ document.getElementById('cart-layout').style.gridTemplateColumns='1fr'; document.getElementById('checkout-box').style.position='static'; }
+  },
+  cartQty(i,d){ const it=this.state.cart[i]; const nv=it.qty+d; if(nv<=0){this.cartRemove(i);return;} if(nv>it.stock){this.toast('Stok tidak cukup','err');return;} it.qty=nv; this.viewCart(); this.updateCartBadge(); },
+  cartRemove(i){ this.state.cart.splice(i,1); this.viewCart(); this.updateCartBadge(); },
+  calcCart(){ const sub=this.state.cart.reduce((a,b)=>a+b.price*b.qty,0);
+    const use=Math.min(Number(document.getElementById('use-pts').value||0),this.state.user.points||0,Math.floor(sub/CONFIG.REDEEM_VALUE));
+    const disc=use*CONFIG.REDEEM_VALUE; const tot=sub-disc;
+    const pd=document.getElementById('pts-disc'),gt=document.getElementById('grand-tot');
+    if(pd)pd.textContent='- '+this.money(disc); if(gt)gt.textContent=this.money(tot);
+  },
+  async placeOrder(){
+    if(!this.state.cart.length)return;
+    const sub=this.state.cart.reduce((a,b)=>a+b.price*b.qty,0);
+    const use=Math.min(Number(document.getElementById('use-pts').value||0),this.state.user.points||0);
+    const disc=use*CONFIG.REDEEM_VALUE; const tot=sub-disc;
+    const addr=document.getElementById('addr').value.trim(); if(!addr){this.toast('Alamat pengiriman wajib diisi','err');return;}
+    const ptsEarn=Math.floor(tot/CONFIG.EARN_PER_RP);
+    const order={ order_no:'ONL'+Date.now().toString().slice(-8), customer_id:this.state.user.id, customer_name:this.state.user.full_name,
+      channel:'online', status:'pending', subtotal:sub, discount:disc, points_used:use, points_earned:ptsEarn, shipping:0,
+      total:tot, address:addr, note:document.getElementById('note').value, payment_method:'COD' };
+    const items=this.state.cart.map(it=>({product_id:it.product_id,name:it.name,price:it.price,qty:it.qty,subtotal:it.price*it.qty}));
+    try{
+      const o=await DB.createOrder(order,items);
+      this.state.user.points=(this.state.user.points||0)+ptsEarn-use;
+      this.state.cart=[]; this.updateCartBadge();
+      this.openSheet(`<div class="sheet-body center"><div style="font-size:54px">🎉</div><h2>Pesanan Dibuat!</h2>
+        <p class="muted">No. pesanan <b class="kbd">${o.order_no}</b></p>
+        <p class="muted small">Pesanan online Anda akan diproses kasir. Pantau di menu Pesanan.</p>
+        <div class="row" style="justify-content:center;margin-top:16px"><button class="btn ghost" onclick="App.closeSheet();location.hash='store'">Lanjut Belanja</button>
+        <button class="btn" onclick="App.closeSheet();location.hash='orders'">Lihat Pesanan</button></div></div>`);
+    }catch(e){ this.toast('Gagal: '+e.message,'err'); }
+  },
+
+  /* ---- MEMBER ORDERS ---- */
+  async viewMemberOrders(){
+    const v=document.getElementById('view'); v.innerHTML=`<div class="spin"></div>`;
+    const orders=await DB.listOrders({customer_id:this.state.user.id});
+    v.innerHTML=`<div class="section-title"><h2>Pesanan Saya</h2></div>`;
+    if(!orders.length){ v.innerHTML+=`<div class="empty">${IC.list}<h3>Belum ada pesanan</h3></div>`; return; }
+    v.innerHTML+=`<div class="grid">${orders.map(o=>`
+      <div class="card" onclick="App.openOrder('${o.id}')" style="cursor:pointer">
+        <div class="row between"><b class="kbd">${o.order_no}</b>${this.statusTag(o.status)}</div>
+        <div class="muted small" style="margin-top:6px">${new Date(o.created_at).toLocaleString('id-ID',{dateStyle:'medium',timeStyle:'short'})} · ${o.channel==='online'?'Online':'Offline'}</div>
+        <div class="row between" style="margin-top:8px"><span class="muted small">${o.address?o.address.slice(0,40):'Kasir Toko Hana'}</span><b style="color:var(--navy)">${this.money(o.total)}</b></div>
+        ${o.points_earned?`<div class="tag green" style="margin-top:8px">${IC.coin} +${o.points_earned} poin</div>`:''}
+      </div>`).join('')}</div>`;
+  },
+  statusTag(s){ const map={pending:['Menunggu','amber'],paid:['Dibayar','green'],processing:['Diproses','amber'],completed:['Selesai','green'],cancelled:['Batal','rose'],rejected:['Ditolak','rose']};
+    const [t,c]=map[s]||[s,'gray']; return `<span class="tag ${c}">${t}</span>`; },
+
+  /* ---- MEMBER CARD ---- */
+  async viewMemberCard(){
+    const v=document.getElementById('view'); const u=this.state.user;
+    const lvl=u.points>=5000?'PLATINUM':u.points>=1500?'GOLD':'SILVER';
+    v.innerHTML=`<div class="section-title"><h2>Kartu Member</h2></div>
+      <div class="membercard">
+        <span class="lvl">${lvl}</span>
+        <div class="mc-logo"><div class="l">H</div> Toko Hana · Member</div>
+        <div class="mc-name">${u.full_name}</div>
+        <div class="mc-no">NO. ${u.referral_code||u.id.slice(-8).toUpperCase()}</div>
+        <div class="mc-bar"><svg id="mc-barcode"></svg></div>
+        <div class="mc-pts"><div>Poin<b>${u.points||0}</b></div><div>No. HP<b>${u.phone||'-'}</b></div><div>Bergabung<b>${new Date(u.created_at).toLocaleDateString('id-ID',{month:'short',year:'numeric'})}</b></div></div>
+      </div>
+      <div class="card" style="margin-top:14px">
+        <h3>QR Member</h3>
+        <p class="muted small">Tunjukkan QR ini ke kasir untuk identifikasi & dapat promo member.</p>
+        <div id="mc-qr" style="display:flex;justify-content:center;margin-top:10px"></div>
+      </div>
+      <div class="card" style="margin-top:14px;text-align:center">
+        <p class="muted small">Keuntungan member ${lvl}</p>
+        <div class="row" style="justify-content:center;gap:18px;margin-top:8px">
+          <div><div style="font-size:20px">🎁</div><b style="font-size:12px">Poin tiap belanja</b></div>
+          <div><div style="font-size:20px">💵</div><b style="font-size:12px">Tukar poin diskon</b></div>
+          <div><div style="font-size:20px">🤝</div><b style="font-size:12px">Bonus referral</b></div>
+        </div>
+      </div>`;
+    setTimeout(()=>{
+      try{ JsBarcode('#mc-barcode', u.referral_code||u.id, {format:"CODE128",width:2,height:50,displayValue:true,fontSize:12,background:"transparent"}); }catch(e){}
+      try{ new QRCode(document.getElementById('mc-qr'),{text:'MEMBER:'+u.id,width:160,height:160,correctLevel:1}); }catch(e){}
+    },50);
+  },
+
+  /* ---- POINTS ---- */
+  async viewMemberPoints(){
+    const v=document.getElementById('view'); v.innerHTML=`<div class="spin"></div>`;
+    const [tx,refs]=await Promise.all([DB.listPoints(this.state.user.id),DB.listReferrals(this.state.user.id)]);
+    const u=this.state.user;
+    v.innerHTML=`
+      <div class="section-title"><h2>Poin & Reward</h2></div>
+      <div class="membercard"><div class="mc-logo"><div class="l">H</div> Saldo Poin</div>
+        <div class="mc-name">${u.points||0} <span style="font-size:14px;font-weight:600">poin</span></div>
+        <div class="mc-pts"><div>Setara diskon<b>${this.money((u.points||0)*CONFIG.REDEEM_VALUE)}</b></div>
+          <div>Referral kode<b>${u.referral_code}</b></div></div>
+      </div>
+      <div class="card" style="margin-top:14px">
+        <div class="row between"><h3>Undang Teman, Dapat ${CONFIG.REFERRAL_BONUS} Poin!</h3></div>
+        <p class="muted small">Bagikan kode referral. Teman dapat ${CONFIG.SIGNUP_BONUS} poin saat daftar pakai kodemu, kamu dapat ${CONFIG.REFERRAL_BONUS} poin.</p>
+        <div class="row" style="margin-top:10px;gap:8px">
+          <input id="refcode" value="${u.referral_code}" readonly style="flex:1;padding:11px;border-radius:11px;border:1.5px solid var(--line);font-weight:800;text-align:center;color:var(--navy);font-size:16px;letter-spacing:2px">
+          <button class="btn" onclick="App.copyRef()">${IC.card} Salin</button>
+          <button class="btn green" onclick="App.shareRef()">Bagikan</button>
+        </div>
+      </div>
+      <div class="section-title"><h3>Riwayat Poin</h3></div>
+      <div class="tablewrap">${tx.length?`<table class="tbl"><tbody>${tx.map(t=>`<tr>
+        <td>${t.type==='earn'?'🟢':t.type==='redeem'?'🔴':t.type==='referral'?'🎁':'⚙️'}</td>
+        <td>${t.note||t.type}</td><td class="muted small">${new Date(t.created_at).toLocaleDateString('id-ID')}</td>
+        <td class="rupiah" style="text-align:right;font-weight:800;color:${t.points>=0?'var(--green)':'var(--rose)'}">${t.points>=0?'+':''}${t.points}</td></tr>`).join('')}</tbody></table>`:`<div class="empty"><p>Belum ada riwayat poin</p></div>`}</div>
+      ${refs.length?`<div class="section-title"><h3>Teman yang Diajak (${refs.length})</h3></div>
+      <div class="card"><div class="grid">${refs.map(r=>`<div class="row between"><div class="row"><div class="ic">${IC.users}</div><div><b>${r.referred?.full_name}</b><div class="muted small">${new Date(r.created_at).toLocaleDateString('id-ID')}</div></div></div><span class="tag green">+${r.points_awarded} poin</span></div>`).join('')}</div></div>`:''}`;
+  },
+  copyRef(){ const i=document.getElementById('refcode'); i.select(); document.execCommand('copy'); this.toast('Kode referral disalin ✓','ok'); },
+  async shareRef(){ const u=this.state.user; const txt=`Yuk belanja di Toko Hana - Grocery Warungnya Rakyat ID! Daftar pakai kode referral saya ${u.referral_code} dan dapat ${CONFIG.SIGNUP_BONUS} poin 🎁`;
+    if(navigator.share){ try{await navigator.share({title:'Toko Hana',text:txt});}catch(e){} } else { await navigator.clipboard.writeText(txt); this.toast('Tautan disalin ✓','ok'); } },
+  viewReferral(){ location.hash='points'; },
+
+  /* ---- PROFILE ---- */
+  viewMemberProfile(){
+    const u=this.state.user; const v=document.getElementById('view');
+    v.innerHTML=`<div class="section-title"><h2>Profil & Pengaturan</h2></div>
+      <div class="card">
+        <div class="row" style="gap:14px"><div style="width:64px;height:64px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800">${(u.full_name||'?')[0]}</div>
+        <div class="col"><h3>${u.full_name}</h3><div class="muted small">${u.email}</div><span class="tag">MEMBER</span></div></div>
+        <hr class="sep">
+        <form id="profile-form">
+          <div class="field"><label>Nama Lengkap</label><input name="full_name" value="${u.full_name||''}"></div>
+          <div class="field row2"><div><label>No. HP</label><input name="phone" value="${u.phone||''}"></div><div><label>Email</label><input value="${u.email||''}" disabled></div></div>
+          <div class="field"><label>Alamat</label><textarea name="address" rows="2">${u.address||''}</textarea></div>
+          <button class="btn green" type="submit">${IC.check} Simpan Perubahan</button>
+        </form>
+      </div>
+      <div class="card" style="margin-top:14px">
+        <h3>Akun</h3>
+        <div class="nav-item" onclick="location.hash='card'">${IC.card} Kartu Member</div>
+        <div class="nav-item" onclick="location.hash='points'">${IC.coin} Poin & Referral</div>
+        <div class="nav-item" onclick="location.hash='orders'">${IC.list} Riwayat Pesanan</div>
+        <div class="nav-item" style="color:var(--rose)" onclick="App.doLogout()">${IC.logout} Keluar</div>
+      </div>`;
+    document.getElementById('profile-form').onsubmit=async e=>{ e.preventDefault(); const f=new FormData(e.target);
+      try{ const p=await DB.updateProfile(u.id,{full_name:f.get('full_name'),phone:f.get('phone'),address:f.get('address')}); this.state.user={...this.state.user,...p}; this.toast('Profil disimpan ✓','ok'); }catch(err){this.toast('Gagal: '+err.message,'err');} };
+  },
+
+  /* =======================================================================
+     STAFF VIEWS
+     ======================================================================= */
+  async viewDashboard(){
+    const v=document.getElementById('view'); v.innerHTML=`<div class="spin"></div>`;
+    const s=await DB.stats();
+    v.innerHTML=`
+      <div class="section-title"><h2>Dashboard</h2><span class="tag">${DB.demo()?'Mode Demo':'Live Supabase'}</span></div>
+      <div class="stat-grid">
+        <div class="stat"><div class="lbl"><span class="ic">${IC.coin}</span> Omzet Hari Ini</div><div class="val">${this.money(s.todayRev)}</div><div class="sub">Total ${this.money(s.revenue)}</div></div>
+        <div class="stat"><div class="lbl"><span class="ic">${IC.bag}</span> Total Transaksi</div><div class="val">${s.orders||0}</div><div class="sub">${s.online||0} online · ${s.offline||0} offline</div></div>
+        <div class="stat"><div class="lbl"><span class="ic">${IC.users}</span> Member</div><div class="val">${s.members||0}</div></div>
+        <div class="stat"><div class="lbl"><span class="ic">${IC.box}</span> Produk</div><div class="val">${s.products||0}</div></div>
+      </div>
+      <div class="grid" style="grid-template-columns:1.6fr 1fr;margin-top:16px">
+        <div class="card"><h3>Tren Penjualan (7 hari)</h3><canvas id="salesChart" height="120"></canvas></div>
+        <div class="card"><h3>Saluran</h3><canvas id="channelChart" height="160"></canvas>
+          <div class="muted small center" style="margin-top:8px">Online vs Offline</div></div>
+      </div>
+      <div class="section-title"><h3>Aksi Cepat</h3></div>
+      <div class="grid" style="grid-template-columns:repeat(4,1fr)">
+        <button class="card nav-item" onclick="location.hash='pos'" style="justify-content:center;flex-direction:column;gap:6px"><div style="font-size:26px">${IC.scan}</div>Kasir Offline</button>
+        <button class="card nav-item" onclick="location.hash='online-orders'" style="justify-content:center;flex-direction:column;gap:6px"><div style="font-size:26px">${IC.bag}</div>Order Online</button>
+        <button class="card nav-item" onclick="location.hash='products'" style="justify-content:center;flex-direction:column;gap:6px"><div style="font-size:26px">${IC.box}</div>Kelola Produk</button>
+        <button class="card nav-item" onclick="location.hash='members'" style="justify-content:center;flex-direction:column;gap:6px"><div style="font-size:26px">${IC.users}</div>Member Baru</button>
+      </div>`;
+    this.renderCharts(s);
+  },
+  renderCharts(s){
+    const days=[];const vals=[];
+    for(let i=6;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); const k=d.toISOString().slice(0,10);
+      days.push(d.toLocaleDateString('id-ID',{weekday:'short'}));
+      vals.push((s.sales||[]).filter(o=>o.created_at.startsWith(k)).reduce((a,b)=>a+Number(b.total||0),0)); }
+    new Chart(document.getElementById('salesChart'),{type:'bar',data:{labels:days,datasets:[{data:vals,backgroundColor:'#0061B1',borderRadius:6}]},
+      options:{plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>'Rp'+(v/1000)+'k'}}}}});
+    new Chart(document.getElementById('channelChart'),{type:'doughnut',data:{labels:['Online','Offline'],
+      datasets:[{data:[s.online||0,s.offline||1],backgroundColor:['#0090E0','#003D7A'],borderWidth:0}]},
+      options:{plugins:{legend:{position:'bottom'}},cutout:'62%'}});
+  },
+  async updateOnlineBadge(){ try{const o=await DB.listOrders({channel:'online',status:'pending'});const el=document.getElementById('nb-online');if(el){if(o.length){el.classList.remove('hide');el.textContent=o.length;}else el.classList.add('hide');}}catch(e){} },
+
+  /* ---- POS OFFLINE ---- */
+  viewPOS(){
+    this.state.posCart=this.state.posCart||[]; this.state.posCustomer=null;
+    const v=document.getElementById('view');
+    v.innerHTML=`
+      <div class="section-title"><h2>🧾 Kasir Offline</h2><button class="btn ghost sm" onclick="App.openScanner()">${IC.scan} Scan Barcode</button></div>
+      <div class="pos-grid">
+        <div>
+          <div class="pos-search">
+            <div class="search-box">${IC.search}<input id="pos-search" placeholder="Cari / ketik barcode lalu Enter…" autofocus></div>
+          </div>
+          <div class="pos-prods" id="pos-prods"></div>
+        </div>
+        <div class="cart-panel">
+          <div class="cart-head"><div class="row between"><h3>Keranjang</h3><button class="btn xs ghost" onclick="App.posClear()">${IC.trash} Kosongkan</button></div>
+            <div class="row" style="margin-top:10px;gap:8px" id="cust-box">
+              <button class="btn xs block ghost" onclick="App.openCustomerLookup()">${IC.users} Pilih / Daftar Member</button>
+            </div>
+            <div id="cust-info"></div>
+          </div>
+          <div class="cart-items" id="pos-items"><div class="empty small">${IC.cart}<p>Keranjang kosong</p></div></div>
+          <div class="cart-foot">
+            <div class="field" id="pts-field" style="display:none"><label>Pakai poin member</label><input type="number" id="pos-pts" value="0" min="0" oninput="App.posTotals()"></div>
+            <div class="sum-line"><span>Subtotal</span><span id="pos-sub">Rp 0</span></div>
+            <div class="sum-line"><span>Diskon poin</span><span id="pos-disc">- Rp 0</span></div>
+            <div class="sum-line tot"><span>Total</span><span id="pos-total">Rp 0</span></div>
+            <div class="field"><label>Bayar (tunai)</label><input type="number" id="pos-paid" value="0" oninput="App.posTotals()" placeholder="0"></div>
+            <div class="sum-line"><span>Kembalian</span><span id="pos-change" class="green">Rp 0</span></div>
+            <div class="field"><label>Metode bayar</label><select id="pos-pay"><option>Tunai</option><option>QRIS</option><option>Debit</option><option>Transfer</option></select></div>
+            <button class="btn green block" onclick="App.posCheckout()">${IC.check} Bayar & Struk</button>
+          </div>
+        </div>
+      </div>`;
+    document.getElementById('pos-search').addEventListener('input',e=>this.posSearch(e.target.value));
+    document.getElementById('pos-search').addEventListener('keydown',e=>{ if(e.key==='Enter'){ this.posBarcode(e.target.value); e.target.value=''; } });
+    this.posSearch('');
+  },
+  async posSearch(q){
+    let r=this.state._prods; if(!r){ r=await DB.listProducts(); this.state._prods=r; }
+    const s=(q||'').toLowerCase();
+    let list=r.filter(x=>x.is_active&&(x.name+' '+(x.barcode||'')+' '+(x.brand||'')).toLowerCase().includes(s));
+    if(q)list=list.slice(0,24); else list=list.slice(0,24);
+    document.getElementById('pos-prods').innerHTML=list.map(p=>`<div class="prod" onclick="App.posAdd('${p.id}')">
+      <div class="ph"><div class="emoji">${p.emoji||'📦'}</div></div><div class="info"><div class="nm">${p.name}</div>
+      <div class="pr">${this.money(p.price)}</div><div class="muted small">stok ${p.stock}</div></div></div>`).join('')||`<div class="empty">Ketik untuk mencari</div>`;
+  },
+  async posBarcode(code){
+    code=code.trim(); if(!code)return;
+    let p=await DB.getProductByBarcode(code);
+    if(!p){ p=this.state._prods?.find(x=>x.barcode===code); }
+    if(!p){ this.toast('Barcode '+code+' tidak ditemukan','err'); return; }
+    this.posAdd(p.id,true);
+  },
+  posAdd(id,silent){
+    const p=this.state._prods.find(x=>x.id===id); if(!p)return;
+    const c=this.state.posCart; const ex=c.find(x=>x.product_id===id);
+    if(ex){ if(ex.qty>=p.stock){this.toast('Stok habis','err');return;} ex.qty++; }
+    else c.push({product_id:p.id,name:p.name,price:p.price,qty:1,emoji:p.emoji||'📦',stock:p.stock,barcode:p.barcode});
+    if(!silent)this.toast(p.name+' ✓');
+    this.posRender();
+  },
+  posRender(){
+    const c=this.state.posCart; const box=document.getElementById('pos-items');
+    if(!c.length){ box.innerHTML=`<div class="empty small">${IC.cart}<p>Keranjang kosong</p></div>`; }
+    else box.innerHTML=c.map((it,i)=>`<div class="ci"><div class="ic">${it.emoji}</div>
+      <div class="col"><div class="nm">${it.name}</div><div class="pr">${this.money(it.price)}</div>
+      <div class="qty"><button onclick="App.posQty(${i},-1)">${IC.minus}</button><span>${it.qty}</span><button onclick="App.posQty(${i},1)">${IC.plus}</button></div></div>
+      <div class="center"><b style="color:var(--navy)">${this.money(it.price*it.qty)}</b></div></div>`).join('');
+    this.posTotals();
+  },
+  posQty(i,d){ const it=this.state.posCart[i]; const nv=it.qty+d; if(nv<=0){this.state.posCart.splice(i,1);} else if(nv>it.stock){this.toast('Stok tidak cukup','err');return;} else it.qty=nv; this.posRender(); },
+  posClear(){ this.state.posCart=[]; this.state.posCustomer=null; this.posRender(); this.renderCustInfo(); },
+  posTotals(){
+    const sub=this.state.posCart.reduce((a,b)=>a+b.price*b.qty,0);
+    const cust=this.state.posCustomer; const pts=cust?Math.min(Number(document.getElementById('pos-pts')?.value||0),cust.points,Math.floor(sub/CONFIG.REDEEM_VALUE)):0;
+    const disc=pts*CONFIG.REDEEM_VALUE; const tot=sub-disc;
+    document.getElementById('pos-sub').textContent=this.money(sub);
+    document.getElementById('pos-disc').textContent='- '+this.money(disc);
+    document.getElementById('pos-total').textContent=this.money(tot);
+    const paid=Number(document.getElementById('pos-paid').value||0);
+    document.getElementById('pos-change').textContent=this.money(Math.max(0,paid-tot));
+    this.state._posTot={sub,disc,pts,tot};
+  },
+  renderCustInfo(){ const c=this.state.posCustomer; const el=document.getElementById('cust-info');
+    if(c) el.innerHTML=`<div class="card" style="background:var(--blue-ll);padding:10px 12px;margin-top:8px"><div class="row between"><div class="row"><div style="width:36px;height:36px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800">${c.full_name[0]}</div><div><b style="font-size:13px">${c.full_name}</b><div class="muted small">${IC.coin} ${c.points} poin · ${c.referral_code||''}</div></div></div><button class="iconbtn" style="width:30px;height:30px" onclick="App.state.posCustomer=null;App.renderCustInfo();App.posTotals();document.getElementById('pts-field').style.display='none'">${IC.x}</button></div></div>`;
+    else el.innerHTML='';
+    document.getElementById('pts-field').style.display=c?'block':'none';
+  },
+  openCustomerLookup(){
+    this.openSheet(`<div class="sheet-head"><h3>Pilih / Daftar Member</h3><button class="iconbtn" onclick="App.closeSheet()">${IC.x}</button></div>
+      <div class="sheet-body">
+        <div class="pill-toggle" style="margin-bottom:12px"><button class="active" id="t-sel" onclick="App.custTab('sel')">Cari Member</button><button id="t-reg" onclick="App.custTab('reg')">Daftar Baru</button></div>
+        <div id="cust-sel"><div class="search-box" style="margin-bottom:10px">${IC.search}<input id="cust-q" placeholder="Nama / HP / kode member" oninput="App.custSearch(this.value)"></div><div id="cust-list"></div></div>
+        <div id="cust-reg" class="hide"><form id="reg-form">
+          <div class="field"><label>Nama</label><input name="full_name" required></div>
+          <div class="field"><label>No. HP</label><input name="phone" required></div>
+          <div class="field"><label>Email <span class="muted small">(opsional)</span></label><input name="email" type="email"></div>
+          <div class="field"><label>Kata sandi</label><input name="password" type="password" value="member123"></div>
+          <button class="btn green block" type="submit">${IC.plus} Daftarkan Member</button>
+        </form></div>
+      </div>`);
+    this.custSearch('');
+    document.getElementById('reg-form').onsubmit=async e=>{ e.preventDefault(); const f=new FormData(e.target);
+      try{ const m=await DB.signUp({full_name:f.get('full_name'),phone:f.get('phone'),email:f.get('email')||('cust'+Date.now()+'@tokohana.id'),password:f.get('password'),role:'member'});
+        this.state.posCustomer=m; this.renderCustInfo(); this.posTotals(); this.closeSheet(); this.toast('Member baru terdaftar ✓','ok');
+      }catch(err){this.toast('Gagal: '+err.message,'err');} };
+  },
+  custTab(t){ document.getElementById('cust-sel').classList.toggle('hide',t!=='sel'); document.getElementById('cust-reg').classList.toggle('hide',t!=='reg');
+    document.getElementById('t-sel').classList.toggle('active',t==='sel'); document.getElementById('t-reg').classList.toggle('active',t==='reg'); },
+  async custSearch(q){ const list=await DB.listMembers(q||''); const el=document.getElementById('cust-list');
+    el.innerHTML=list.slice(0,30).map(m=>`<div class="card nav-item" style="margin-bottom:6px" onclick="App.pickCust('${m.id}')"><div style="width:36px;height:36px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center">${m.full_name[0]}</div><div class="col"><b style="font-size:13px">${m.full_name}</b><div class="muted small">${m.phone} · ${IC.coin} ${m.points}</div></div><span class="tag">Pilih</span></div>`).join('')||`<div class="empty small">Tidak ada member</div>`; },
+  async pickCust(id){ const m=await DB.getMember(id); this.state.posCustomer=m; this.renderCustInfo(); this.posTotals(); this.closeSheet(); this.toast('Member: '+m.full_name,'ok'); },
+  async posCheckout(){
+    const c=this.state.posCart; if(!c.length){this.toast('Keranjang kosong','err');return;}
+    const t=this.state._posTot; const paid=Number(document.getElementById('pos-paid').value||0);
+    if(paid<t.tot){this.toast('Uang bayar kurang','err');return;}
+    const cust=this.state.posCustomer;
+    const ptsEarn=Math.floor(t.tot/CONFIG.EARN_PER_RP);
+    const order={ order_no:'POS'+Date.now().toString().slice(-8), customer_id:cust?cust.id:null, customer_name:cust?cust.full_name:'Tamu (Walk-in)',
+      channel:'offline', status:'paid', subtotal:t.sub, discount:t.disc, points_used:t.pts, points_earned:cust?ptsEarn:0, shipping:0,
+      total:t.tot, paid_amount:paid, change_amount:paid-t.tot, payment_method:document.getElementById('pos-pay').value,
+      cashier_id:this.state.user.id };
+    const items=c.map(it=>({product_id:it.product_id,name:it.name,price:it.price,qty:it.qty,subtotal:it.price*it.qty}));
+    try{
+      const o=await DB.createOrder(order,items);
+      this.state.posCart=[]; this.state.posCustomer=null; this.posRender(); this.renderCustInfo(); this.updateOnlineBadge();
+      this.printReceipt(o,items); this.toast('Transaksi sukses ✓ '+o.order_no,'ok');
+    }catch(e){ this.toast('Gagal: '+e.message,'err'); }
+  },
+
+  /* ---- BARCODE SCANNER ---- */
+  openScanner(){
+    this.openSheet(`<div class="sheet-head"><h3>📷 Scan Barcode Produk</h3><button class="iconbtn" onclick="App.stopScan();App.closeSheet()">${IC.x}</button></div>
+      <div class="sheet-body"><div id="scan-region"></div>
+      <p class="muted small center" style="margin-top:8px">Arahkan kamera ke barcode produk (EAN/UPC/Code128). Hasil scan otomatis masuk keranjang.</p>
+      <div class="row" style="margin-top:10px;gap:8px"><button class="btn ghost block" onclick="App.stopScan()">Jeda</button><button class="btn block" onclick="App.startScan()">Mulai Kamera</button></div></div>`,true);
+    this.startScan();
+  },
+  startScan(){
+    if(!window.Html5Qrcode){ this.toast('Library scanner belum termuat','err'); return; }
+    this.stopScan();
+    const id='scan-region';
+    this.state.scanner=new Html5Qrcode(id,{verbose:false});
+    const cfg={fps:10,qrbox:{width:260,height:140},formatsToSupport:[
+      Html5QrcodeSupportedFormats.EAN_13,Html5QrcodeSupportedFormats.EAN_8,
+      Html5QrcodeSupportedFormats.UPC_A,Html5QrcodeSupportedFormats.UPC_E,
+      Html5QrcodeSupportedFormats.CODE_128,Html5QrcodeSupportedFormats.CODE_39]};
+    this.state.scanner.start({facingMode:'environment'},cfg,(code)=>this.onScan(code))
+      .catch(e=>{ this.toast('Tidak bisa akses kamera: '+e,'err'); });
+  },
+  onScan(code){
+    if(this.state._lastScan && Date.now()-this.state._lastScan<1500)return;
+    this.state._lastScan=Date.now();
+    this.posBarcode(code);
+    this.toast('Scanned: '+code,'ok');
+  },
+  stopScan(){ if(this.state.scanner){ try{ this.state.scanner.stop().then(()=>this.state.scanner.clear()); }catch(e){} this.state.scanner=null; } },
+
+  /* ---- PRODUCTS MANAGEMENT ---- */
+  async viewProducts(){
+    const v=document.getElementById('view'); v.innerHTML=`<div class="spin"></div>`;
+    const [prods,cats]=await Promise.all([DB.listProducts(),DB.listCategories()]); this.state._prods=prods;
+    v.innerHTML=`
+      <div class="section-title"><h2>Kelola Produk</h2><div class="row">
+        <button class="btn ghost sm" onclick="App.exportProducts()">${IC.download} Export CSV</button>
+        <button class="btn ghost sm" onclick="App.importModal()">${IC.upload} Upload Massal</button>
+        <button class="btn sm" onclick="App.editProduct()">${IC.plus} Tambah Produk</button>
+      </div></div>
+      <div class="search-box" style="margin-bottom:10px">${IC.search}<input id="pm-search" placeholder="Cari produk…" oninput="App.filterProducts()"></div>
+      <div class="tablewrap"><table class="tbl"><thead><tr><th>Produk</th><th>Barcode</th><th>Kategori</th><th>Harga</th><th>Stok</th><th>Status</th><th></th></tr></thead>
+      <tbody id="pm-body"></tbody></table></div>`;
+    this.renderProdTable(prods,cats);
+  },
+  renderProdTable(prods,cats){
+    const body=document.getElementById('pm-body');
+    if(!prods.length){ body.innerHTML=`<tr><td colspan="7" class="em">Belum ada produk</td></tr>`; return; }
+    body.innerHTML=prods.map(p=>`<tr>
+      <td><div class="row"><div style="font-size:22px">${p.emoji||'📦'}</div><div><b style="font-size:13px">${p.name}</b><div class="muted small">${p.brand||''} · ${p.unit}</div></div></div></td>
+      <td class="kbd small">${p.barcode||'-'}</td>
+      <td><span class="tag gray">${cats.find(c=>c.id===p.category_id)?.name||'-'}</span></td>
+      <td class="rupiah">${this.money(p.price)}</td>
+      <td>${p.stock}</td>
+      <td>${p.is_active?'<span class="dot on"></span> Aktif':'<span class="dot off"></span> Nonaktif'}</td>
+      <td><button class="iconbtn" style="width:32px;height:32px" onclick="App.editProduct('${p.id}')">${IC.edit}</button>
+        <button class="iconbtn" style="width:32px;height:32px;color:var(--rose)" onclick="App.delProduct('${p.id}')">${IC.trash}</button></td>
+    </tr>`).join('');
+  },
+  filterProducts(){ const s=document.getElementById('pm-search').value.toLowerCase(); const r=this.state._prods.filter(p=>(p.name+' '+(p.barcode||'')).toLowerCase().includes(s)); this.renderProdTable(r,this.state._cats); },
+  async editProduct(id){
+    const cats=this.state._cats||(this.state._cats=await DB.listCategories());
+    let p=id?this.state._prods.find(x=>x.id===id):{};
+    this.openSheet(`<div class="sheet-head"><h3>${id?'Edit':'Tambah'} Produk</h3><button class="iconbtn" onclick="App.closeSheet()">${IC.x}</button></div>
+      <div class="sheet-body"><form id="pform">
+        <div class="field"><label>Nama Produk</label><input name="name" value="${p.name||''}" required></div>
+        <div class="field row2"><div><label>Barcode</label><input name="barcode" value="${p.barcode||''}" placeholder="899…"></div><div><label>SKU</label><input name="sku" value="${p.sku||''}"></div></div>
+        <div class="field row2"><div><label>Kategori</label><select name="category_id">${cats.map(c=>`<option value="${c.id}" ${p.category_id===c.id?'selected':''}>${c.icon} ${c.name}</option>`).join('')}</select></div>
+          <div><label>Emoji / Ikon</label><input name="emoji" value="${p.emoji||'📦'}" maxlength="3"></div></div>
+        <div class="field row2"><div><label>Harga Jual (Rp)</label><input name="price" type="number" value="${p.price||0}" required></div><div><label>Harga Modal (Rp)</label><input name="cost" type="number" value="${p.cost||0}"></div></div>
+        <div class="field row2"><div><label>Stok</label><input name="stock" type="number" value="${p.stock||0}"></div><div><label>Satuan</label><input name="unit" value="${p.unit||'pcs'}"></div></div>
+        <div class="field"><label>Brand / Deskripsi</label><input name="brand" value="${p.brand||''}"></div>
+        <div class="field row2"><div><label>URL Gambar</label><input name="image_url" value="${p.image_url||''}" placeholder="https://…"></div><div><label>Status</label><select name="is_active"><option value="1" ${p.is_active!==false?'selected':''}>Aktif</option><option value="0" ${p.is_active===false?'selected':''}>Nonaktif</option></select></div></div>
+        <button class="btn green block" type="submit">${IC.check} Simpan</button>
+      </form></div>`);
+    document.getElementById('pform').onsubmit=async e=>{ e.preventDefault(); const f=new FormData(e.target);
+      const obj={ id:p.id||null, name:f.get('name'), barcode:f.get('barcode'), sku:f.get('sku')||f.get('barcode'),
+        category_id:f.get('category_id'), price:Number(f.get('price')), cost:Number(f.get('cost')), stock:Number(f.get('stock')),
+        unit:f.get('unit'), brand:f.get('brand'), description:f.get('brand'), emoji:f.get('emoji')||'📦', image_url:f.get('image_url'),
+        is_active:f.get('is_active')==='1' };
+      try{ await DB.saveProduct(obj); this.closeSheet(); this.toast('Produk disimpan ✓','ok'); this.viewProducts(); }catch(err){this.toast('Gagal: '+err.message,'err');} };
+  },
+  async delProduct(id){ if(!confirm('Hapus produk ini?'))return; try{await DB.deleteProduct(id);this.toast('Dihapus ✓','ok');this.viewProducts();}catch(e){this.toast('Gagal','err');} },
+
+  /* ---- IMPORT / EXPORT ---- */
+  importModal(){ this.openSheet(`<div class="sheet-head"><h3>Upload Massal Produk (CSV)</h3><button class="iconbtn" onclick="App.closeSheet()">${IC.x}</button></div>
+      <div class="sheet-body">
+        <div class="card" style="background:var(--blue-ll);font-size:12.5px"><b>Format kolom CSV:</b><br><code class="kbd">name,barcode,brand,price,cost,stock,unit,emoji,category_id</code><br>Baris pertama = header (diabaikan). Kosongkan category_id bila tak tahu.</div>
+        <div class="field" style="margin-top:12px"><label>Pilih file .csv</label><input type="file" id="csv-file" accept=".csv"></div>
+        <button class="btn green block" onclick="App.doImport()">${IC.upload} Proses Upload</button>
+        <hr class="sep"><div class="center"><button class="btn ghost sm" onclick="App.downloadTemplate()">⬇ Unduh Template CSV</button></div>
+        <p class="muted small center" style="margin-top:8px">Contoh baris: Indomie Goreng,8998866200010,Indomie,3500,2800,200,pcs,🍜,cat-6</p>
+      </div>`); },
+  downloadTemplate(){ const csv='name,barcode,brand,price,cost,stock,unit,emoji,category_id\nIndomie Goreng,8998866200010,Indomie,3500,2800,200,pcs,🍜,cat-6\nAqua 600ml,8992753111014,Aqua,4000,3000,120,btl,💧,cat-2\n'; this.download('template_produk_toko_hana.csv',csv); },
+  async doImport(){ const f=document.getElementById('csv-file').files[0]; if(!f){this.toast('Pilih file dulu','err');return;}
+    const txt=await f.text(); const rows=this.parseCSV(txt); if(rows.length<2){this.toast('CSV kosong/tidak valid','err');return;}
+    const header=rows[0].map(h=>h.trim().toLowerCase()); const idx={}; ['name','barcode','brand','price','cost','stock','unit','emoji','category_id'].forEach(k=>idx[k]=header.indexOf(k));
+    const cats=this.state._cats||(this.state._cats=await DB.listCategories());
+    const objs=[]; rows.slice(1).forEach(r=>{ if(!r.length)return; const get=c=>idx[c]>=0?(r[idx[c]]||'').trim():'';
+      const name=get('name'); if(!name)return;
+      let catId=get('category_id'); if(!catId||!cats.find(c=>c.id===catId)) catId=cats[0]?.id;
+      objs.push({ name, barcode:get('barcode'), sku:get('barcode'), brand:get('brand'), price:Number(get('price')||0), cost:Number(get('cost')||0),
+        stock:Number(get('stock')||0), unit:get('unit')||'pcs', emoji:get('emoji')||'📦', category_id:catId, is_active:true, image_url:'' }); });
+    try{ const n=await DB.bulkUpsertProducts(objs); this.closeSheet(); this.toast(n+' produk diupload ✓','ok'); this.viewProducts(); }catch(e){this.toast('Gagal: '+e.message,'err');} },
+  parseCSV(txt){ const rows=[]; let row=[],cur='',q=false;
+    for(let i=0;i<txt.length;i++){ const ch=txt[i];
+      if(q){ if(ch==='"'){ if(txt[i+1]==='"'){cur+='"';i++;} else q=false; } else cur+=ch; }
+      else { if(ch==='"')q=true; else if(ch===','){row.push(cur);cur='';} else if(ch==='\n'){row.push(cur);rows.push(row);row=[];cur='';} else if(ch!=='\r')cur+=ch; } }
+    if(cur||row.length){row.push(cur);rows.push(row);} return rows.filter(r=>r.some(c=>c.trim()!=='')); },
+  async exportProducts(){ const prods=this.state._prods||await DB.listProducts(); const cats=this.state._cats||(this.state._cats=await DB.listCategories());
+    let csv='name,barcode,brand,price,cost,stock,unit,emoji,category_id,status\n';
+    prods.forEach(p=>{ csv+=[p.name,p.barcode||'',p.brand||'',p.price,p.cost,p.stock,p.unit,p.emoji||'',cats.find(c=>c.id===p.category_id)?.id||'',p.is_active?'aktif':'nonaktif'].map(x=>`"${String(x).replace(/"/g,'""')}"`).join(',')+'\n'; });
+    this.download('produk_toko_hana.csv',csv); this.toast(prods.length+' produk diekspor ✓','ok'); },
+  download(name,content){ const b=new Blob([content],{type:'text/csv;charset=utf-8'}); const u=URL.createObjectURL(b); const a=document.createElement('a'); a.href=u; a.download=name; a.click(); URL.revokeObjectURL(u); },
+
+  /* ---- ONLINE ORDERS ---- */
+  async viewOnlineOrders(){
+    const v=document.getElementById('view'); v.innerHTML=`<div class="spin"></div>`;
+    this.state._ordFilter=this.state._ordFilter||'pending';
+    const orders=await DB.listOrders({channel:'online'});
+    const cnt={pending:0,paid:0,processing:0,completed:0,cancelled:0}; orders.forEach(o=>cnt[o.status]=(cnt[o.status]||0)+1);
+    v.innerHTML=`
+      <div class="section-title"><h2>Order Online Pelanggan</h2><span class="tag">${orders.length} pesanan</span></div>
+      <div class="pill-toggle" style="margin-bottom:12px">
+        <button class="${this.state._ordFilter===''?'active':''}" onclick="App.setOrdFilter('')">Semua (${orders.length})</button>
+        <button class="${this.state._ordFilter==='pending'?'active':''}" onclick="App.setOrdFilter('pending')">Baru (${cnt.pending})</button>
+        <button class="${this.state._ordFilter==='processing'?'active':''}" onclick="App.setOrdFilter('processing')">Diproses (${cnt.processing})</button>
+        <button class="${this.state._ordFilter==='completed'?'active':''}" onclick="App.setOrdFilter('completed')">Selesai (${cnt.completed})</button>
+      </div>
+      <div class="tablewrap"><table class="tbl"><thead><tr><th>No. Order</th><th>Pelanggan</th><th>Waktu</th><th>Total</th><th>Status</th><th></th></tr></thead>
+      <tbody>${(this.state._ordFilter?orders.filter(o=>o.status===this.state._ordFilter):orders).map(o=>`<tr>
+        <td class="kbd small">${o.order_no}</td>
+        <td><b style="font-size:13px">${o.customer_name}</b><div class="muted small">${o.customer?.phone||''}</div></td>
+        <td class="small muted">${new Date(o.created_at).toLocaleString('id-ID',{dateStyle:'short',timeStyle:'short'})}</td>
+        <td class="rupiah">${this.money(o.total)}</td>
+        <td>${this.statusTag(o.status)}</td>
+        <td><button class="btn xs" onclick="App.openOrder('${o.id}')">Kelola</button></td>
+      </tr>`).join('')||`<tr><td colspan="6" class="em">Tidak ada pesanan</td></tr>`}</tbody></table></div>`;
+  },
+  setOrdFilter(s){ this.state._ordFilter=s; this.viewOnlineOrders(); },
+  async openOrder(id){
+    const {order:o,items}=await DB.getOrder(id);
+    this.openSheet(`<div class="sheet-head"><h3>Kelola Pesanan</h3><button class="iconbtn" onclick="App.closeSheet()">${IC.x}</button></div>
+      <div class="sheet-body">
+        <div class="row between"><div><b class="kbd">${o.order_no}</b></div>${this.statusTag(o.status)}</div>
+        <div class="card" style="background:var(--bg);margin-top:12px;padding:12px">
+          <div class="row"><div style="width:38px;height:38px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center">${(o.customer_name||'?')[0]}</div>
+          <div class="col"><b style="font-size:14px">${o.customer_name}</b><div class="muted small">${o.channel==='online'?'Online':'Offline'} · ${o.payment_method||''}</div></div></div>
+          ${o.address?`<div class="muted small" style="margin-top:8px">📍 ${o.address}</div>`:''}
+          ${o.note?`<div class="muted small">📝 ${o.note}</div>`:''}
+        </div>
+        <h4 style="margin:14px 0 8px">Item (${items.length})</h4>
+        ${items.map(it=>`<div class="ci"><div class="ic">${'📦'}</div><div class="col"><div class="nm">${it.name}</div><div class="pr">${it.qty} × ${this.money(it.price)}</div></div><b style="color:var(--navy)">${this.money(it.subtotal)}</b></div>`).join('')}
+        <hr class="sep">
+        <div class="sum-line"><span>Subtotal</span><span>${this.money(o.subtotal)}</span></div>
+        <div class="sum-line"><span>Diskon poin</span><span>- ${this.money(o.discount)}</span></div>
+        <div class="sum-line tot"><span>Total</span><span>${this.money(o.total)}</span></div>
+        ${o.paid_amount?`<div class="sum-line"><span>Dibayar</span><span>${this.money(o.paid_amount)}</span></div><div class="sum-line"><span>Kembalian</span><span>${this.money(o.change_amount)}</span></div>`:''}
+        <div class="grid" style="grid-template-columns:1fr 1fr;gap:8px;margin-top:14px">
+          ${o.status==='pending'?`<button class="btn green" onclick="App.ordAction('${id}','processing','Diproses')">${IC.check} Proses</button><button class="btn rose" onclick="App.ordAction('${id}','rejected','Ditolak')">Tolak</button>`:''}
+          ${o.status==='processing'?`<button class="btn green" onclick="App.ordAction('${id}','completed','Selesai')">${IC.check} Selesai</button>`:''}
+          ${['completed','rejected','cancelled'].includes(o.status)?`<button class="btn ghost" onclick="App.printReceipt(window.__ord,window.__items)">${IC.print} Cetak Struk</button>`:''}
+        </div>
+      </div>`);
+    window.__ord=o; window.__items=items;
+  },
+  async ordAction(id,status,label){ try{ await DB.updateOrderStatus(id,status,{cashier_id:this.state.user.id}); this.closeSheet(); this.toast('Pesanan → '+label,'ok'); this.updateOnlineBadge(); this.viewOnlineOrders(); }catch(e){this.toast('Gagal','err');} },
+
+  /* ---- RECEIPT ---- */
+  async printReceipt(o,items){
+    if(!items){ const d=await DB.getOrder(o.id); o=d.order; items=d.items; }
+    const settings=await DB.getSettings(); const st=settings.store||{};
+    const paid=o.paid_amount||o.total;
+    const area=document.getElementById('print-area'); area.classList.remove('hide');
+    area.innerHTML=`<div class="receipt">
+      <h4>${st.name||'Toko Hana'}</h4>
+      <div class="c">${st.tagline||'Grocery Warungnya Rakyat ID'}<br>${st.address||''}<br>Telp: ${st.phone||''}</div>
+      <hr>
+      <div class="l"><span>No</span><span>${o.order_no}</span></div>
+      <div class="l"><span>Tgl</span><span>${new Date(o.created_at).toLocaleString('id-ID')}</span></div>
+      <div class="l"><span>Kasir</span><span>${this.state.user.full_name}</span></div>
+      <div class="l"><span>Pelanggan</span><span>${o.customer_name}</span></div>
+      <hr>
+      ${items.map(it=>`<div class="l"><span>${it.qty}× ${it.name.slice(0,16)}</span><span>${this.money(it.subtotal)}</span></div>`).join('')}
+      <hr>
+      <div class="l"><span>Subtotal</span><span>${this.money(o.subtotal)}</span></div>
+      ${o.discount?`<div class="l"><span>Diskon</span><span>- ${this.money(o.discount)}</span></div>`:''}
+      <div class="l b"><span>TOTAL</span><span>${this.money(o.total)}</span></div>
+      <div class="l"><span>Bayar (${o.payment_method||''})</span><span>${this.money(paid)}</span></div>
+      <div class="l b"><span>Kembali</span><span>${this.money(o.change_amount||0)}</span></div>
+      ${o.points_earned?`<div class="l"><span>Poin +</span><span>${o.points_earned}</span></div>`:''}
+      <hr>
+      <div class="c">★ Terima kasih ★<br>Selamat berbelanja kembali<br><small>Simpan struk ini sebagai bukti</small></div>
+    </div>`;
+    setTimeout(()=>{ window.print(); area.classList.add('hide'); },300);
+  },
+
+  /* ---- MEMBERS ---- */
+  async viewMembers(){
+    const v=document.getElementById('view'); v.innerHTML=`<div class="spin"></div>`;
+    const m=await DB.listMembers('');
+    v.innerHTML=`<div class="section-title"><h2>Member</h2><div class="row">
+      <button class="btn sm" onclick="App.registerCustModal()">${IC.plus} Daftar Member</button></div></div>
+      <div class="search-box" style="margin-bottom:10px">${IC.search}<input id="m-search" placeholder="Cari nama/HP/kode member…" oninput="App.searchMembers()"></input></div>
+      <div class="tablewrap"><table class="tbl"><thead><tr><th>Member</th><th>Kontak</th><th>Kode</th><th>Poin</th><th>Bergabung</th><th></th></tr></thead>
+      <tbody id="m-body"></tbody></table></div>`;
+    this.state._members=m; this.renderMembers(m);
+  },
+  renderMembers(m){ const body=document.getElementById('m-body');
+    body.innerHTML=m.length?m.map(x=>`<tr><td><div class="row"><div style="width:36px;height:36px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center">${x.full_name[0]}</div><div><b style="font-size:13px">${x.full_name}</b><div class="muted small">${x.email}</div></div></div></td>
+      <td class="small">${x.phone||'-'}</td><td class="kbd small">${x.referral_code||'-'}</td><td><span class="tag amber">${IC.coin} ${x.points}</span></td>
+      <td class="small muted">${new Date(x.created_at).toLocaleDateString('id-ID')}</td>
+      <td><button class="iconbtn" style="width:32px;height:32px" onclick="App.viewMemberDetail('${x.id}')">${IC.user}</button></td></tr>`).join(''):`<tr><td colspan="6" class="em">Belum ada member</td></tr>`; },
+  searchMembers(){ const s=document.getElementById('m-search').value.toLowerCase(); this.renderMembers(this.state._members.filter(x=>(x.full_name+' '+x.phone+' '+x.email+' '+(x.referral_code||'')).toLowerCase().includes(s))); },
+  async viewMemberDetail(id){ const m=await DB.getMember(id); const pts=await DB.listPoints(id); const refs=await DB.listReferrals(id);
+    this.openSheet(`<div class="sheet-head"><h3>Detail Member</h3><button class="iconbtn" onclick="App.closeSheet()">${IC.x}</button></div>
+      <div class="sheet-body">
+        <div class="membercard"><div class="mc-logo"><div class="l">H</div> ${m.full_name}</div>
+          <div class="mc-name">${m.points} poin</div><div class="mc-no">${m.referral_code}</div>
+          <div class="mc-pts"><div>HP<b>${m.phone}</b></div><div>Bergabung<b>${new Date(m.created_at).toLocaleDateString('id-ID')}</b></div></div></div>
+        <h4 style="margin:14px 0 8px">Riwayat Poin (${pts.length})</h4>
+        <div class="tablewrap" style="max-height:200px;overflow:auto"><table class="tbl"><tbody>${pts.slice(0,10).map(t=>`<tr><td class="small">${new Date(t.created_at).toLocaleDateString('id-ID')}</td><td class="small">${t.note}</td><td style="color:${t.points>=0?'var(--green)':'var(--rose)'};font-weight:800">${t.points>0?'+':''}${t.points}</td></tr>`).join('')||`<tr><td class="em">Kosong</td></tr>`}</tbody></table></div>
+        <h4 style="margin:14px 0 8px">Referral (${refs.length})</h4>
+        <div class="muted small">${refs.map(r=>r.referred?.full_name).join(', ')||'Belum ada'}</div>
+      </div>`);
+  },
+  registerCustModal(){ this.openSheet(`<div class="sheet-head"><h3>Daftarkan Member Offline</h3><button class="iconbtn" onclick="App.closeSheet()">${IC.x}</button></div>
+      <div class="sheet-body"><form id="rc-form">
+        <div class="field"><label>Nama Lengkap</label><input name="full_name" required></div>
+        <div class="field row2"><div><label>No. HP</label><input name="phone" required></div><div><label>Email</label><input name="email" type="email"></div></div>
+        <div class="field"><label>Alamat</label><textarea name="address" rows="2"></textarea></div>
+        <div class="field"><label>Kata sandi</label><input name="password" type="password" value="member123"></div>
+        <div class="card" style="background:var(--green-l);font-size:12.5px;color:#0c6b3f">🎁 Member otomatis dapat poin & dapat belanja online dengan akun ini.</div>
+        <button class="btn green block" type="submit" style="margin-top:12px">${IC.check} Daftarkan</button>
+      </form></div>`);
+    document.getElementById('rc-form').onsubmit=async e=>{ e.preventDefault(); const f=new FormData(e.target);
+      try{ await DB.signUp({full_name:f.get('full_name'),phone:f.get('phone'),email:f.get('email')||('cust'+Date.now()+'@tokohana.id'),password:f.get('password'),address:f.get('address'),role:'member'});
+        this.closeSheet(); this.toast('Member terdaftar ✓','ok'); this.viewMembers(); }catch(err){this.toast('Gagal: '+err.message,'err');} }; },
+
+  /* ---- REPORTS ---- */
+  async viewReports(){
+    const v=document.getElementById('view'); v.innerHTML=`<div class="spin"></div>`;
+    const s=await DB.stats(); const orders=await DB.listOrders({});
+    const ch={online:0,offline:0}; orders.forEach(o=>{ if(['paid','completed'].includes(o.status))ch[o.channel]+=Number(o.total||0); });
+    const top={}; orders.forEach(o=>{ o.customer_name && (top[o.customer_name]=(top[o.customer_name]||0)+1); });
+    const topArr=Object.entries(top).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    v.innerHTML=`<div class="section-title"><h2>Laporan</h2><button class="btn ghost sm" onclick="App.exportOrders()">${IC.download} Export Transaksi</button></div>
+      <div class="stat-grid">
+        <div class="stat"><div class="lbl"><span class="ic">${IC.coin}</span> Total Omzet</div><div class="val">${this.money(s.revenue)}</div></div>
+        <div class="stat"><div class="lbl"><span class="ic">${IC.bag}</span> Omzet Online</div><div class="val">${this.money(ch.online)}</div></div>
+        <div class="stat"><div class="lbl"><span class="ic">${IC.scan}</span> Omzet Offline</div><div class="val">${this.money(ch.offline)}</div></div>
+        <div class="stat"><div class="lbl"><span class="ic">${IC.users}</span> Member</div><div class="val">${s.members}</div></div>
+      </div>
+      <div class="grid" style="grid-template-columns:1fr 1fr;margin-top:16px">
+        <div class="card"><h3>Transaksi Terbaru</h3><div class="tablewrap" style="box-shadow:none">${orders.slice(0,8).map(o=>`<div class="sum-line"><span class="kbd small">${o.order_no}</span><span>${this.money(o.total)}</span></div>`).join('')||'<div class="empty small">Kosong</div>'}</div></div>
+        <div class="card"><h3>Pelanggan Teratas</h3>${topArr.length?topArr.map(([n,c],i)=>`<div class="sum-line"><span><b>${i+1}.</b> ${n}</span><span class="tag">${c}×</span></div>`).join(''):'<div class="empty small">Belum ada data</div>'}</div>
+      </div>`;
+  },
+  async exportOrders(){ const o=await DB.listOrders({}); let csv='order_no,tanggal,pelanggan,channel,status,subtotal,diskon,total,bayar\n';
+    o.forEach(x=>{ csv+=[x.order_no,new Date(x.created_at).toISOString(),x.customer_name,x.channel,x.status,x.subtotal,x.discount,x.total,x.paid_amount].map(v=>`"${v||''}"`).join(',')+'\n'; });
+    this.download('transaksi_toko_hana.csv',csv); this.toast('Transaksi diekspor ✓','ok'); },
+
+  /* ---- SETTINGS ---- */
+  async viewSettings(){
+    const v=document.getElementById('view'); const s=await DB.getSettings(); const st=s.store||{};
+    v.innerHTML=`<div class="section-title"><h2>Pengaturan Toko</h2></div>
+      <div class="card"><form id="set-form">
+        <h3>Profil Toko</h3>
+        <div class="field row2"><div><label>Nama Toko</label><input name="name" value="${st.name||''}"></div><div><label>Telepon</label><input name="phone" value="${st.phone||''}"></div></div>
+        <div class="field"><label>Tagline</label><input name="tagline" value="${st.tagline||''}"></div>
+        <div class="field"><label>Alamat</label><textarea name="address" rows="2">${st.address||''}</textarea></div>
+        <hr class="sep"><h3>Sistem Poin & Referral</h3>
+        <div class="field row2"><div><label>Poin per Rp belanja</label><input name="earn_per_rp" type="number" value="${CONFIG.EARN_PER_RP}"></div><div><label>Nilai 1 poin (Rp)</label><input name="redeem_value" type="number" value="${CONFIG.REDEEM_VALUE}"></div></div>
+        <div class="field row2"><div><label>Bonus Referral</label><input name="referral_bonus" type="number" value="${CONFIG.REFERRAL_BONUS}"></div><div><label>Bonus Daftar</label><input name="signup_bonus" type="number" value="${CONFIG.SIGNUP_BONUS}"></div></div>
+        <button class="btn green" type="submit">${IC.check} Simpan</button>
+      </form>
+      <hr class="sep">
+      <div class="card" style="background:var(--blue-ll)">
+        <b>📊 Status Koneksi</b>
+        <div class="row" style="margin-top:6px"><span class="dot ${DB.demo()?'off':'on'}"></span> ${DB.demo()?'Mode Demo (data di browser ini saja)':'Terhubung Supabase'}</div>
+        <p class="muted small" style="margin-top:6px">${DB.demo()?'Untuk produksi: isi <code class="kbd">CONFIG.SUPABASE_URL</code> & <code class="kbd">CONFIG.SUPABASE_KEY</code> di index.html lalu jalankan <code class="kbd">schema.sql</code> di Supabase SQL Editor.':''}</p>
+      </div></div>`;
+    document.getElementById('set-form').onsubmit=async e=>{ e.preventDefault(); const f=new FormData(e.target);
+      await DB.saveSettings('store',{name:f.get('name'),tagline:f.get('tagline'),phone:f.get('phone'),address:f.get('address')});
+      CONFIG.EARN_PER_RP=Number(f.get('earn_per_rp')); CONFIG.REDEEM_VALUE=Number(f.get('redeem_value'));
+      this.toast('Pengaturan disimpan ✓','ok'); };
+  },
+
+  /* ===================== MODAL / SHEET ===================== */
+  openSheet(html,simple){
+    let ov=document.getElementById('sheet-overlay');
+    if(!ov){ ov=document.createElement('div'); ov.id='sheet-overlay'; ov.className='overlay';
+      ov.innerHTML='<div class="sheet" id="sheet-inner"></div>'; ov.onclick=e=>{if(e.target===ov)this.closeSheet()}; document.body.appendChild(ov); }
+    document.getElementById('sheet-inner').innerHTML=(simple?'<div class="grip"></div>':'')+html;
+    ov.style.display='flex';
+  },
+  closeSheet(){ this.stopScan(); const ov=document.getElementById('sheet-overlay'); if(ov)ov.style.display='none'; },
+};
+
+/* ---- PWA service worker ---- */
+window.App = App;   // ekspos untuk inline onclick & debugging di Console (F12)
+window.DB  = DB;
+if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{})); }
+
+/* ---- boot ---- */
+window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
+  console.error('BOOT ERROR:', e);
+  document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#003D7A;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
+}));
+</script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"1954b47c125f43f8b4338b3c4f804e4f"}' crossorigin="anonymous"></script>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a237e088197df93a',t:'MTc4NTQ1MTM1Mg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
