@@ -644,6 +644,7 @@ const App = {
     this.openSheet(`<div class="sheet-head"><h3>${IC.user} Masuk / Daftar</h3><button class="iconbtn" onclick="App.closeSheet()">${IC.x}</button></div>
       <div class="sheet-body">${this.authBodyMarkup(msg)}</div>`,true);
     this.bindAuth(()=>{ this.closeSheet(); this.toast('Berhasil masuk ✓','ok'); this.renderApp(); });
+    setTimeout(()=>{ const e=document.querySelector('#auth-form input[name=email]'); if(e)e.focus(); },120);
   },
   authBodyMarkup(msg){
     const note = msg?`<div class="card" style="background:var(--amber-l);border:1.5px solid #FCD9A0;font-size:13px;margin-bottom:14px">⚠️ ${msg}</div>`:'';
@@ -652,13 +653,14 @@ const App = {
         <button class="active" data-t="in">Masuk</button>
         <button data-t="up">Daftar Member</button>
       </div>
-      <form id="auth-form">
+      <form id="auth-form" autocomplete="on">
+        <div class="muted small" style="margin-bottom:12px;background:var(--bg);padding:9px 11px;border-radius:10px">Isi <b>email</b> &amp; <b>kata sandi</b> lalu klik <b>Masuk</b> — atau langsung pakai tombol cepat 👑🧾🛒 di bawah.</div>
         <div id="up-only" class="hide">
-          <div class="field"><label>Nama Lengkap</label><input name="full_name" required placeholder="Nama lengkap"></div>
+          <div class="field"><label>Nama Lengkap</label><input name="full_name" placeholder="Nama lengkap"></div>
           <div class="field"><label>No. HP / WhatsApp</label><input name="phone" placeholder="08xxxxxxxxxx"></div>
         </div>
-        <div class="field"><label>Email</label><input name="email" type="email" required placeholder="email@contoh.com"></div>
-        <div class="field"><label>Kata Sandi</label><input name="password" type="password" required minlength="4" placeholder="••••••••"></div>
+        <div class="field"><label>Email</label><input name="email" type="email" placeholder="admin@tokohana.id"></div>
+        <div class="field"><label>Kata Sandi</label><input name="password" type="password" placeholder="••••••••"></div>
         <div id="up-only2" class="hide">
           <div class="field"><label>Kode Referral <span class="muted small">(opsional)</span></label><input name="referral_code" placeholder="Mis. SITI8X4"></div>
         </div>
@@ -693,10 +695,13 @@ const App = {
       document.getElementById('auth-submit').textContent=mode==='in'?'Masuk':'Daftar Sekarang'; });
     const form=document.getElementById('auth-form');
     if(form) form.addEventListener('submit',async e=>{ e.preventDefault(); const f=new FormData(e.target);
+      const email=(f.get('email')||'').toString().trim(), pw=(f.get('password')||'').toString();
+      if(!email||!pw){ this.toast('Isi email & kata sandi dulu 🙂','err'); const ef=form.querySelector('input[name=email]'); if(ef)ef.focus(); return; }
+      if(mode==='up' && !f.get('full_name')){ this.toast('Isi nama lengkap dulu 🙂','err'); return; }
       const btn=document.getElementById('auth-submit'); const old=btn.textContent; btn.disabled=true; btn.textContent='Memproses…';
       try{
-        if(mode==='in') this.state.user=await DB.signIn(f.get('email'),f.get('password'));
-        else this.state.user=await DB.signUp({email:f.get('email'),password:f.get('password'),full_name:f.get('full_name'),phone:f.get('phone'),referral_code:f.get('referral_code')});
+        if(mode==='in') this.state.user=await DB.signIn(email,pw);
+        else this.state.user=await DB.signUp({email,password:pw,full_name:f.get('full_name'),phone:f.get('phone'),referral_code:f.get('referral_code')});
         onSuccess();
       }catch(err){ this.toast('❌ '+(err.message||err),'err'); btn.disabled=false; btn.textContent=old; } });
   },
@@ -1556,5 +1561,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#003D7A;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a23875f6fcb1c50c',t:'MTc4NTQ1NzQ3Mw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a23893a5c9635f27',t:'MTc4NTQ1ODY4OA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
