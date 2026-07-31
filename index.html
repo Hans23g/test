@@ -61,7 +61,7 @@ h1,h2,h3,h4{margin:0;font-weight:800;letter-spacing:-.01em}
 .fab svg{width:26px;height:26px}
 
 /* ============================ APP BAR ============================ */
-.topbar{position:sticky;top:0;z-index:30;background:var(--bg);color:var(--ink)}
+.topbar{position:sticky;top:0;z-index:30;background:var(--bg);color:var(--ink);padding-top:env(safe-area-inset-top)}
 .topbar .wrap{display:flex;align-items:center;gap:10px;height:var(--bar-h)}
 .brand{display:flex;align-items:center;gap:9px;font-weight:800;font-size:15.5px;color:var(--ink);flex:none}
 .brand .logo{width:36px;height:36px;border-radius:11px;background:linear-gradient(135deg,var(--navy),var(--blue));color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:19px;box-shadow:0 3px 8px rgba(0,61,122,.3)}
@@ -93,7 +93,7 @@ h1,h2,h3,h4{margin:0;font-weight:800;letter-spacing:-.01em}
 .cat-dropdown.hide{display:none}
 .cat-dropdown .dd-item{padding:12px 8px;border-radius:11px;font-weight:700;font-size:12.5px;cursor:pointer;text-align:center;color:var(--ink-2)}
 .cat-dropdown .dd-item.on{background:var(--blue-l);color:var(--navy)}
-.drawer{background:#fff;width:300px;max-width:84vw;height:100%;margin-left:auto;box-shadow:-8px 0 30px rgba(0,20,50,.18);display:flex;flex-direction:column;animation:drw .25s ease}
+.drawer{background:#fff;width:300px;max-width:84vw;height:100%;margin-left:auto;box-shadow:-8px 0 30px rgba(0,20,50,.18);display:flex;flex-direction:column;animation:drw .25s ease;padding-top:env(safe-area-inset-top)}
 @keyframes drw{from{transform:translateX(40px);opacity:.6}to{transform:none;opacity:1}}
 .drawer-head{padding:18px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(120deg,var(--navy),var(--blue));color:#fff;gap:10px}
 .drawer-head .av{width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-weight:800;flex:none}
@@ -1656,23 +1656,28 @@ const App = {
   /* ===================== DRAWER (menu geser) ===================== */
   openDrawer(){
     const u=this.state.user;
-    let items=[];
-    if(this.isAdmin()) items=[['dashboard','Home',IC.home],['products','Produk',IC.box],['pos','Kasir',IC.scan],['online-orders','Order Online',IC.bag],['members','Member',IC.users],['staff','Kelola Akun',IC.users],['reports','Laporan',IC.chart],['store','Lihat Toko',IC.store],['settings','Pengaturan',IC.settings]];
-    else if(u) items=[['store','Toko',IC.store],['cart','Keranjang',IC.cart],['orders','Pesanan',IC.list],['card','Kartu Member',IC.card],['points','Poin & Referral',IC.coin],['profile','Profil',IC.user]];
-    else items=[['store','Toko',IC.store]];
-    const head = u ? `<div class="row" style="gap:10px;min-width:0"><div class="av">${(u.full_name||'?')[0]}</div><div class="col" style="min-width:0"><b style="font-size:14px">${u.full_name||'Tamu'}</b><div style="opacity:.85;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.email||''}</div></div></div>`
-      : `<div class="row" style="gap:10px"><div class="av">H</div><b>Toko Hana</b></div>`;
+    let head, body, isForm=false;
+    if(u){
+      head=`<div class="row" style="gap:12px;min-width:0"><div class="av">${(u.full_name||'?')[0]}</div><div class="col" style="min-width:0"><b style="font-size:15px">${u.full_name||'Pengguna'}</b><div style="opacity:.9;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.email||''}</div>${!this.isAdmin()?`<div style="margin-top:3px;font-size:11.5px;opacity:.95">${IC.coin} ${(u.points||0)} poin</div>`:''}</div></div>`;
+      let items=[];
+      if(this.isAdmin()) items=[['dashboard','Home',IC.home],['products','Produk',IC.box],['pos','Kasir',IC.scan],['online-orders','Order Online',IC.bag],['members','Member',IC.users],['staff','Kelola Akun',IC.users],['reports','Laporan',IC.chart],['store','Lihat Toko',IC.store],['settings','Pengaturan',IC.settings]];
+      else items=[['store','Toko',IC.store],['cart','Keranjang',IC.cart],['orders','Pesanan',IC.list],['card','Kartu Member',IC.card],['points','Poin & Referral',IC.coin],['profile','Profil',IC.user]];
+      body=items.map(([v,l,ic])=>`<div class="drawer-item" onclick="App.drawerGo('${v}')">${ic}<span>${l}</span>${v==='cart'?'<span class="bn-badge hide" id="cart-count" style="margin-left:auto;background:var(--rose)"></span>':''}</div>`).join('')
+        +`<div class="drawer-item rose" onclick="App.doLogout()">${IC.logout}<span>Keluar</span></div>`;
+    } else {
+      head=`<div style="text-align:center;padding:4px 0"><div style="font-size:32px">👋</div><b style="font-size:16px;display:block;margin-top:2px">Halo, Sobat Toko Hana!</b><div style="opacity:.92;font-size:12px;margin-top:2px">Masuk untuk belanja, kumpulkan poin & referral</div></div>`;
+      body=this.authBodyMarkup(); isForm=true;
+    }
     let ov=document.getElementById('drawer-overlay');
     if(!ov){ ov=document.createElement('div'); ov.id='drawer-overlay'; ov.className='overlay';
       ov.style.justifyContent='flex-end'; ov.style.alignItems='stretch';
       ov.onclick=(e)=>{ if(e.target===ov) this.closeDrawer(); }; document.body.appendChild(ov); }
     ov.innerHTML=`<div class="drawer">
-      <div class="drawer-head">${head}<button class="iconbtn" style="background:rgba(255,255,255,.2);color:#fff;width:34px;height:34px" onclick="App.closeDrawer()">${IC.x}</button></div>
-      <div class="drawer-body">
-        ${items.map(([v,l,ic])=>`<div class="drawer-item" onclick="App.drawerGo('${v}')">${ic}<span>${l}</span>${v==='cart'?'<span class="bn-badge hide" id="cart-count" style="margin-left:auto;background:var(--rose)"></span>':''}</div>`).join('')}
-        ${u?`<div class="drawer-item rose" onclick="App.doLogout()">${IC.logout}<span>Keluar</span></div>`:`<div class="drawer-item" style="color:var(--blue)" onclick="App.closeDrawer();App.openLogin()">${IC.user}<span>Masuk / Daftar</span></div>`}
-      </div></div>`;
+      <div class="drawer-head">${head}<button class="iconbtn" style="background:rgba(255,255,255,.2);color:#fff;width:34px;height:34px;flex:none" onclick="App.closeDrawer()">${IC.x}</button></div>
+      <div class="drawer-body">${body}</div>
+    </div>`;
     ov.style.display='flex';
+    if(isForm) this.bindAuth(()=>{ this.closeDrawer(); this.toast('Berhasil masuk ✓','ok'); this.renderApp(); });
     this.updateCartBadge();
   },
   closeDrawer(){ const ov=document.getElementById('drawer-overlay'); if(ov)ov.style.display='none'; },
@@ -1700,5 +1705,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#003D7A;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a239418b79ea1e93',t:'MTc4NTQ2NTgxMQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a239575dcaf4fda4',t:'MTc4NTQ2NjcwNQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
