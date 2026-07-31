@@ -20,7 +20,7 @@
   --maxw:1180px; --bar-h:60px; --safe-b:env(safe-area-inset-bottom,0px);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;padding:0;overflow-x:hidden;max-width:100%}
+html,body{margin:0;padding:0;max-width:100%}
 body{font-family:'Segoe UI',system-ui,-apple-system,Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink);
   font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
 img{max-width:100%;display:block}
@@ -61,7 +61,7 @@ h1,h2,h3,h4{margin:0;font-weight:800;letter-spacing:-.01em}
 .fab svg{width:26px;height:26px}
 
 /* ============================ APP BAR ============================ */
-.topbar{position:sticky;top:0;z-index:30;background:var(--bg);color:var(--ink);box-shadow:0 1px 0 rgba(0,61,122,.08)}
+.topbar{position:sticky;top:0;z-index:30;background:var(--bg);color:var(--ink)}
 .topbar .wrap{display:flex;align-items:center;gap:10px;height:var(--bar-h)}
 .brand{display:flex;align-items:center;gap:9px;font-weight:800;font-size:15.5px;color:var(--ink);flex:none}
 .brand .logo{width:36px;height:36px;border-radius:11px;background:linear-gradient(135deg,var(--navy),var(--blue));color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:19px;box-shadow:0 3px 8px rgba(0,61,122,.3)}
@@ -87,6 +87,12 @@ h1,h2,h3,h4{margin:0;font-weight:800;letter-spacing:-.01em}
 .cat-tile:hover .cat-ico{transform:translateY(-2px)}
 .cat-tile span{font-size:11px;font-weight:700;color:var(--ink-2);text-align:center;line-height:1.2;max-width:68px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cat-tile.active .cat-ico{background:var(--navy)}.cat-tile.active span{color:var(--navy)}
+.cats .cat-tile{width:74px;flex:none}
+.cats .cat-tile.all .cat-ico{background:var(--navy)}
+.cat-dropdown{background:#fff;border-radius:16px;box-shadow:var(--shadow-lg);padding:8px;margin-bottom:14px;display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.cat-dropdown.hide{display:none}
+.cat-dropdown .dd-item{padding:12px 8px;border-radius:11px;font-weight:700;font-size:12.5px;cursor:pointer;text-align:center;color:var(--ink-2)}
+.cat-dropdown .dd-item.on{background:var(--blue-l);color:var(--navy)}
 .drawer{background:#fff;width:300px;max-width:84vw;height:100%;margin-left:auto;box-shadow:-8px 0 30px rgba(0,20,50,.18);display:flex;flex-direction:column;animation:drw .25s ease}
 @keyframes drw{from{transform:translateX(40px);opacity:.6}to{transform:none;opacity:1}}
 .drawer-head{padding:18px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(120deg,var(--navy),var(--blue));color:#fff;gap:10px}
@@ -104,7 +110,7 @@ h1,h2,h3,h4{margin:0;font-weight:800;letter-spacing:-.01em}
 .nav-item.active{background:var(--navy);color:#fff}
 .nav-item svg{width:20px;height:20px;flex:none}
 .nav-sec{font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);padding:14px 13px 6px}
-.main{padding:18px 16px 100px;min-width:0}
+.main{padding:18px 16px 100px;min-width:0;overflow-x:clip}
 .content{max-width:var(--maxw);margin:0 auto}
 
 /* mobile bottom nav */
@@ -883,9 +889,13 @@ const App = {
         <p>${guest?'Belanja kebutuhan harian, dapat poin & gratis ongkir sekitar!':`Saldo ${IC.coin} ${(m.points||0)} poin · belanja dapat poin tiap transaksi`}</p>
         ${guest?`<span class="promo-cta">Masuk untuk Belanja →</span>`:''}
       </div>`:''}
-      <div class="cat-grid" id="catbar">
-        <div class="cat-tile ${this.state.category==='all'?'active':''}" data-c="all" onclick="App.pickCat('all')"><div class="cat-ico">🛒</div><span>Semua</span></div>
+      <div class="cats" id="catbar">
+        <div class="cat-tile all" onclick="App.toggleCatDropdown()"><div class="cat-ico">🗂️</div><span>Semua ▾</span></div>
         ${cats.map(c=>`<div class="cat-tile ${this.state.category===c.id?'active':''}" data-c="${c.id}" onclick="App.pickCat('${c.id}')"><div class="cat-ico">${c.icon||'📦'}</div><span>${c.name}</span></div>`).join('')}
+      </div>
+      <div class="cat-dropdown hide" id="cat-dropdown">
+        <div class="dd-item ${this.state.category==='all'?'on':''}" data-c="all" onclick="App.pickCat('all')">🛒 Semua Produk</div>
+        ${cats.map(c=>`<div class="dd-item ${this.state.category===c.id?'on':''}" data-c="${c.id}" onclick="App.pickCat('${c.id}')">${c.icon||'📦'} ${c.name}</div>`).join('')}
       </div>
       <div class="section-title"><h2>${catName||'Produk Pilihan'}</h2><span class="muted small">${prods.length} produk</span></div>
       <div class="prod-grid" id="pgrid"></div>`;
@@ -900,8 +910,11 @@ const App = {
   },
   pickCat(c){ this.state.category=c;
     document.querySelectorAll('#catbar .cat-tile').forEach(t=>t.classList.toggle('active', t.dataset.c===c));
+    document.querySelectorAll('#cat-dropdown .dd-item').forEach(t=>t.classList.toggle('on', t.dataset.c===c));
+    const dd=document.getElementById('cat-dropdown'); if(dd) dd.classList.add('hide');
     this.applyFilter();
   },
+  toggleCatDropdown(){ const dd=document.getElementById('cat-dropdown'); if(dd) dd.classList.toggle('hide'); },
   renderProdGrid(prods){
     const g=document.getElementById('pgrid');
     if(!prods.length){ g.innerHTML=`<div class="empty" style="grid-column:1/-1">${IC.search}<p>Produk tidak ditemukan</p></div>`; return; }
@@ -1687,5 +1700,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#003D7A;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2392c9aa904fdc1',t:'MTc4NTQ2NDk1NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a239418b79ea1e93',t:'MTc4NTQ2NTgxMQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
