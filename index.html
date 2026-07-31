@@ -87,9 +87,15 @@ h1,h2,h3,h4{margin:0;font-weight:800;letter-spacing:-.01em}
 .banner-track{display:flex;transition:transform .55s cubic-bezier(.4,0,.2,1);will-change:transform}
 .banner-slide{flex:0 0 100%;min-width:0;cursor:pointer}
 .banner-slide img{width:100%;max-height:170px;min-height:90px;object-fit:cover;display:block}
-.banner-dots{position:absolute;bottom:9px;left:0;right:0;display:flex;justify-content:center;gap:6px;z-index:2}
+.banner-dots{position:absolute;bottom:9px;left:0;right:0;display:flex;justify-content:center;gap:6px;z-index:3}
 .banner-dots .dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.65);cursor:pointer;transition:.25s;border:none}
 .banner-dots .dot.active{background:#fff;width:20px;border-radius:4px}
+.banner-arrow{position:absolute;top:50%;transform:translateY(-50%);width:34px;height:34px;border-radius:50%;background:rgba(0,20,50,.45);color:#fff;font-size:22px;line-height:32px;font-weight:800;text-align:center;z-index:4;cursor:pointer;border:none}
+.banner-arrow.prev{left:8px}.banner-arrow.next{right:8px}
+.banner-cap{position:absolute;inset:0;display:flex;align-items:flex-end;background:linear-gradient(to top,rgba(0,20,50,.62),transparent 58%);z-index:2;pointer-events:none}
+.banner-cap .bc-inner{padding:14px 16px;color:#fff;max-width:86%}
+.banner-cap .bc-title{font-weight:800;font-size:15px;text-shadow:0 1px 4px rgba(0,0,0,.5)}
+.banner-cap .bc-desc{font-size:12px;opacity:.95;margin-top:2px;text-shadow:0 1px 4px rgba(0,0,0,.5)}
 .cat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px}
 .cat-tile{display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;padding:6px 0}
 .cat-tile .cat-ico{width:56px;height:56px;border-radius:18px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:var(--shadow);transition:.15s}
@@ -893,7 +899,7 @@ const App = {
     const m=this.state.user||{}; const guest=!this.state.user;
     const catName = this.state.category!=='all' ? (cats.find(c=>c.id===this.state.category)?.name||'') : '';
     v.innerHTML=`
-      ${(this.state._banners&&this.state._banners.length)?`<div class="banner-carousel"><div class="banner-track" id="btrack">${this.state._banners.map(b=>`<div class="banner-slide" ${guest?`onclick="App.openLogin()"`:''}><img src="${b}" alt="Banner"></div>`).join('')}</div>${this.state._banners.length>1?`<div class="banner-dots" id="bdots"></div>`:''}</div>`
+      ${(this.state._banners&&this.state._banners.length)?`<div class="banner-carousel" id="bcarousel"><div class="banner-track" id="btrack">${this.state._banners.map((b,i)=>`<div class="banner-slide" onclick="App.bannerClick(${i})">${(b.title||b.desc)?`<div class="banner-cap"><div class="bc-inner">${b.title?`<div class="bc-title">${b.title}</div>`:''}${b.desc?`<div class="bc-desc">${b.desc}</div>`:''}</div></div>`:''}<img src="${b.data}" alt="${b.title||'Banner'}"></div>`).join('')}</div>${this.state._banners.length>1?`<button class="banner-arrow prev" onclick="App.bannerPrev()">‹</button><button class="banner-arrow next" onclick="App.bannerNext()">›</button><div class="banner-dots" id="bdots"></div>`:''}</div>`
       :(!forStaff?`<div class="promo-banner" ${guest?`onclick="App.openLogin()"`:''}>
         <h3>${guest?'Selamat datang di Toko Hana 🎉':`Halo, ${m.full_name?.split(' ')[0]||'Sahabat'}! 👋`}</h3>
         <p>${guest?'Belanja kebutuhan harian, dapat poin & gratis ongkir sekitar!':`Saldo ${IC.coin} ${(m.points||0)} poin · belanja dapat poin tiap transaksi`}</p>
@@ -1678,12 +1684,15 @@ const App = {
         </div>
         <div class="card" style="margin-top:14px">
           <h3>🎨 Banner Promo (Slide)</h3>
-          <p class="muted small">Tambah beberapa banner → jadi slideshow otomatis di Home.</p>
-          <div id="banner-list" style="display:flex;flex-direction:column;gap:10px;margin:12px 0">
-            ${(this.state._banners||[]).length?(this.state._banners||[]).map((b,i)=>`<div class="row" style="gap:10px;align-items:center;background:var(--bg);padding:8px;border-radius:10px"><img src="${b}" style="width:88px;height:46px;object-fit:cover;border-radius:8px;flex:none"><div class="col small" style="color:var(--ink-2);font-weight:700">Banner ${i+1}</div><button class="iconbtn" style="width:32px;height:32px;color:var(--rose)" onclick="App.deleteBanner(${i})">${IC.trash}</button></div>`).join(''):`<div class="muted small" style="padding:18px;background:var(--bg);border-radius:10px;text-align:center">Belum ada banner (pakai sapaan default)</div>`}
+          <p class="muted small">Tambah beberapa banner → slideshow. Judul/deskripsi/link opsional. Link terbuka di tab baru.</p>
+          <div style="background:var(--bg);padding:12px;border-radius:12px;margin:12px 0">
+            <input type="file" id="banner-file" accept="image/*" style="font-size:12px;margin-bottom:10px">
+            <div class="field" style="margin-bottom:8px"><input id="bn-title" placeholder="Judul banner (opsional)"></div>
+            <div class="field" style="margin-bottom:8px"><input id="bn-desc" placeholder="Deskripsi singkat (opsional)"></div>
+            <div class="field" style="margin-bottom:10px"><input id="bn-link" placeholder="Link https://… (opsional, buka tab baru)"></div>
+            <button class="btn green sm block" onclick="App.addBanner()">${IC.plus} Tambah Banner</button>
           </div>
-          <input type="file" id="banner-file" accept="image/*" style="font-size:12.5px;margin-bottom:8px">
-          <button class="btn green sm" onclick="App.addBanner()">${IC.plus} Tambah Banner</button>
+          <div id="banner-list">${(this.state._banners||[]).map((b,i)=>`<div class="card" style="background:#fff;border:1px solid var(--line);margin-bottom:10px;padding:12px"><div class="row between" style="margin-bottom:8px"><div class="row" style="gap:8px"><img src="${b.data}" style="width:70px;height:40px;object-fit:cover;border-radius:8px"><b class="small">Banner ${i+1}</b></div><button class="iconbtn" style="width:30px;height:30px;color:var(--rose)" onclick="App.deleteBanner(${i})">${IC.trash}</button></div><div class="field" style="margin-bottom:6px"><input value="${(b.title||'').replace(/"/g,'&quot;')}" placeholder="Judul" onchange="App.updateBanner(${i},'title',this.value)"></div><div class="field" style="margin-bottom:6px"><input value="${(b.desc||'').replace(/"/g,'&quot;')}" placeholder="Deskripsi" onchange="App.updateBanner(${i},'desc',this.value)"></div><div class="field" style="margin-bottom:0"><input value="${(b.link||'').replace(/"/g,'&quot;')}" placeholder="Link https://…" onchange="App.updateBanner(${i},'link',this.value)"></div></div>`).join('')||`<div class="muted small center" style="padding:14px">Belum ada banner</div>`}</div>
         </div>`;
     } else if(tab==='poin'){
       body.innerHTML=`<div class="card"><form id="poin-form">
@@ -1718,29 +1727,41 @@ const App = {
   async applyBranding(){ try{ const s=await DB.getSettings();
     if(s.logo&&s.logo.data) LOGO=s.logo.data;
     let items=[];
-    if(s.banners&&Array.isArray(s.banners.items)) items=s.banners.items.map(x=>x.data).filter(Boolean);
-    else if(s.banner&&s.banner.data) items=[s.banner.data];
+    if(s.banners&&Array.isArray(s.banners.items)) items=s.banners.items.map(x=>typeof x==='string'?{data:x}:x).filter(x=>x&&x.data);
+    else if(s.banner&&s.banner.data) items=[{data:s.banner.data}];
     this.state._banners=items;
   }catch(e){} },
   initBannerCarousel(){
     const track=document.getElementById('btrack'); if(!track)return;
     const n=track.children.length; if(n<=1)return;
+    const car=document.getElementById('bcarousel');
     const dots=document.getElementById('bdots');
     if(dots) dots.innerHTML=Array.from({length:n}).map((_,i)=>`<button class="dot${i===0?' active':''}" onclick="App.bannerGo(${i})" aria-label="Banner ${i+1}"></button>`).join('');
     const go=(i)=>{ if(!track.isConnected){clearInterval(this._bTimer);return;} this._bIdx=((i%n)+n)%n; track.style.transform=`translateX(-${this._bIdx*100}%)`; document.querySelectorAll('#bdots .dot').forEach((d,k)=>d.classList.toggle('active',k===this._bIdx)); };
-    this._bGo=go; this._bIdx=0;
-    clearInterval(this._bTimer);
-    this._bTimer=setInterval(()=>go((this._bIdx||0)+1),4000);
+    this._bGo=go; this._bIdx=0; this._bRestart();
+    if(car){ let sx=0,dx=0;
+      car.addEventListener('touchstart',e=>{sx=e.touches[0].clientX;dx=0;clearInterval(this._bTimer);},{passive:true});
+      car.addEventListener('touchmove',e=>{dx=e.touches[0].clientX-sx;},{passive:true});
+      car.addEventListener('touchend',()=>{ if(Math.abs(dx)>40){ dx<0?go((this._bIdx||0)+1):go((this._bIdx||0)-1);} this._bRestart(); },{passive:true});
+    }
   },
-  bannerGo(i){ if(!this._bGo)return; this._bGo(i); clearInterval(this._bTimer); this._bTimer=setInterval(()=>this._bGo(((this._bIdx||0)+1)),4000); },
+  _bRestart(){ clearInterval(this._bTimer); if(this._bGo) this._bTimer=setInterval(()=>this._bGo(((this._bIdx||0)+1)),4500); },
+  bannerGo(i){ if(this._bGo){this._bGo(i);this._bRestart();} },
+  bannerNext(){ if(this._bGo){this._bGo((this._bIdx||0)+1);this._bRestart();} },
+  bannerPrev(){ if(this._bGo){this._bGo((this._bIdx||0)-1);this._bRestart();} },
+  bannerClick(i){ const b=(this.state._banners||[])[i]; if(!b)return; if(b.link) window.open(b.link,'_blank','noopener'); else if(!this.state.user) this.openLogin(); },
   readImage(file,max){ return new Promise((resolve,reject)=>{ const r=new FileReader(); r.onload=()=>{ const img=new Image(); img.onload=()=>{ let w=img.width,h=img.height; if(w>h){if(w>max){h=h*max/w;w=max;}}else{if(h>max){w=w*max/h;h=max;}} const c=document.createElement('canvas'); c.width=w;c.height=h; c.getContext('2d').drawImage(img,0,0,w,h); resolve(c.toDataURL('image/png')); }; img.onerror=()=>reject(new Error('Gambar tidak valid')); img.src=r.result; }; r.onerror=()=>reject(new Error('Gagal baca file')); r.readAsDataURL(file); }); },
   async saveLogo(){ const f=document.getElementById('logo-file').files[0]; if(!f){this.toast('Pilih file gambar dulu','err');return;} if(f.size>3*1024*1024){this.toast('Maks 3MB','err');return;}
     try{ const data=await this.readImage(f,320); await DB.saveSettings('logo',{data}); LOGO=data; document.querySelectorAll('.logo-img').forEach(i=>i.src=data); this.toast('Logo disimpan ✓ & dipakai di header','ok'); }catch(e){this.toast('Gagal: '+(e.message||e),'err');} },
   async resetLogo(){ if(!confirm('Reset logo ke default?'))return; try{ await DB.saveSettings('logo',{data:null}); LOGO=LOGO_DEFAULT; document.querySelectorAll('.logo-img').forEach(i=>i.src=LOGO_DEFAULT); this.toast('Logo direset ✓','ok'); }catch(e){this.toast('Gagal','err');} },
-  async addBanner(){ const f=document.getElementById('banner-file').files[0]; if(!f){this.toast('Pilih file gambar dulu','err');return;} if(f.size>3*1024*1024){this.toast('Maks 3MB','err');return;}
-    try{ const data=await this.readImage(f,900); const items=(this.state._banners||[]).slice(); items.push(data); this.state._banners=items; await DB.saveSettings('banners',{items:items.map(d=>({data:d}))}); const fi=document.getElementById('banner-file'); if(fi)fi.value=''; this.renderSetTab('brand',await DB.getSettings()); this.toast('Banner ditambah ✓','ok'); }catch(e){this.toast('Gagal: '+(e.message||e),'err');} },
+  async addBanner(){ const f=document.getElementById('banner-file').files[0]; if(!f){this.toast('Pilih gambar dulu','err');return;} if(f.size>3*1024*1024){this.toast('Maks 3MB','err');return;}
+    try{ const data=await this.readImage(f,900); const items=(this.state._banners||[]).slice();
+      items.push({data, title:(document.getElementById('bn-title')?.value||'').trim(), desc:(document.getElementById('bn-desc')?.value||'').trim(), link:(document.getElementById('bn-link')?.value||'').trim()});
+      this.state._banners=items; await DB.saveSettings('banners',{items}); this.renderSetTab('brand',await DB.getSettings()); this.toast('Banner ditambah ✓','ok');
+    }catch(e){this.toast('Gagal: '+(e.message||e),'err');} },
+  async updateBanner(i,field,val){ const items=(this.state._banners||[]).slice(); if(!items[i])return; items[i]={...items[i],[field]:val}; this.state._banners=items; await DB.saveSettings('banners',{items}); },
   async deleteBanner(i){ if(!confirm('Hapus banner '+(i+1)+'?'))return;
-    try{ const items=(this.state._banners||[]).slice(); items.splice(i,1); this.state._banners=items; await DB.saveSettings('banners',{items:items.map(d=>({data:d}))}); this.renderSetTab('brand',await DB.getSettings()); this.toast('Banner dihapus ✓','ok'); }catch(e){this.toast('Gagal','err');} },
+    try{ const items=(this.state._banners||[]).slice(); items.splice(i,1); this.state._banners=items; await DB.saveSettings('banners',{items}); this.renderSetTab('brand',await DB.getSettings()); this.toast('Banner dihapus ✓','ok'); }catch(e){this.toast('Gagal','err');} },
 
   /* ===================== DRAWER (menu geser) ===================== */
   openDrawer(){
@@ -1794,5 +1815,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#003D7A;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a23c493509cd9e3b',t:'MTc4NTQ5NzU4Mg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</body>
 </html>
