@@ -20,7 +20,7 @@
   --maxw:1180px; --bar-h:60px; --safe-b:env(safe-area-inset-bottom,0px);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;padding:0}
+html,body{margin:0;padding:0;overflow-x:hidden;max-width:100%}
 body{font-family:'Segoe UI',system-ui,-apple-system,Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink);
   font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
 img{max-width:100%;display:block}
@@ -230,6 +230,15 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:14px 0}
   .pos-prods{grid-template-columns:repeat(3,1fr);max-height:none}
   .cart-panel{position:static;max-height:none}.stat-grid{grid-template-columns:repeat(2,1fr)}
   .overlay{align-items:flex-end}
+  /* rapikan mobile: bungkus tombol & grid */
+  .section-title{flex-wrap:wrap;align-items:center;gap:8px}
+  .section-title>.row,.section-title>div>.row{flex-wrap:wrap;width:100%;gap:8px}
+  .section-title .btn{flex:1 1 auto;min-width:0;padding:9px 10px;font-size:13px}
+  .charts-grid{grid-template-columns:1fr!important}
+  .quick-grid{grid-template-columns:repeat(2,1fr)!important}
+  .topbar .wrap{gap:6px}
+  .tbl{font-size:12.5px}
+  .membercard .mc-name{font-size:18px}
 }
 @media(max-width:520px){
   .prod-grid{grid-template-columns:repeat(2,1fr);gap:9px}.pos-prods{grid-template-columns:repeat(2,1fr);gap:9px}
@@ -1110,13 +1119,13 @@ const App = {
         <div class="stat"><div class="lbl"><span class="ic">${IC.users}</span> Member</div><div class="val">${s.members||0}</div></div>
         <div class="stat"><div class="lbl"><span class="ic">${IC.box}</span> Produk</div><div class="val">${s.products||0}</div></div>
       </div>
-      <div class="grid" style="grid-template-columns:1.6fr 1fr;margin-top:16px">
+      <div class="grid charts-grid" style="grid-template-columns:1.6fr 1fr;margin-top:16px">
         <div class="card"><h3>Tren Penjualan (7 hari)</h3><canvas id="salesChart" height="120"></canvas></div>
         <div class="card"><h3>Saluran</h3><canvas id="channelChart" height="160"></canvas>
           <div class="muted small center" style="margin-top:8px">Online vs Offline</div></div>
       </div>
       <div class="section-title"><h3>Aksi Cepat</h3></div>
-      <div class="grid" style="grid-template-columns:repeat(4,1fr)">
+      <div class="grid quick-grid" style="grid-template-columns:repeat(4,1fr)">
         <button class="card nav-item" onclick="location.hash='pos'" style="justify-content:center;flex-direction:column;gap:6px"><div style="font-size:26px">${IC.scan}</div>Kasir Offline</button>
         <button class="card nav-item" onclick="location.hash='online-orders'" style="justify-content:center;flex-direction:column;gap:6px"><div style="font-size:26px">${IC.bag}</div>Order Online</button>
         <button class="card nav-item" onclick="location.hash='products'" style="justify-content:center;flex-direction:column;gap:6px"><div style="font-size:26px">${IC.box}</div>Kelola Produk</button>
@@ -1573,7 +1582,7 @@ const App = {
         <div class="stat"><div class="lbl"><span class="ic">${IC.scan}</span> Omzet Offline</div><div class="val">${this.money(ch.offline)}</div></div>
         <div class="stat"><div class="lbl"><span class="ic">${IC.users}</span> Member</div><div class="val">${s.members}</div></div>
       </div>
-      <div class="grid" style="grid-template-columns:1fr 1fr;margin-top:16px">
+      <div class="grid charts-grid" style="grid-template-columns:1fr 1fr;margin-top:16px">
         <div class="card"><h3>Transaksi Terbaru</h3><div class="tablewrap" style="box-shadow:none">${orders.slice(0,8).map(o=>`<div class="sum-line"><span class="kbd small">${o.order_no}</span><span>${this.money(o.total)}</span></div>`).join('')||'<div class="empty small">Kosong</div>'}</div></div>
         <div class="card"><h3>Pelanggan Teratas</h3>${topArr.length?topArr.map(([n,c],i)=>`<div class="sum-line"><span><b>${i+1}.</b> ${n}</span><span class="tag">${c}×</span></div>`).join(''):'<div class="empty small">Belum ada data</div>'}</div>
       </div>`;
@@ -1630,5 +1639,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#003D7A;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a238e1608e610d7e',t:'MTc4NTQ2MTg3Mg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a238f7efac371e3b',t:'MTc4NTQ2Mjc5Ng=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
