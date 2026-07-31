@@ -85,14 +85,14 @@ h1,h2,h3,h4{margin:0;font-weight:800;letter-spacing:-.01em}
 .promo-banner .promo-cta{display:inline-block;margin-top:10px;background:var(--gold);color:#5b3700;font-weight:800;font-size:12px;padding:6px 13px;border-radius:999px;position:relative;z-index:1}
 .banner-carousel{position:relative;border-radius:18px;overflow:hidden;margin-bottom:14px;background:var(--blue-ll)}
 .banner-track{display:flex;transition:transform .55s cubic-bezier(.4,0,.2,1);will-change:transform}
-.banner-slide{flex:0 0 100%;min-width:0;cursor:pointer}
+.banner-slide{flex:0 0 100%;min-width:0;cursor:pointer;position:relative;overflow:hidden}
 .banner-slide img{width:100%;max-height:170px;min-height:90px;object-fit:cover;display:block}
 .banner-dots{position:absolute;bottom:9px;left:0;right:0;display:flex;justify-content:center;gap:6px;z-index:3}
 .banner-dots .dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.65);cursor:pointer;transition:.25s;border:none}
 .banner-dots .dot.active{background:#fff;width:20px;border-radius:4px}
 .banner-arrow{position:absolute;top:50%;transform:translateY(-50%);width:34px;height:34px;border-radius:50%;background:rgba(0,20,50,.45);color:#fff;font-size:22px;line-height:32px;font-weight:800;text-align:center;z-index:4;cursor:pointer;border:none}
 .banner-arrow.prev{left:8px}.banner-arrow.next{right:8px}
-.banner-cap{position:absolute;inset:0;display:flex;align-items:flex-end;background:linear-gradient(to top,rgba(0,20,50,.62),transparent 58%);z-index:2;pointer-events:none}
+.banner-cap{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:flex-end;background:linear-gradient(to top,rgba(0,20,50,.82),transparent);z-index:2;pointer-events:none}
 .banner-cap .bc-inner{padding:14px 16px;color:#fff;max-width:86%}
 .banner-cap .bc-title{font-weight:800;font-size:15px;text-shadow:0 1px 4px rgba(0,0,0,.5)}
 .banner-cap .bc-desc{font-size:12px;opacity:.95;margin-top:2px;text-shadow:0 1px 4px rgba(0,0,0,.5)}
