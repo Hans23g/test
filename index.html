@@ -569,15 +569,17 @@ const DB = (() => {
   async function stats(){
     if(!isDemo){
       const today=new Date(); const y=today.toISOString().slice(0,10);
-      const [{count:totSales},{count:memCount},sales]=await Promise.all([
+      const [ordCnt, memCnt, ordData, prodCnt]=await Promise.all([
         sb.from('orders').select('*',{count:'exact',head:true}).in('status',['paid','completed']),
         sb.from('profiles').select('*',{count:'exact',head:true}).eq('role','member'),
-        sb.from('orders').select('total,channel,status,created_at').in('status',['paid','completed'])
+        sb.from('orders').select('total,channel,status,created_at').in('status',['paid','completed']),
+        sb.from('products').select('*',{count:'exact',head:true})
       ]);
+      const sales=ordData.data||[];
       const revenue=sales.reduce((a,b)=>a+Number(b.total||0),0);
-      const todayRev=sales.filter(o=>o.created_at.startsWith(y)).reduce((a,b)=>a+Number(b.total||0),0);
+      const todayRev=sales.filter(o=>o.created_at&&o.created_at.startsWith(y)).reduce((a,b)=>a+Number(b.total||0),0);
       const online=sales.filter(o=>o.channel==='online').length, offline=sales.filter(o=>o.channel==='offline').length;
-      return {revenue,orders:sales.length,members:memCount||0,todayRev,online,offline,sales};
+      return {revenue,orders:ordCnt.count||sales.length,members:memCnt.count||0,todayRev,online,offline,products:prodCnt.count||0,sales};
     }
     const d=ensureSeed(); const sales=Object.values(d.orders).filter(o=>['paid','completed'].includes(o.status));
     const today=new Date().toISOString().slice(0,10);
@@ -1078,6 +1080,7 @@ const App = {
      ======================================================================= */
   async viewDashboard(){
     const v=document.getElementById('view'); v.innerHTML=`<div class="spin"></div>`;
+    try{
     const s=await DB.stats();
     v.innerHTML=`
       <div class="section-title"><h2>Dashboard</h2><span class="tag">${DB.demo()?'Mode Demo':'Live Supabase'}</span></div>
@@ -1100,6 +1103,7 @@ const App = {
         <button class="card nav-item" onclick="location.hash='members'" style="justify-content:center;flex-direction:column;gap:6px"><div style="font-size:26px">${IC.users}</div>Member Baru</button>
       </div>`;
     this.renderCharts(s);
+    }catch(e){ v.innerHTML=`<div class="empty">${IC.chart}<h3>Gagal memuat dashboard</h3><p class="muted">${(e&&e.message)||e}</p><button class="btn" style="margin-top:12px" onclick="location.hash='dashboard'">Coba Lagi</button></div>`; console.error('dashboard',e); }
   },
   renderCharts(s){
     const days=[];const vals=[];
@@ -1552,5 +1556,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#003D7A;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a23865890c7e4014',t:'MTc4NTQ1NjgwMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a23875f6fcb1c50c',t:'MTc4NTQ1NzQ3Mw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
