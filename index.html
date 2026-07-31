@@ -313,6 +313,30 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:14px 0}
 .auth-submit{margin-top:6px;padding:14px;font-size:15px}
 .auth-demo-toggle{text-align:center;margin-top:18px;font-size:12.5px;color:var(--ink-3)}
 .auth-demo-toggle b{color:var(--blue);cursor:pointer}
+
+/* ============================ DARK MODE ============================ */
+[data-theme="dark"] [style*="background:#fff"],
+[data-theme="dark"] [style*="background: #fff"],
+[data-theme="dark"] [style*="background:white"],
+[data-theme="dark"] .btn.ghost,
+[data-theme="dark"] .iconbtn,
+[data-theme="dark"] .search-box,
+[data-theme="dark"] .cat-pill,
+[data-theme="dark"] .cat-dropdown { background: var(--card) !important; }
+[data-theme="dark"] [style*="background:var(--bg)"] { background: rgba(255,255,255,.04) !important; }
+[data-theme="dark"] [style*="background:var(--blue-ll)"] { background: rgba(255,255,255,.06) !important; }
+[data-theme="dark"] [style*="background:var(--blue-l)"] { background: rgba(255,255,255,.08) !important; }
+[data-theme="dark"] input, [data-theme="dark"] select, [data-theme="dark"] textarea {
+  background: rgba(255,255,255,.06) !important; color: var(--ink) !important; border-color: var(--line) !important; }
+[data-theme="dark"] .field input:focus, [data-theme="dark"] .field select:focus, [data-theme="dark"] .field textarea:focus {
+  border-color: var(--blue) !important; }
+[data-theme="dark"] .input-wrap { background: rgba(255,255,255,.06) !important; }
+[data-theme="dark"] .input-wrap input { background: none !important; }
+[data-theme="dark"] .tbl tr:hover td { background: rgba(255,255,255,.03); }
+[data-theme="dark"] .skel { background: rgba(255,255,255,.06); }
+.theme-swatch{width:40px;height:40px;border-radius:50%;cursor:pointer;border:3px solid transparent;transition:.15s;flex:none}
+.theme-swatch.on{border-color:var(--ink);transform:scale(1.1)}
+.theme-presets{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}
 </style>
 </head>
 <body>
@@ -1677,6 +1701,7 @@ const App = {
           <button class="${this.state._setTab==='toko'?'active':''}" onclick="App.setSetTab('toko')">🏪 Profil Toko</button>
           <button class="${this.state._setTab==='brand'?'active':''}" onclick="App.setSetTab('brand')">🖼️ Logo &amp; Banner</button>
           <button class="${this.state._setTab==='kategori'?'active':''}" onclick="App.setSetTab('kategori')">📁 Kategori</button>
+          <button class="${this.state._setTab==='tema'?'active':''}" onclick="App.setSetTab('tema')">🎨 Tema</button>
           <button class="${this.state._setTab==='poin'?'active':''}" onclick="App.setSetTab('poin')">🪙 Poin</button>
         </div>
         <div id="set-body"></div>`;
@@ -1745,6 +1770,15 @@ const App = {
           </div>
           <div>${(this.state._cats||[]).map(c=>`<div class="row" style="gap:8px;align-items:center;background:var(--bg);padding:6px 8px;border-radius:10px;margin-bottom:6px"><span style="font-size:20px;width:30px;text-align:center">${c.icon||'📦'}</span><input value="${(c.name||'').replace(/"/g,'&quot;')}" onchange="App.updateCategory('${c.id}','name',this.value)" style="flex:1;background:#fff;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-weight:700;font-size:13px"><input value="${c.icon||'📦'}" maxlength="3" onchange="App.updateCategory('${c.id}','icon',this.value)" style="width:46px;background:#fff;border:1px solid var(--line);border-radius:8px;padding:8px;text-align:center;font-size:15px"><button class="iconbtn" style="width:30px;height:30px;color:var(--rose)" onclick="App.delCategory('${c.id}')">${IC.trash}</button></div>`).join('')||'<div class="muted small center">Belum ada kategori</div>'}</div>
         </div>`;
+    } else if(tab==='tema'){
+      const presets=[['#003D7A','Navy BCA'],['#0E7C5A','Hijau Fresh'],['#D2691E','Oranye'],['#6B2FB5','Ungu'],['#C53030','Merah'],['#0E7C9E','Tosca'],['#C5306B','Pink'],['#2D5F3F','Forest'],['#1A1A2E','Hitam Elegan']];
+      const cur=this.state._themeColor||'#003D7A';
+      body.innerHTML=`<div class="card"><h3>🎨 Warna Tema Utama</h3>
+        <p class="muted small">Sesuaikan warna brand dengan filosofi usaha lu. Semua UI otomatis ikut.</p>
+        <div class="theme-presets">${presets.map(([hex,nm])=>`<div class="theme-swatch ${cur===hex?'on':''}" style="background:${hex}" onclick="App.saveThemeColor('${hex}')" title="${nm}"></div>`).join('')}</div>
+        <div class="field"><label>Warna custom</label><input type="color" value="${cur}" onchange="App.saveThemeColor(this.value)" style="width:100%;height:48px;border-radius:12px;cursor:pointer;border:1px solid var(--line);background:none"></div></div>
+        <div class="card" style="margin-top:14px"><h3>🌙 Mode Tampilan</h3><p class="muted small">Preferensi per-perangkat (disimpan di browser).</p>
+        <div class="row" style="gap:8px;margin-top:10px"><button class="btn ${this.state._darkMode?'ghost':'green'} block" onclick="App.state._darkMode&&App.toggleDarkMode()">☀️ Terang</button><button class="btn ${this.state._darkMode?'green':'ghost'} block" onclick="App.state._darkMode||App.toggleDarkMode()">🌙 Malam</button></div></div>`;
     } else if(tab==='poin'){
       body.innerHTML=`<div class="card"><form id="poin-form">
         <h3>Sistem Poin & Referral</h3>
@@ -1782,7 +1816,19 @@ const App = {
     if(s.banners&&Array.isArray(s.banners.items)) items=s.banners.items.map(x=>typeof x==='string'?{data:x}:x).filter(x=>x&&x.data);
     else if(s.banner&&s.banner.data) items=[{data:s.banner.data}];
     this.state._banners=items;
+    const tc=(s.theme&&s.theme.primary)||'#003D7A'; this.state._themeColor=tc;
+    this.applyThemeColor(tc);
+    this.state._darkMode=(function(){try{return localStorage.getItem('omnipos_dark')==='1'}catch(e){return false}})();
+    this.applyThemeMode(this.state._darkMode?'dark':'light',tc);
   }catch(e){} },
+  hexToRgb(hex){ hex=hex.replace('#',''); if(hex.length===3)hex=hex.split('').map(c=>c+c).join(''); const n=parseInt(hex,16); return {r:(n>>16)&255,g:(n>>8)&255,b:n&255}; },
+  applyThemeColor(hex){ const {r,g,b}=this.hexToRgb(hex); const l=(a)=>`rgb(${Math.min(255,r+(255-r)*a)|0},${Math.min(255,g+(255-g)*a)|0},${Math.min(255,b+(255-b)*a)|0})`; const R=document.documentElement.style; R.setProperty('--navy',hex);R.setProperty('--navy-2',l(0.1));R.setProperty('--blue',l(0.22));R.setProperty('--blue-l',l(0.9));R.setProperty('--blue-ll',l(0.95)); },
+  applyThemeMode(mode,ph){ const hex=ph||this.state._themeColor||'#003D7A'; const {r,g,b}=this.hexToRgb(hex); const R=document.documentElement.style; document.documentElement.dataset.theme=mode;
+    if(mode==='dark'){R.setProperty('--bg',`rgb(${Math.max(0,r*.1)|0},${Math.max(0,g*.1)|0},${Math.max(0,b*.1)|0})`);R.setProperty('--card',`rgb(${Math.max(0,r*.16)|0},${Math.max(0,g*.16)|0},${Math.max(0,b*.16)|0})`);R.setProperty('--ink','#E8EEF5');R.setProperty('--ink-2','#9CABC0');R.setProperty('--ink-3','#6B7E96');R.setProperty('--line','rgba(255,255,255,.08)');R.setProperty('--shadow','0 1px 3px rgba(0,0,0,.3),0 6px 18px rgba(0,0,0,.2)');R.setProperty('--shadow-lg','0 10px 40px rgba(0,0,0,.35)');}
+    else{R.setProperty('--bg',`rgb(${Math.min(255,r+(255-r)*.92)|0},${Math.min(255,g+(255-g)*.92)|0},${Math.min(255,b+(255-b)*.92)|0})`);R.setProperty('--card','#fff');R.setProperty('--ink','#10243B');R.setProperty('--ink-2','#41586F');R.setProperty('--ink-3','#7C8CA0');R.setProperty('--line','#E4EAF1');R.setProperty('--shadow','0 1px 2px rgba(16,36,59,.05),0 6px 18px rgba(16,36,59,.06)');R.setProperty('--shadow-lg','0 10px 40px rgba(16,36,59,.16)');}
+    R.setProperty('color-scheme',mode);},
+  toggleDarkMode(){ this.state._darkMode=!this.state._darkMode; try{localStorage.setItem('omnipos_dark',this.state._darkMode?'1':'0')}catch(e){} this.applyThemeMode(this.state._darkMode?'dark':'light'); this.toast(this.state._darkMode?'Mode malam 🌙':'Mode terang ☀️','ok'); },
+  async saveThemeColor(hex){ try{ await DB.saveSettings('theme',{primary:hex}); this.applyThemeColor(hex); this.applyThemeMode(this.state._darkMode?'dark':'light',hex); this.toast('Warna tema disimpan ✓','ok'); }catch(e){this.toast('Gagal','err');} },
   initBannerCarousel(){
     const track=document.getElementById('btrack'); if(!track)return;
     const n=track.children.length; if(n<=1)return;
@@ -1841,6 +1887,7 @@ const App = {
       if(this.isAdmin()) items=[['store','Home',IC.home],['products','Produk',IC.box],['pos','Kasir',IC.scan],['online-orders','Order Online',IC.bag],['members','Member',IC.users],['reports','Laporan',IC.chart],['dashboard','Dashboard',IC.grid],['settings','Pengaturan',IC.settings]];
       else items=[['store','Toko',IC.store],['cart','Keranjang',IC.cart],['orders','Pesanan',IC.list],['card','Kartu Member',IC.card],['points','Poin & Referral',IC.coin],['profile','Profil',IC.user]];
       body=items.map(([v,l,ic])=>`<div class="drawer-item" onclick="App.drawerGo('${v}')">${ic}<span>${l}</span>${v==='cart'?'<span class="bn-badge hide" id="cart-count" style="margin-left:auto;background:var(--rose)"></span>':''}</div>`).join('')
+        +`<div class="drawer-item" onclick="App.toggleDarkMode()">${this.state._darkMode?'☀️':'🌙'}<span>${this.state._darkMode?'Mode Terang':'Mode Malam'}</span></div>`
         +`<div class="drawer-item rose" onclick="App.doLogout()">${IC.logout}<span>Keluar</span></div>`;
     } else {
       head=`<div style="text-align:center;padding:4px 0"><div style="font-size:32px">👋</div><b style="font-size:16px;display:block;margin-top:2px">Halo, Sobat Toko Hana!</b><div style="opacity:.92;font-size:12px;margin-top:2px">Masuk untuk belanja, kumpulkan poin & referral</div></div>`;
@@ -1883,5 +1930,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#003D7A;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a23e1865cc584f45',t:'MTc4NTUxNjU1NQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a23e2dd28850dc83',t:'MTc4NTUxNzQzMg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
