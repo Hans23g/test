@@ -15,7 +15,7 @@
   --accent:#0090E0; --accent-2:#00BFA6; --gold:#F5A623; --rose:#E11D48;
   --green:#1FA463; --green-l:#E6F6EE; --amber:#F59E0B; --amber-l:#FEF3C7;
   --ink:#10243B; --ink-2:#41586F; --ink-3:#7C8CA0; --line:#E4EAF1;
-  --bg:#F4F6F9; --card:#fff; --shadow:0 1px 2px rgba(16,36,59,.05),0 6px 18px rgba(16,36,59,.06);
+  --bg:#E7F1FB; --card:#fff; --shadow:0 1px 2px rgba(16,36,59,.05),0 6px 18px rgba(16,36,59,.06);
   --shadow-lg:0 10px 40px rgba(16,36,59,.16); --r:16px; --r-s:10px;
   --maxw:1180px; --bar-h:60px; --safe-b:env(safe-area-inset-bottom,0px);
 }
@@ -61,17 +61,40 @@ h1,h2,h3,h4{margin:0;font-weight:800;letter-spacing:-.01em}
 .fab svg{width:26px;height:26px}
 
 /* ============================ APP BAR ============================ */
-.topbar{position:sticky;top:0;z-index:30;background:#fff;color:var(--ink);box-shadow:0 1px 0 var(--line),0 4px 14px rgba(16,36,59,.05)}
-.topbar .wrap{display:flex;align-items:center;gap:12px;height:var(--bar-h)}
+.topbar{position:sticky;top:0;z-index:30;background:var(--bg);color:var(--ink);box-shadow:0 1px 0 rgba(0,61,122,.08)}
+.topbar .wrap{display:flex;align-items:center;gap:10px;height:var(--bar-h)}
 .brand{display:flex;align-items:center;gap:9px;font-weight:800;font-size:15.5px;color:var(--ink);flex:none}
 .brand .logo{width:36px;height:36px;border-radius:11px;background:linear-gradient(135deg,var(--navy),var(--blue));color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:19px;box-shadow:0 3px 8px rgba(0,61,122,.3)}
 .brand small{display:block;font-weight:600;color:var(--ink-3);font-size:10px;letter-spacing:.02em}
-.topbar .search-pill{flex:1;display:flex;align-items:center;gap:8px;background:var(--bg);border-radius:999px;padding:10px 16px;color:var(--ink-3);font-size:13.5px;font-weight:600;cursor:pointer;max-width:440px;min-width:0;transition:.15s}
-.topbar .search-pill:hover{background:var(--blue-ll);color:var(--blue)}
-.topbar .search-pill svg{width:17px;height:17px;flex:none}
+.topbar .search-pill{flex:1;display:flex;align-items:center;gap:8px;background:#fff;border:1px solid rgba(0,61,122,.1);border-radius:999px;padding:0 14px;max-width:440px;min-width:0;height:40px;transition:.15s}
+.topbar .search-pill:focus-within{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-l)}
+.topbar .search-pill svg{width:17px;height:17px;color:var(--ink-3);flex:none}
+.topbar .search-pill input{border:none;background:none;outline:none;flex:1;font-size:14px;min-width:0;color:var(--ink)}
+.topbar .menu-btn{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:var(--navy);flex:none}
+.topbar .menu-btn:hover{background:var(--blue-l)}
+.topbar .menu-btn svg{width:24px;height:24px}
 .topbar .spacer{flex:1}
 .chip-points{display:inline-flex;align-items:center;gap:6px;background:var(--blue-l);color:var(--blue);padding:7px 13px;border-radius:999px;font-weight:800;font-size:13px;flex:none}
 .chip-points svg{width:16px;height:16px;color:var(--gold)}
+/* promo banner + kategori + drawer */
+.promo-banner{background:linear-gradient(120deg,var(--navy),var(--blue));color:#fff;border-radius:18px;padding:18px 20px;margin-bottom:14px;position:relative;overflow:hidden;cursor:pointer}
+.promo-banner::after{content:"";position:absolute;right:-30px;top:-30px;width:130px;height:130px;border-radius:50%;background:rgba(255,255,255,.1)}
+.promo-banner h3{font-size:17px;margin:0;position:relative;z-index:1}.promo-banner p{opacity:.92;font-size:12.5px;margin:4px 0 0;position:relative;z-index:1}
+.promo-banner .promo-cta{display:inline-block;margin-top:10px;background:var(--gold);color:#5b3700;font-weight:800;font-size:12px;padding:6px 13px;border-radius:999px;position:relative;z-index:1}
+.cat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px}
+.cat-tile{display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;padding:6px 0}
+.cat-tile .cat-ico{width:56px;height:56px;border-radius:18px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:var(--shadow);transition:.15s}
+.cat-tile:hover .cat-ico{transform:translateY(-2px)}
+.cat-tile span{font-size:11px;font-weight:700;color:var(--ink-2);text-align:center;line-height:1.2;max-width:68px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cat-tile.active .cat-ico{background:var(--navy)}.cat-tile.active span{color:var(--navy)}
+.drawer{background:#fff;width:300px;max-width:84vw;height:100%;margin-left:auto;box-shadow:-8px 0 30px rgba(0,20,50,.18);display:flex;flex-direction:column;animation:drw .25s ease}
+@keyframes drw{from{transform:translateX(40px);opacity:.6}to{transform:none;opacity:1}}
+.drawer-head{padding:18px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(120deg,var(--navy),var(--blue));color:#fff;gap:10px}
+.drawer-head .av{width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-weight:800;flex:none}
+.drawer-body{padding:10px;overflow:auto}
+.drawer-item{display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:12px;font-weight:700;font-size:14px;color:var(--ink-2);cursor:pointer}
+.drawer-item svg{width:20px;height:20px;flex:none;color:var(--navy)}
+.drawer-item:hover{background:var(--blue-ll)}.drawer-item.rose{color:var(--rose)}.drawer-item.rose svg{color:var(--rose)}
 
 /* ============================ LAYOUT ============================ */
 .shell{display:grid;grid-template-columns:230px 1fr;min-height:calc(100vh - var(--bar-h))}
@@ -336,6 +359,7 @@ const IC = {
   home:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
   x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
   bag:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>',
+  menu:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>',
 };
 
 /* =================================================================================
@@ -674,9 +698,9 @@ const App = {
     const root=document.getElementById('app-root'); root.classList.remove('hide');
     root.innerHTML=`
       <div class="topbar"><div class="wrap">
-        <div class="brand"><div class="logo">H</div><div class="brand-text">Toko Hana</div></div>
-        <div class="search-pill" onclick="App.focusSearch()">${IC.search}<span>Cari produk…</span></div>
-        <button class="btn sm" onclick="App.openLogin()">${IC.user} Masuk</button>
+        <div class="brand"><div class="logo">H</div></div>
+        <div class="search-pill">${IC.search}<input id="psearch" placeholder="Cari produk…" oninput="App.applyFilter()"></div>
+        <button class="menu-btn" onclick="App.openDrawer()">${IC.menu}</button>
       </div></div>
       <main class="main" style="min-height:calc(100vh - var(--bar-h))"><div class="content" id="view"></div></main>`;
     this.route();
@@ -797,11 +821,9 @@ const App = {
     const u=this.state.user;
     document.getElementById('app-root').innerHTML=`
       <div class="topbar"><div class="wrap">
-        <div class="brand"><div class="logo">H</div><div class="brand-text">Toko Hana</div></div>
-        <div class="search-pill" onclick="App.focusSearch()">${IC.search}<span>Cari produk…</span></div>
-        <button class="iconbtn" style="position:relative" onclick="App.goCart()">
-          ${IC.cart}<span class="bn-badge hide" id="cart-count" style="position:absolute;top:-2px;right:-2px"></span>
-        </button>
+        <div class="brand"><div class="logo">H</div></div>
+        <div class="search-pill">${IC.search}<input id="psearch" placeholder="Cari produk…" oninput="App.applyFilter()"></div>
+        <button class="menu-btn" onclick="App.openDrawer()">${IC.menu}</button>
       </div></div>
       <main class="main" style="min-height:calc(100vh - var(--bar-h))"><div class="content" id="view"></div></main>
       <nav class="bottomnav">
@@ -850,39 +872,36 @@ const App = {
      MEMBER VIEWS
      ======================================================================= */
   async viewStore(forStaff=false){
-    const v=document.getElementById('view'); v.innerHTML=`<div class="spin"></div>`;
+    const v=document.getElementById('view'); if(!v)return; v.innerHTML=`<div class="spin"></div>`;
     const [prods,cats]=await Promise.all([DB.listProducts({activeOnly:true}),DB.listCategories()]);
     this.state._prods=prods; this.state._cats=cats;
     const m=this.state.user||{}; const guest=!this.state.user;
+    const catName = this.state.category!=='all' ? (cats.find(c=>c.id===this.state.category)?.name||'') : '';
     v.innerHTML=`
-      ${!forStaff?`<div class="hero-banner">
-        <h2>${guest?'Selamat datang di Toko Hana! 👋':`Halo, ${m.full_name?.split(' ')[0]||'Sahabat'}! 👋`}</h2>
-        <p>Belanja kebutuhan harian praktis dari warung digital. ${guest?'Masuk untuk belanja & kumpulkan poin tiap transaksi!':'Dapat poin setiap transaksi & gratis ongkir sekitar!'}</p>
-        ${guest?`<button class="btn" style="margin-top:12px" onclick="App.openLogin()">🛒 Masuk untuk Belanja</button>`:`<div class="badge-pts">${IC.coin} ${m.points||0} poin</div>`}
+      ${!forStaff?`<div class="promo-banner" ${guest?`onclick="App.openLogin()"`:''}>
+        <h3>${guest?'Selamat datang di Toko Hana 🎉':`Halo, ${m.full_name?.split(' ')[0]||'Sahabat'}! 👋`}</h3>
+        <p>${guest?'Belanja kebutuhan harian, dapat poin & gratis ongkir sekitar!':`Saldo ${IC.coin} ${(m.points||0)} poin · belanja dapat poin tiap transaksi`}</p>
+        ${guest?`<span class="promo-cta">Masuk untuk Belanja →</span>`:''}
       </div>`:''}
-      <div class="search-box" style="margin-bottom:10px">${IC.search}<input id="psearch" placeholder="Cari produk / brand…" value="${this.state.search||''}"></div>
-      <div class="cats" id="catbar">
-        <div class="cat-pill ${this.state.category==='all'?'active':''}" data-c="all">🛒 Semua</div>
-        ${cats.map(c=>`<div class="cat-pill ${this.state.category===c.id?'active':''}" data-c="${c.id}">${c.icon} ${c.name}</div>`).join('')}
+      <div class="cat-grid" id="catbar">
+        <div class="cat-tile ${this.state.category==='all'?'active':''}" data-c="all" onclick="App.pickCat('all')"><div class="cat-ico">🛒</div><span>Semua</span></div>
+        ${cats.map(c=>`<div class="cat-tile ${this.state.category===c.id?'active':''}" data-c="${c.id}" onclick="App.pickCat('${c.id}')"><div class="cat-ico">${c.icon||'📦'}</div><span>${c.name}</span></div>`).join('')}
       </div>
-      <div class="section-title"><h2>${forStaff?'Katalog Toko':'Produk Pilihan'}</h2><span class="muted small">${prods.length} produk</span></div>
+      <div class="section-title"><h2>${catName||'Produk Pilihan'}</h2><span class="muted small">${prods.length} produk</span></div>
       <div class="prod-grid" id="pgrid"></div>`;
-    this.bindSearch(); this.bindCats(); this.renderProdGrid(prods);
+    this.applyFilter();
   },
-  bindSearch(){ const i=document.getElementById('psearch');
-    let t; i.oninput=()=>{clearTimeout(t);t=setTimeout(()=>{
-      this.state.search=i.value;
-      let r=this.state._prods;
-      if(this.state.category!=='all')r=r.filter(x=>x.category_id===this.state.category);
-      const s=i.value.toLowerCase();
-      if(s)r=r.filter(x=>(x.name+' '+(x.barcode||'')+' '+(x.brand||'')).toLowerCase().includes(s));
-      this.renderProdGrid(r);
-    },200);};
+  applyFilter(){
+    const q=(document.getElementById('psearch')?.value||'').toLowerCase().trim();
+    let r=this.state._prods||[];
+    if(this.state.category!=='all') r=r.filter(x=>x.category_id===this.state.category);
+    if(q) r=r.filter(x=>(x.name+' '+(x.barcode||'')+' '+(x.brand||'')).toLowerCase().includes(q));
+    const g=document.getElementById('pgrid'); if(g) this.renderProdGrid(r);
   },
-  bindCats(){ document.querySelectorAll('#catbar .cat-pill').forEach(p=>p.onclick=()=>{
-    this.state.category=p.dataset.c; document.querySelectorAll('#catbar .cat-pill').forEach(x=>x.classList.toggle('active',x===p));
-    this.viewStore(this.isAdmin());
-  });},
+  pickCat(c){ this.state.category=c;
+    document.querySelectorAll('#catbar .cat-tile').forEach(t=>t.classList.toggle('active', t.dataset.c===c));
+    this.applyFilter();
+  },
   renderProdGrid(prods){
     const g=document.getElementById('pgrid');
     if(!prods.length){ g.innerHTML=`<div class="empty" style="grid-column:1/-1">${IC.search}<p>Produk tidak ditemukan</p></div>`; return; }
@@ -1621,6 +1640,31 @@ const App = {
       this.toast('Pengaturan disimpan ✓','ok'); };
   },
 
+  /* ===================== DRAWER (menu geser) ===================== */
+  openDrawer(){
+    const u=this.state.user;
+    let items=[];
+    if(this.isAdmin()) items=[['dashboard','Home',IC.home],['products','Produk',IC.box],['pos','Kasir',IC.scan],['online-orders','Order Online',IC.bag],['members','Member',IC.users],['staff','Kelola Akun',IC.users],['reports','Laporan',IC.chart],['store','Lihat Toko',IC.store],['settings','Pengaturan',IC.settings]];
+    else if(u) items=[['store','Toko',IC.store],['cart','Keranjang',IC.cart],['orders','Pesanan',IC.list],['card','Kartu Member',IC.card],['points','Poin & Referral',IC.coin],['profile','Profil',IC.user]];
+    else items=[['store','Toko',IC.store]];
+    const head = u ? `<div class="row" style="gap:10px;min-width:0"><div class="av">${(u.full_name||'?')[0]}</div><div class="col" style="min-width:0"><b style="font-size:14px">${u.full_name||'Tamu'}</b><div style="opacity:.85;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.email||''}</div></div></div>`
+      : `<div class="row" style="gap:10px"><div class="av">H</div><b>Toko Hana</b></div>`;
+    let ov=document.getElementById('drawer-overlay');
+    if(!ov){ ov=document.createElement('div'); ov.id='drawer-overlay'; ov.className='overlay';
+      ov.style.justifyContent='flex-end'; ov.style.alignItems='stretch';
+      ov.onclick=(e)=>{ if(e.target===ov) this.closeDrawer(); }; document.body.appendChild(ov); }
+    ov.innerHTML=`<div class="drawer">
+      <div class="drawer-head">${head}<button class="iconbtn" style="background:rgba(255,255,255,.2);color:#fff;width:34px;height:34px" onclick="App.closeDrawer()">${IC.x}</button></div>
+      <div class="drawer-body">
+        ${items.map(([v,l,ic])=>`<div class="drawer-item" onclick="App.drawerGo('${v}')">${ic}<span>${l}</span>${v==='cart'?'<span class="bn-badge hide" id="cart-count" style="margin-left:auto;background:var(--rose)"></span>':''}</div>`).join('')}
+        ${u?`<div class="drawer-item rose" onclick="App.doLogout()">${IC.logout}<span>Keluar</span></div>`:`<div class="drawer-item" style="color:var(--blue)" onclick="App.closeDrawer();App.openLogin()">${IC.user}<span>Masuk / Daftar</span></div>`}
+      </div></div>`;
+    ov.style.display='flex';
+    this.updateCartBadge();
+  },
+  closeDrawer(){ const ov=document.getElementById('drawer-overlay'); if(ov)ov.style.display='none'; },
+  drawerGo(v){ this.closeDrawer(); location.hash=v; },
+
   /* ===================== MODAL / SHEET ===================== */
   openSheet(html,simple){
     let ov=document.getElementById('sheet-overlay');
@@ -1643,5 +1687,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#003D7A;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a23911395de5a08b',t:'MTc4NTQ2MzgzMg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2392c9aa904fdc1',t:'MTc4NTQ2NDk1NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
