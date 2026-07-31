@@ -105,19 +105,21 @@ h1,h2,h3,h4{margin:0;font-weight:800;letter-spacing:-.01em}
 .cat-pill{flex:none;display:flex;align-items:center;gap:7px;padding:9px 15px;border-radius:999px;background:#fff;box-shadow:inset 0 0 0 1.5px var(--line);font-weight:700;font-size:13px;color:var(--ink-2);cursor:pointer}
 .cat-pill.active{background:var(--navy);color:#fff;border-color:var(--navy)}
 .prod-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:13px}
-.prod{background:#fff;border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow);cursor:pointer;transition:.15s;display:flex;flex-direction:column}
+.prod{background:#fff;border-radius:14px;overflow:hidden;box-shadow:var(--shadow);cursor:pointer;transition:.15s;display:flex;flex-direction:column}
 .prod:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg)}
-.prod .ph{aspect-ratio:1/1;background:var(--blue-ll);position:relative;overflow:hidden}
-.prod .ph .emoji{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:46px}
+.prod .ph{aspect-ratio:5/4;background:var(--blue-ll);position:relative;overflow:hidden}
+.prod .ph .emoji{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:40px}
 .prod .ph img{width:100%;height:100%;object-fit:cover}
-.prod .disc-badge{position:absolute;left:8px;top:8px;background:var(--rose);color:#fff;font-size:11px;font-weight:800;padding:3px 8px;border-radius:7px}
-.prod .fav{position:absolute;right:8px;top:8px;width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.92);display:flex;align-items:center;justify-content:center;color:var(--ink-3)}
-.prod .info{padding:10px 11px 12px;flex:1;display:flex;flex-direction:column}
-.prod .nm{font-weight:800;font-size:13.5px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:34px}
-.prod .unit{font-size:11px;color:var(--ink-3);margin-top:2px}
-.prod .pr{font-weight:800;color:var(--navy);margin-top:6px;font-size:15px}
-.prod .old{font-size:11.5px;color:var(--ink-3);text-decoration:line-through;font-weight:600}
-.prod .add{margin-top:8px;width:100%}
+.prod .disc-badge{position:absolute;left:7px;top:7px;background:var(--rose);color:#fff;font-size:10px;font-weight:800;padding:2px 7px;border-radius:6px;z-index:2}
+.prod .info{padding:7px 9px 9px;flex:1;display:flex;flex-direction:column}
+.prod .nm{font-weight:800;font-size:12.5px;line-height:1.22;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:30px}
+.prod .unit{font-size:10.5px;color:var(--ink-3);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prod .pr{font-weight:800;color:var(--navy);margin-top:auto;padding-top:4px;font-size:14px}
+.prod .old{font-size:11px;color:var(--ink-3);text-decoration:line-through;font-weight:600}
+.prod .add-fab{position:absolute;right:7px;bottom:7px;width:30px;height:30px;border-radius:50%;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 7px rgba(0,0,0,.28);z-index:2}
+.prod .add-fab svg{width:18px;height:18px}
+.prod .add-fab:disabled{background:var(--ink-3);opacity:.6}
+.prod .add-fab.guest{background:#fff;color:var(--navy)}
 
 /* ============================ POS ============================ */
 .pos-grid{display:grid;grid-template-columns:1fr 380px;gap:14px;align-items:start}
@@ -230,7 +232,10 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:14px 0}
   .overlay{align-items:flex-end}
 }
 @media(max-width:520px){
-  .prod-grid{grid-template-columns:repeat(2,1fr)}.pos-prods{grid-template-columns:repeat(2,1fr)}
+  .prod-grid{grid-template-columns:repeat(2,1fr);gap:9px}.pos-prods{grid-template-columns:repeat(2,1fr);gap:9px}
+  .prod .ph .emoji{font-size:30px}
+  .prod .add-fab{width:26px;height:26px}.prod .add-fab svg{width:16px;height:16px}
+  .prod .info{padding:6px 8px 8px}.prod .nm{font-size:11.5px;min-height:26px}.prod .pr{font-size:13px}
   .brand small{display:none}.topbar .brand-text{display:none}
   .field.row2{grid-template-columns:1fr}
 }
@@ -498,11 +503,10 @@ const DB = (() => {
   /* ---- orders ---- */
   async function createOrder(order, items, opts={}){
     if(!isDemo){
-      const {data:o,error}=await sb.from('orders').insert(order).select().single(); if(error)throw error;
-      const its=items.map(it=>({...it,order_id:o.id}));
-      await sb.from('order_items').insert(its);
-      if(o.points_earned>0||o.points_used>0) await recordPoints(o, items);
-      if(o.customer_id&&(o.points_earned||o.points_used)) await sb.from('profiles').update({points:(await getMember(o.customer_id)).points + o.points_earned - o.points_used}).eq('id',o.customer_id);
+      // Semua operasi (order + item + kurangi stok + catat poin) dijalankan
+      // di SERVER via RPC place_order (SECURITY DEFINER) -> aman & lewati RLS.
+      const {data:o,error}=await sb.rpc('place_order',{ p_order: order, p_items: items, p_customer_id: order.customer_id||null });
+      if(error) throw error;
       return o;
     }
     const d=load(); const id=uid(); d.seq.order=(d.seq.order||1000)+1;
@@ -847,18 +851,20 @@ const App = {
   renderProdGrid(prods){
     const g=document.getElementById('pgrid');
     if(!prods.length){ g.innerHTML=`<div class="empty" style="grid-column:1/-1">${IC.search}<p>Produk tidak ditemukan</p></div>`; return; }
+    const guest=!this.state.user;
     g.innerHTML=prods.map(p=>{
-      const disc=p.cost&&p.price<p.cost; const em=p.emoji||'📦';
+      const disc=p.cost&&p.price<p.cost; const em=p.emoji||'📦'; const out=Number(p.stock||0)<=0;
+      const act=guest?`App.openLogin('Masuk dulu untuk belanja & dapat poin')`:`App.quickAdd('${p.id}')`;
       return `<div class="prod" onclick="App.openProduct('${p.id}')">
         <div class="ph">${p.image_url?`<img src="${p.image_url}">`:`<div class="emoji">${em}</div>`}
           ${disc?`<span class="disc-badge">HEMAT</span>`:''}
-          ${Number(p.stock||0)<=0?`<span class="disc-badge" style="background:var(--ink-3)">HABIS</span>`:''}
+          ${out?`<span class="disc-badge" style="background:var(--ink-3)">HABIS</span>`:''}
+          <button class="add-fab ${guest?'guest':''}" ${out?'disabled':''} onclick="event.stopPropagation();${act}" aria-label="Tambah">${out?'✕':IC.plus}</button>
         </div>
         <div class="info">
           <div class="nm">${p.name}</div>
-          <div class="unit">${p.brand||p.unit||''} ${p.stock!=null?`· stok ${p.stock}`:''}</div>
+          <div class="unit">${p.brand||p.unit||''}</div>
           <div class="pr">${this.money(p.price)}</div>
-          <button class="btn sm ${Number(p.stock||0)<=0?'':(this.state.user?'green':'')}" ${Number(p.stock||0)<=0?'disabled':''} onclick="event.stopPropagation();${this.state.user?`App.quickAdd('${p.id}')`:`App.openLogin('Masuk dulu untuk belanja & dapat poin')`}">${Number(p.stock||0)<=0?'Habis':(this.state.user?IC.plus+' Tambah':IC.user+' Masuk')}</button>
         </div></div>`;
     }).join('');
   },
@@ -1546,6 +1552,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#003D7A;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"1954b47c125f43f8b4338b3c4f804e4f"}' crossorigin="anonymous"></script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a237e088197df93a',t:'MTc4NTQ1MTM1Mg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a23865890c7e4014',t:'MTc4NTQ1NjgwMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
