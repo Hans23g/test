@@ -886,11 +886,12 @@ const App = {
     const m=this.state.user||{}; const guest=!this.state.user;
     const catName = this.state.category!=='all' ? (cats.find(c=>c.id===this.state.category)?.name||'') : '';
     v.innerHTML=`
-      ${!forStaff?(this.state._banner?`<div class="promo-banner" style="padding:0;background:none" ${guest?`onclick="App.openLogin()"`:''}><img src="${this.state._banner}" alt="Banner promo" style="width:100%;border-radius:18px;object-fit:cover;max-height:170px;display:block;cursor:pointer"></div>`:`<div class="promo-banner" ${guest?`onclick="App.openLogin()"`:''}>
+      ${this.state._banner?`<div class="promo-banner" style="padding:0;background:none" ${guest?`onclick="App.openLogin()"`:''}><img src="${this.state._banner}" alt="Banner promo" style="width:100%;border-radius:18px;object-fit:cover;max-height:170px;display:block;cursor:pointer"></div>`
+      :(!forStaff?`<div class="promo-banner" ${guest?`onclick="App.openLogin()"`:''}>
         <h3>${guest?'Selamat datang di Toko Hana 🎉':`Halo, ${m.full_name?.split(' ')[0]||'Sahabat'}! 👋`}</h3>
         <p>${guest?'Belanja kebutuhan harian, dapat poin & gratis ongkir sekitar!':`Saldo ${IC.coin} ${(m.points||0)} poin · belanja dapat poin tiap transaksi`}</p>
         ${guest?`<span class="promo-cta">Masuk untuk Belanja →</span>`:''}
-      </div>`):''}
+      </div>`:'')}
       <div class="cats" id="catbar">
         <div class="cat-tile all" onclick="App.toggleCatDropdown()"><div class="cat-ico">🗂️</div><span>Semua ▾</span></div>
         ${cats.map(c=>`<div class="cat-tile ${this.state.category===c.id?'active':''}" data-c="${c.id}" onclick="App.pickCat('${c.id}')"><div class="cat-ico">${c.icon||'📦'}</div><span>${c.name}</span></div>`).join('')}
@@ -1768,5 +1769,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#003D7A;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a23c24a2db693102',t:'MTc4NTQ5NjA4NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a23c3208fe16f881',t:'MTc4NTQ5NjYzMw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
