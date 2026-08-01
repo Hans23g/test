@@ -1055,6 +1055,8 @@ const App = {
           <div class="sum-line tot"><span>Total</span><span id="grand-tot">${this.money(sub)}</span></div>
           <div class="field"><label>Alamat pengiriman</label><textarea id="addr" rows="2" placeholder="Alamat lengkap untuk antar">${this.state.user.address||''}</textarea></div>
           <div class="field"><label>Catatan (opsional)</label><input id="note" placeholder="Catatan untuk penjual"></div>
+          <div class="field"><label>Metode Pembayaran</label><select id="pay-method"><option>COD (Bayar di tempat)</option><option>Transfer Bank</option><option>QRIS</option><option>E-Wallet (GoPay/OVO/DANA)</option></select></div>
+          <div class="field"><label>Keterangan / Bukti Bayar (untuk WA)</label><textarea id="wa-note" rows="2" placeholder="Mis: Sudah transfer ke BCA / Bayar cash saat sampai"></textarea></div>
           <button class="btn green block" onclick="App.placeOrder()">${IC.check} Buat Pesanan</button>
           <button class="btn block" style="background:#25D366;margin-top:8px" onclick="App.orderViaWhatsApp()">💬 Pesan via WhatsApp</button>
           <p class="muted small center" style="margin-top:8px">+ ${pts} poin akan didapat dari pesanan ini</p>
@@ -1080,7 +1082,7 @@ const App = {
     const ptsEarn=Math.floor(tot/CONFIG.EARN_PER_RP);
     const order={ order_no:'ONL'+Date.now().toString().slice(-8), customer_id:this.state.user.id, customer_name:this.state.user.full_name,
       channel:'online', status:'pending', subtotal:sub, discount:disc, points_used:use, points_earned:ptsEarn, shipping:0,
-      total:tot, address:addr, note:document.getElementById('note').value, payment_method:'COD' };
+      total:tot, address:addr, note:document.getElementById('note').value, payment_method:document.getElementById('pay-method')?.value||'COD' };
     const items=this.state.cart.map(it=>({product_id:it.product_id,name:it.name,price:it.price,qty:it.qty,subtotal:it.price*it.qty}));
     try{
       const o=await DB.createOrder(order,items);
@@ -1094,17 +1096,75 @@ const App = {
     }catch(e){ this.toast('Gagal: '+e.message,'err'); }
   },
 
-  orderViaWhatsApp(){
+  async orderViaWhatsApp(){
     const c=this.state.cart; if(!c.length){this.toast('Keranjang kosong','err');return;}
-    const u=this.state.user||{};
+    const u=this.state.user;
     let ph=(this.state._storePhone||'').replace(/\D/g,'');
     if(!ph){this.toast('Set nomor WA di Pengaturan → Profil Toko','err');return;}
     if(!ph.startsWith('62')) ph=ph.startsWith('0')?'62'+ph.slice(1):'62'+ph;
-    const items=c.map(it=>`• ${it.qty}x ${it.name} — ${this.money(it.price*it.qty)}`).join('\n');
-    const total=c.reduce((a,b)=>a+b.price*b.qty,0);
-    const msg=`Halo ${this.state._storeName||'Toko Hana'}! 👋\nSaya mau pesan:\n\n${items}\n\nTotal: *${this.money(total)}*\n\nNama: ${u.full_name||'-'}\nHP: ${u.phone||'-'}`;
-    window.open(`https://wa.me/${ph}?text=${encodeURIComponent(msg)}`,'_blank');
-    this.toast('Membuka WhatsApp…','ok');
+    const sub=c.reduce((a,b)=>a+b.price*b.qty,0);
+    const usePts=Math.min(Number(document.getElementById('use-pts')?.value||0),u.points||0,Math.floor(sub/CONFIG.REDEEM_VALUE));
+    const disc=usePts*CONFIG.REDEEM_VALUE; const tot=sub-disc;
+    const addr=document.getElementById('addr')?.value?.trim(); if(!addr){this.toast('Alamat wajib diisi','err');return;}
+    const note=(document.getElementById('note')?.value||'').trim();
+    const payEl=document.getElementById('pay-method'); const pay=payEl?.value||'COD (Bayar di tempat)';
+    const waNote=(document.getElementById('wa-note')?.value||'').trim();
+    const ptsEarn=Math.floor(tot/CONFIG.EARN_PER_RP);
+    // 1) buat order dulu (sama kayak placeOrder tapi dengan payment_method + note WA)
+    const order={ order_no:'ONL'+Date.now().toString().slice(-8), customer_id:u.id, customer_name:u.full_name,
+      channel:'online', status:'pending', subtotal:sub, discount:disc, points_used:usePts, points_earned:ptsEarn, shipping:0,
+      total:tot, address:addr, note:(note?note+'\n':'')+'[Order via WhatsApp'+(waNote?' — '+waNote:'')+']', payment_method:pay };
+    const items=c.map(it=>({product_id:it.product_id,name:it.name,price:it.price,qty:it.qty,subtotal:it.price*it.qty}));
+    try{
+      const o=await DB.createOrder(order,items);
+      this.state.user.points=(this.state.user.points||0)+ptsEarn-usePts;
+      // 2) format WA
+      const itemList=items.map((it,i)=>`${i+1}. ${it.name}\n    ${it.qty} ${it.unit||'pcs'} × ${this.money(it.price)} = ${this.money(it.subtotal)}`).join('\n');
+      const msg=
+`═══════════════
+🛒 *PESANAN BARU*
+═══════════════
+No. Order: *${o.order_no}*
+Dari: *${u.full_name}*
+
+───────────────
+📦 *DETAIL PESANAN*
+───────────────
+${itemList}
+
+───────────────
+💰 *RINGKASAN*
+───────────────
+Subtotal: ${this.money(sub)}
+${disc>0?`Diskon Poin: -${this.money(disc)}\n`:''}*TOTAL: ${this.money(tot)}*
+
+───────────────
+🚚 *PENGIRIMAN*
+───────────────
+Nama: ${u.full_name}
+WA/HP: ${u.phone||'-'}
+Alamat: ${addr}
+Catatan: ${note||'-'}
+
+───────────────
+💳 *PEMBAYARAN*
+───────────────
+Metode: *${pay}*
+${waNote?`\n📝 *KET. PEMBAYARAN:*\n${waNote}\n`:''}
+═══════════════
+_Pesan via OmniPOS CMS — ${o.order_no}_
+═══════════════`;
+      // 3) kosongkan keranjang & buka WA
+      this.state.cart=[]; this.updateCartBadge();
+      window.open(`https://wa.me/${ph}?text=${encodeURIComponent(msg)}`,'_blank');
+      this.toast('Pesanan dibuat ✓ & WA dibuka','ok');
+      // 4) tampilkan konfirmasi
+      this.openSheet(`<div class="sheet-body center"><div style="font-size:48px">✅💬</div><h2>Pesanan Dibuat & WA Dikirim!</h2>
+        <p class="muted">No. <b class="kbd">${o.order_no}</b></p>
+        <p class="muted small">Pesanan tersimpan & WhatsApp terbuka dengan detail lengkap. Kasir akan memproses pesananmu.</p>
+        <div class="row" style="justify-content:center;margin-top:16px"><button class="btn ghost" onclick="App.closeSheet();location.hash='store'">Lanjut Belanja</button>
+        <button class="btn" onclick="App.closeSheet();location.hash='orders'">Lihat Pesanan</button></div></div>`);
+    }catch(e){ this.toast('Gagal: '+e.message,'err'); }
   },
 
   /* ---- MEMBER ORDERS ---- */
@@ -1945,5 +2005,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#003D7A;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a241662dadedeb9e',t:'MTc4NTU1MTE5OA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a24194a8ebe857de',t:'MTc4NTU1MzEwMg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
