@@ -1039,7 +1039,7 @@ const App = {
     const sn=this.state._storeName||'Toko Hana';
     const ft=this.state._footer||{};
     const ftLogo=ft.logo||LOGO;
-    el.innerHTML=`<footer style="margin:20px -16px 0;background:#1a2332;color:#d4dae4;padding:22px 20px calc(20px + var(--safe-b))">
+    el.innerHTML=`<footer style="margin:20px -16px 0;background:${ft.bg||'#0d1421'};color:#d4dae4;padding:22px 20px calc(20px + var(--safe-b))">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;justify-content:center">
         ${ftLogo?`<img src="${ftLogo}" alt="${sn}" style="height:34px;max-width:160px;object-fit:contain;filter:brightness(0) invert(1)">`:''}
         ${ft.showName?`<b style="color:#fff;font-size:15px">${sn}</b>`:''}
@@ -2027,6 +2027,7 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
             </div>
           </div>
         </div>
+        <div class="field row2"><div><label>Warna Background Footer</label><input type="color" id="ft-bg" value="${this.state._footer?.bg||'#0d1421'}" style="width:100%;height:42px;border-radius:10px;cursor:pointer;border:1px solid var(--line);background:none"></div><div style="display:flex;align-items:flex-end;gap:6px;flex-wrap:wrap"><button class="btn xs ghost" onclick="document.getElementById('ft-bg').value='#0d1421'"> gelap </button><button class="btn xs ghost" onclick="document.getElementById('ft-bg').value='#1a1a2e'"> navy </button><button class="btn xs ghost" onclick="document.getElementById('ft-bg').value='#1b1b1b'"> hitam </button></div></div>
         <div class="field"><label>Teks Footer</label><textarea id="ft-text" rows="4" placeholder="📍 Jl. Merdeka No. 17, Depok&#10;📞 0812-3000-1111&#10;🕐 Buka: Senin-Sabtu 08:00-21:00&#10;💳 Transfer BCA / QRIS / GoPay">${(this.state._footer?.text||'').replace(/</g,'&lt;')}</textarea></div>
         <div class="row" style="gap:8px;margin-bottom:10px"><label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;cursor:pointer"><input type="checkbox" id="ft-showname" ${this.state._footer?.showName!==false?'checked':''}> Tampilkan nama toko di footer</label></div>
         <button class="btn green sm" onclick="App.saveFooter()">${IC.check} Simpan Footer</button>
@@ -2101,7 +2102,8 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
   async saveFooter(){
     const text=(document.getElementById('ft-text')?.value||'').trim();
     const showName=document.getElementById('ft-showname')?.checked!==false;
-    try{ const ft={...(this.state._footer||{}),text,showName}; await DB.saveSettings('footer',ft); this.state._footer=ft; this.toast('Footer disimpan ✓','ok'); }catch(e){this.toast('Gagal','err');}
+    const bg=document.getElementById('ft-bg')?.value||'#0d1421';
+    try{ const ft={...(this.state._footer||{}),text,showName,bg}; await DB.saveSettings('footer',ft); this.state._footer=ft; this.toast('Footer disimpan ✓','ok'); }catch(e){this.toast('Gagal','err');}
   },
   async saveFooterLogo(reset){
     if(reset){
@@ -2213,5 +2215,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#285FF4;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a247f1f29e491bd0',t:'MTc4NTYxOTgzNw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a247ffd8e8e7fcfe',t:'MTc4NTYyMDQwNw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
