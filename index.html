@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-<meta name="theme-color" content="#003D7A" />
+<meta name="theme-color" content="#285FF4" />
 <meta name="description" content="Toko Hana — Grocery Warungnya Rakyat ID. Kasir offline + toko online terpusat Supabase." />
 <title>Toko Hana — Grocery Warungnya Rakyat ID</title>
 <link rel="manifest" href="./manifest.webmanifest" />
@@ -12,11 +12,11 @@
 <style>
 /* ============================ THEME (BCA-inspired) ============================ */
 :root{
-  --navy:#003D7A; --navy-2:#00538C; --blue:#0061B1; --blue-l:#E8F1FA; --blue-ll:#F4F8FC;
+  --navy:#285FF4; --navy-2:#3D6FF5; --blue:#5782F6; --blue-l:#E9EFFD; --blue-ll:#F4F7FE;
   --accent:#0090E0; --accent-2:#00BFA6; --gold:#F5A623; --rose:#E11D48;
   --green:#1FA463; --green-l:#E6F6EE; --amber:#F59E0B; --amber-l:#FEF3C7;
   --ink:#10243B; --ink-2:#41586F; --ink-3:#7C8CA0; --line:#E4EAF1;
-  --bg:#E7F1FB; --card:#fff; --shadow:0 1px 2px rgba(16,36,59,.05),0 6px 18px rgba(16,36,59,.06);
+  --bg:#EDF2FE; --card:#fff; --shadow:0 1px 2px rgba(16,36,59,.05),0 6px 18px rgba(16,36,59,.06);
   --shadow-lg:0 10px 40px rgba(16,36,59,.16); --r:16px; --r-s:10px;
   --maxw:1180px; --bar-h:60px; --safe-b:env(safe-area-inset-bottom,0px);
 }
@@ -1095,7 +1095,8 @@ const App = {
           <div class="sum-line tot"><span>Total</span><span id="grand-tot">${this.money(sub)}</span></div>
           <div class="field"><label>Alamat pengiriman</label><textarea id="addr" rows="2" placeholder="Alamat lengkap untuk antar">${this.state.user.address||''}</textarea></div>
           <div class="field"><label>Catatan (opsional)</label><input id="note" placeholder="Catatan untuk penjual"></div>
-          <div class="field"><label>Metode Pembayaran</label><select id="pay-method"><option>COD (Bayar di tempat)</option><option>Transfer Bank</option><option>QRIS</option><option>E-Wallet (GoPay/OVO/DANA)</option></select></div>
+          <div class="field"><label>Metode Pembayaran</label><select id="pay-method" onchange="document.getElementById('pay-detail').innerHTML=App.payDetail(this.value)">${this.payMethods().map(m=>`<option value="${m.id}">${m.label}</option>`).join('')}</select></div>
+          <div id="pay-detail"></div>
           <div class="field"><label>Keterangan / Bukti Bayar (untuk WA)</label><textarea id="wa-note" rows="2" placeholder="Mis: Sudah transfer ke BCA / Bayar cash saat sampai"></textarea></div>
           <button class="btn green block" onclick="App.placeOrder()">${IC.check} Buat Pesanan</button>
           <button class="btn block" style="background:#25D366;margin-top:8px" onclick="App.orderViaWhatsApp()">💬 Pesan via WhatsApp</button>
@@ -1369,7 +1370,7 @@ _Pesan via OmniPOS CMS — ${o.order_no}_
     new Chart(document.getElementById('salesChart'),{type:'bar',data:{labels:days,datasets:[{data:vals,backgroundColor:'#0061B1',borderRadius:6}]},
       options:{plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>'Rp'+(v/1000)+'k'}}}}});
     new Chart(document.getElementById('channelChart'),{type:'doughnut',data:{labels:['Online','Offline'],
-      datasets:[{data:[s.online||0,s.offline||1],backgroundColor:['#0090E0','#003D7A'],borderWidth:0}]},
+      datasets:[{data:[s.online||0,s.offline||1],backgroundColor:['#0090E0','#285FF4'],borderWidth:0}]},
       options:{plugins:{legend:{position:'bottom'}},cutout:'62%'}});
   },
   async updateOnlineBadge(){ try{const o=await DB.listOrders({channel:'online',status:'pending'});const el=document.getElementById('nb-online');if(el){if(o.length){el.classList.remove('hide');el.textContent=o.length;}else el.classList.add('hide');}}catch(e){} },
@@ -1834,6 +1835,7 @@ _Pesan via OmniPOS CMS — ${o.order_no}_
           <button class="${this.state._setTab==='brand'?'active':''}" onclick="App.setSetTab('brand')">🖼️ Logo &amp; Banner</button>
           <button class="${this.state._setTab==='kategori'?'active':''}" onclick="App.setSetTab('kategori')">📁 Kategori</button>
           <button class="${this.state._setTab==='tema'?'active':''}" onclick="App.setSetTab('tema')">🎨 Tema</button>
+          <button class="${this.state._setTab==='pay'?'active':''}" onclick="App.setSetTab('pay')">💳 Bayar</button>
           <button class="${this.state._setTab==='poin'?'active':''}" onclick="App.setSetTab('poin')">🪙 Poin</button>
         </div>
         <div id="set-body"></div>`;
@@ -1903,14 +1905,38 @@ _Pesan via OmniPOS CMS — ${o.order_no}_
           <div>${(this.state._cats||[]).map(c=>`<div class="row" style="gap:8px;align-items:center;background:var(--bg);padding:6px 8px;border-radius:10px;margin-bottom:6px"><span style="font-size:20px;width:30px;text-align:center">${c.icon||'📦'}</span><input value="${(c.name||'').replace(/"/g,'&quot;')}" onchange="App.updateCategory('${c.id}','name',this.value)" style="flex:1;background:#fff;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-weight:700;font-size:13px"><input value="${c.icon||'📦'}" maxlength="3" onchange="App.updateCategory('${c.id}','icon',this.value)" style="width:46px;background:#fff;border:1px solid var(--line);border-radius:8px;padding:8px;text-align:center;font-size:15px"><button class="iconbtn" style="width:30px;height:30px;color:var(--rose)" onclick="App.delCategory('${c.id}')">${IC.trash}</button></div>`).join('')||'<div class="muted small center">Belum ada kategori</div>'}</div>
         </div>`;
     } else if(tab==='tema'){
-      const presets=[['#003D7A','Navy BCA'],['#0E7C5A','Hijau Fresh'],['#D2691E','Oranye'],['#6B2FB5','Ungu'],['#C53030','Merah'],['#0E7C9E','Tosca'],['#C5306B','Pink'],['#2D5F3F','Forest'],['#1A1A2E','Hitam Elegan']];
-      const cur=this.state._themeColor||'#003D7A';
+      const presets=[['#285FF4','Biru BCA'],['#0E7C5A','Hijau Fresh'],['#D2691E','Oranye'],['#6B2FB5','Ungu'],['#C53030','Merah'],['#0E7C9E','Tosca'],['#C5306B','Pink'],['#2D5F3F','Forest'],['#1A1A2E','Hitam Elegan']];
+      const cur=this.state._themeColor||'#285FF4';
       body.innerHTML=`<div class="card"><h3>🎨 Warna Tema Utama</h3>
         <p class="muted small">Sesuaikan warna brand dengan filosofi usaha lu. Semua UI otomatis ikut.</p>
         <div class="theme-presets">${presets.map(([hex,nm])=>`<div class="theme-swatch ${cur===hex?'on':''}" style="background:${hex}" onclick="App.saveThemeColor('${hex}')" title="${nm}"></div>`).join('')}</div>
         <div class="field"><label>Warna custom</label><input type="color" value="${cur}" onchange="App.saveThemeColor(this.value)" style="width:100%;height:48px;border-radius:12px;cursor:pointer;border:1px solid var(--line);background:none"></div></div>
         <div class="card" style="margin-top:14px"><h3>🌙 Mode Tampilan</h3><p class="muted small">Preferensi per-perangkat (disimpan di browser).</p>
         <div class="row" style="gap:8px;margin-top:10px"><button class="btn ${this.state._darkMode?'ghost':'green'} block" onclick="App.state._darkMode&&App.toggleDarkMode()">☀️ Terang</button><button class="btn ${this.state._darkMode?'green':'ghost'} block" onclick="App.state._darkMode||App.toggleDarkMode()">🌙 Malam</button></div></div>`;
+    } else if(tab==='pay'){
+      const pay=this.state._pay||{};
+      body.innerHTML=`<div class="card"><h3>💳 Metode Pembayaran</h3>
+        <p class="muted small">Atur metode bayar. Pelanggan lihat instruksi saat checkout.</p>
+        <div style="background:var(--bg);padding:12px;border-radius:12px;margin:12px 0">
+          <div class="row between" style="margin-bottom:8px"><b class="small">🏦 Transfer Bank</b><label><input type="checkbox" id="pay-tf-on" ${pay.transfer?.on?'checked':''}> Aktif</label></div>
+          <div class="field row2"><div><label>Nama Bank</label><input id="pay-tf-bank" value="${pay.transfer?.bank||''}" placeholder="BCA / Mandiri"></div><div><label>No. Rekening</label><input id="pay-tf-num" value="${pay.transfer?.number||''}" placeholder="1234567890"></div></div>
+          <div class="field" style="margin:0"><label>Atas Nama</label><input id="pay-tf-name" value="${pay.transfer?.name||''}" placeholder="Toko Hana"></div>
+        </div>
+        <div style="background:var(--bg);padding:12px;border-radius:12px;margin-bottom:12px">
+          <div class="row between" style="margin-bottom:8px"><b class="small">📱 QRIS</b><label><input type="checkbox" id="pay-qris-on" ${pay.qris?.on?'checked':''}> Aktif</label></div>
+          ${pay.qris?.data?`<img src="${pay.qris.data}" style="max-width:130px;border-radius:10px;margin-bottom:8px;display:block">`:''}
+          <input type="file" id="pay-qris-file" accept="image/*" style="font-size:12px;margin-bottom:4px">
+          ${pay.qris?.data?`<button class="btn xs ghost" style="color:var(--rose)" onclick="App.savePay('qris',{on:true,data:null})">Hapus QR</button>`:''}
+        </div>
+        <div style="background:var(--bg);padding:12px;border-radius:12px;margin-bottom:12px">
+          <div class="row between" style="margin-bottom:8px"><b class="small">💸 E-Wallet</b><label><input type="checkbox" id="pay-ew-on" ${pay.ewallet?.on?'checked':''}> Aktif</label></div>
+          <div class="field row2"><div><label>Provider</label><input id="pay-ew-prov" value="${pay.ewallet?.provider||''}" placeholder="GoPay/DANA/OVO"></div><div><label>No. HP</label><input id="pay-ew-num" value="${pay.ewallet?.number||''}" placeholder="0812xxx"></div></div>
+          <div class="field" style="margin:0"><label>Atas Nama</label><input id="pay-ew-name" value="${pay.ewallet?.name||''}" placeholder="Toko Hana"></div>
+        </div>
+        <div style="background:var(--bg);padding:12px;border-radius:12px;margin-bottom:14px">
+          <div class="row between"><b class="small">💵 COD (Bayar di Tempat)</b><label><input type="checkbox" id="pay-cod-on" ${pay.cod?.on!==false?'checked':''}> Aktif</label></div>
+        </div>
+        <button class="btn green block" onclick="App.savePayAll()">${IC.check} Simpan Metode Bayar</button></div>`;
     } else if(tab==='poin'){
       body.innerHTML=`<div class="card"><form id="poin-form">
         <h3>Sistem Poin & Referral</h3>
@@ -1949,14 +1975,15 @@ _Pesan via OmniPOS CMS — ${o.order_no}_
     else if(s.banner&&s.banner.data) items=[{data:s.banner.data}];
     this.state._banners=items;
     this.state._storeName=(s.store&&s.store.name)||'Toko Hana'; this.state._storePhone=(s.store&&s.store.phone)||'';
-    const tc=(s.theme&&s.theme.primary)||'#003D7A'; this.state._themeColor=tc;
+    const tc=(s.theme&&s.theme.primary)||'#285FF4'; this.state._themeColor=tc;
+    this.state._pay=s.payment||{};
     this.applyThemeColor(tc);
     this.state._darkMode=(function(){try{return localStorage.getItem('omnipos_dark')==='1'}catch(e){return false}})();
     this.applyThemeMode(this.state._darkMode?'dark':'light',tc);
   }catch(e){} },
   hexToRgb(hex){ hex=hex.replace('#',''); if(hex.length===3)hex=hex.split('').map(c=>c+c).join(''); const n=parseInt(hex,16); return {r:(n>>16)&255,g:(n>>8)&255,b:n&255}; },
   applyThemeColor(hex){ const {r,g,b}=this.hexToRgb(hex); const l=(a)=>`rgb(${Math.min(255,r+(255-r)*a)|0},${Math.min(255,g+(255-g)*a)|0},${Math.min(255,b+(255-b)*a)|0})`; const R=document.documentElement.style; R.setProperty('--navy',hex);R.setProperty('--navy-2',l(0.1));R.setProperty('--blue',l(0.22));R.setProperty('--blue-l',l(0.9));R.setProperty('--blue-ll',l(0.95)); },
-  applyThemeMode(mode,ph){ const hex=ph||this.state._themeColor||'#003D7A'; const {r,g,b}=this.hexToRgb(hex); const R=document.documentElement.style; document.documentElement.dataset.theme=mode;
+  applyThemeMode(mode,ph){ const hex=ph||this.state._themeColor||'#285FF4'; const {r,g,b}=this.hexToRgb(hex); const R=document.documentElement.style; document.documentElement.dataset.theme=mode;
     if(mode==='dark'){R.setProperty('--bg',`rgb(${Math.max(0,r*.1)|0},${Math.max(0,g*.1)|0},${Math.max(0,b*.1)|0})`);R.setProperty('--card',`rgb(${Math.max(0,r*.16)|0},${Math.max(0,g*.16)|0},${Math.max(0,b*.16)|0})`);R.setProperty('--ink','#E8EEF5');R.setProperty('--ink-2','#9CABC0');R.setProperty('--ink-3','#6B7E96');R.setProperty('--line','rgba(255,255,255,.08)');R.setProperty('--shadow','0 1px 3px rgba(0,0,0,.3),0 6px 18px rgba(0,0,0,.2)');R.setProperty('--shadow-lg','0 10px 40px rgba(0,0,0,.35)');}
     else{R.setProperty('--bg',`rgb(${Math.min(255,r+(255-r)*.92)|0},${Math.min(255,g+(255-g)*.92)|0},${Math.min(255,b+(255-b)*.92)|0})`);R.setProperty('--card','#fff');R.setProperty('--ink','#10243B');R.setProperty('--ink-2','#41586F');R.setProperty('--ink-3','#7C8CA0');R.setProperty('--line','#E4EAF1');R.setProperty('--shadow','0 1px 2px rgba(16,36,59,.05),0 6px 18px rgba(16,36,59,.06)');R.setProperty('--shadow-lg','0 10px 40px rgba(16,36,59,.16)');}
     R.setProperty('color-scheme',mode);},
@@ -1995,6 +2022,39 @@ _Pesan via OmniPOS CMS — ${o.order_no}_
       this.state.category='all'; this.state._cats=await DB.listCategories();
       this.renderSetTab('kategori',await DB.getSettings()); this.toast('Preset diterapkan ✓','ok');
     }catch(e){this.toast('Gagal: '+e.message,'err');} },
+  async savePayAll(){
+    const pay={cod:{on:document.getElementById('pay-cod-on')?.checked||false},
+      transfer:{on:document.getElementById('pay-tf-on')?.checked||false,bank:document.getElementById('pay-tf-bank')?.value||'',number:document.getElementById('pay-tf-num')?.value||'',name:document.getElementById('pay-tf-name')?.value||''},
+      qris:{on:document.getElementById('pay-qris-on')?.checked||false,data:this.state._pay?.qris?.data||null},
+      ewallet:{on:document.getElementById('pay-ew-on')?.checked||false,provider:document.getElementById('pay-ew-prov')?.value||'',number:document.getElementById('pay-ew-num')?.value||'',name:document.getElementById('pay-ew-name')?.value||''}};
+    const qf=document.getElementById('pay-qris-file')?.files[0];
+    try{
+      if(qf){ if(qf.size>2*1024*1024){this.toast('QR max 2MB','err');return;} pay.qris.data=await this.readImage(qf,400); }
+      await DB.saveSettings('payment',pay); this.state._pay=pay;
+      this.toast('Metode bayar disimpan ✓','ok');
+    }catch(e){this.toast('Gagal: '+(e.message||e),'err');}
+  },
+  async savePay(key,patch){
+    const pay={...(this.state._pay||{})};
+    if(!pay[key])pay[key]={}; Object.assign(pay[key],patch);
+    await DB.saveSettings('payment',pay); this.state._pay=pay;
+    this.renderSetTab('pay',await DB.getSettings());
+  },
+  payMethods(){
+    const p=this.state._pay||{}; const m=[];
+    if(p.cod?.on!==false)m.push({id:'cod',label:'💵 COD (Bayar di Tempat)'});
+    if(p.transfer?.on&&p.transfer?.number)m.push({id:'transfer',label:'🏦 Transfer '+p.transfer.bank});
+    if(p.qris?.on&&p.qris?.data)m.push({id:'qris',label:'📱 QRIS'});
+    if(p.ewallet?.on&&p.ewallet?.number)m.push({id:'ewallet',label:'💸 '+p.ewallet.provider});
+    return m.length?m:[{id:'cod',label:'COD (Bayar di Tempat)'}];
+  },
+  payDetail(id){
+    const p=this.state._pay||{};
+    if(id==='transfer')return `<div class="card" style="background:var(--blue-ll);padding:12px;margin:10px 0"><b>Transfer ke:</b><br>Bank: <b>${p.transfer?.bank}</b><br>No. Rek: <b class="kbd" style="font-size:15px">${p.transfer?.number}</b><br>a.n. <b>${p.transfer?.name}</b></div>`;
+    if(id==='qris')return `<div class="card" style="text-align:center;padding:14px;margin:10px 0"><img src="${p.qris?.data}" style="max-width:180px;border-radius:12px"><p class="muted small" style="margin-top:8px">Scan QRIS untuk bayar</p></div>`;
+    if(id==='ewallet')return `<div class="card" style="background:var(--blue-ll);padding:12px;margin:10px 0"><b>Kirim ke:</b><br>${p.ewallet?.provider}: <b class="kbd" style="font-size:15px">${p.ewallet?.number}</b><br>a.n. <b>${p.ewallet?.name}</b></div>`;
+    return '';
+  },
   async saveFavicon(){ const f=document.getElementById('fav-file').files[0]; if(!f){this.toast('Pilih file gambar dulu','err');return;} if(f.size>2*1024*1024){this.toast('Maks 2MB','err');return;}
     try{ const data=await this.readSquare(f,128); await DB.saveSettings('favicon',{data}); document.querySelectorAll('link[rel="icon"],link[rel="apple-touch-icon"]').forEach(l=>l.setAttribute('href',data)); this.toast('Favicon disimpan ✓ & langsung dipakai','ok'); }catch(e){this.toast('Gagal: '+(e.message||e),'err');} },
   async resetFavicon(){ if(!confirm('Reset favicon ke default (favicon.png)?'))return; try{ await DB.saveSettings('favicon',{data:null}); document.querySelectorAll('link[rel="icon"],link[rel="apple-touch-icon"]').forEach(l=>l.setAttribute('href','favicon.png')); this.toast('Favicon direset ✓','ok'); }catch(e){this.toast('Gagal','err');} },
@@ -2060,8 +2120,8 @@ if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.s
 /* ---- boot ---- */
 window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   console.error('BOOT ERROR:', e);
-  document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#003D7A;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
+  document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#285FF4;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a246287b9fde7ae1',t:'MTc4NTYwMTEwMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a246adb52c16f8f6',t:'MTc4NTYwNjU1Ng=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
