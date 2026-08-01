@@ -1284,7 +1284,11 @@ _Pesan via OmniPOS CMS — ${o.order_no}_
     const u=this.state.user; const v=document.getElementById('view');
     v.innerHTML=`<div class="section-title"><h2>Profil & Pengaturan</h2></div>
       <div class="card">
-        <div class="row" style="gap:14px"><div style="width:64px;height:64px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800">${(u.full_name||'?')[0]}</div>
+        <div class="row" style="gap:14px">
+          <div style="position:relative;width:72px;height:72px;flex:none">
+            ${u.avatar_url?`<img src="${u.avatar_url}" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:2px solid var(--line)">`:`<div style="width:72px;height:72px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800">${(u.full_name||'?')[0]}</div>`}
+            <label style="position:absolute;bottom:-2px;right:-2px;width:28px;height:28px;border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:var(--shadow);border:2px solid var(--card);font-size:13px" title="Ganti foto">📷<input type="file" accept="image/*" style="display:none" onchange="App.uploadAvatar(this.files[0])"></label>
+          </div>
         <div class="col"><h3>${u.full_name}</h3><div class="muted small">${u.email}</div><span class="tag">MEMBER</span></div></div>
         <hr class="sep">
         <form id="profile-form">
@@ -1303,6 +1307,15 @@ _Pesan via OmniPOS CMS — ${o.order_no}_
       </div>`;
     document.getElementById('profile-form').onsubmit=async e=>{ e.preventDefault(); const f=new FormData(e.target);
       try{ const p=await DB.updateProfile(u.id,{full_name:f.get('full_name'),phone:f.get('phone'),address:f.get('address')}); this.state.user={...this.state.user,...p}; this.toast('Profil disimpan ✓','ok'); }catch(err){this.toast('Gagal: '+err.message,'err');} };
+  },
+
+  async uploadAvatar(file){
+    if(!file)return; if(file.size>3*1024*1024){this.toast('Maks 3MB','err');return;}
+    try{ const data=await this.readImage(file,150);
+      await DB.updateProfile(this.state.user.id,{avatar_url:data});
+      this.state.user={...this.state.user,avatar_url:data};
+      this.toast('Foto profil diperbarui ✓','ok'); this.viewMemberProfile();
+    }catch(e){this.toast('Gagal: '+(e.message||e),'err');}
   },
 
   /* =======================================================================
@@ -1986,7 +1999,7 @@ _Pesan via OmniPOS CMS — ${o.order_no}_
     const u=this.state.user;
     let head, body, isForm=false;
     if(u){
-      head=`<div class="row" style="gap:12px;min-width:0"><div class="av">${(u.full_name||'?')[0]}</div><div class="col" style="min-width:0"><b style="font-size:15px">${u.full_name||'Pengguna'}</b><div style="opacity:.9;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.email||''}</div>${!this.isAdmin()?`<div style="margin-top:3px;font-size:11.5px;opacity:.95">${IC.coin} ${(u.points||0)} poin</div>`:''}</div></div>`;
+      head=`<div class="row" style="gap:12px;min-width:0">${u.avatar_url?`<img src="${u.avatar_url}" style="width:42px;height:42px;border-radius:50%;object-fit:cover;flex:none">`:`<div class="av">${(u.full_name||'?')[0]}</div>`}<div class="col" style="min-width:0"><b style="font-size:15px">${u.full_name||'Pengguna'}</b><div style="opacity:.9;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.email||''}</div>${!this.isAdmin()?`<div style="margin-top:3px;font-size:11.5px;opacity:.95">${IC.coin} ${(u.points||0)} poin</div>`:''}</div></div>`;
       let items=[];
       if(this.isAdmin()) items=[['store','Home',IC.home],['products','Produk',IC.box],['pos','Kasir',IC.scan],['online-orders','Order Online',IC.bag],['members','Member',IC.users],['reports','Laporan',IC.chart],['dashboard','Dashboard',IC.grid],['settings','Pengaturan',IC.settings]];
       else items=[['store','Toko',IC.store],['cart','Keranjang',IC.cart],['orders','Pesanan',IC.list],['card','Kartu Member',IC.card],['points','Poin & Referral',IC.coin],['profile','Profil',IC.user]];
@@ -2034,5 +2047,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#003D7A;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a242608e1d7a6875',t:'MTc4NTU2MTQ1Mw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a242c0662ab0f8c8',t:'MTc4NTU2NTM3OQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
