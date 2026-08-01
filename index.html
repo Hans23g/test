@@ -131,9 +131,9 @@ h1,h2,h3,h4{margin:0;font-weight:800;letter-spacing:-.01em}
 
 /* mobile bottom nav */
 .bottomnav{position:fixed;left:0;right:0;bottom:0;z-index:35;background:#fff;border-top:1px solid var(--line);
-  display:none;padding:6px 6px calc(6px + var(--safe-b));justify-content:space-around}
-.bn-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0;color:var(--ink-3);font-size:10.5px;font-weight:700;border-radius:10px}
-.bn-item.active{color:var(--navy)} .bn-item svg{width:22px;height:22px}
+  display:none;padding:4px 4px calc(3px + var(--safe-b));justify-content:space-around}
+.bn-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:1px;padding:4px 0;color:var(--ink-3);font-size:10px;font-weight:700;border-radius:10px}
+.bn-item.active{color:var(--navy)} .bn-item svg{width:20px;height:20px}
 .bn-badge{position:absolute;background:var(--rose);color:#fff;font-size:10px;font-weight:800;min-width:17px;height:17px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px}
 
 /* ============================ CARDS / GRID ============================ */
@@ -272,7 +272,7 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:14px 0}
 /* ============================ RESPONSIVE ============================ */
 @media(max-width:1080px){.prod-grid{grid-template-columns:repeat(4,1fr)}.pos-prods{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:880px){
-  .shell{grid-template-columns:1fr}.sidebar{display:none}.main{padding:14px 14px 96px}
+  .shell{grid-template-columns:1fr}.sidebar{display:none}.main{padding:14px 14px 78px}
   .bottomnav{display:flex}
   .prod-grid{grid-template-columns:repeat(3,1fr)}.pos-grid{grid-template-columns:1fr}
   .pos-prods{grid-template-columns:repeat(3,1fr);max-height:none}
@@ -289,6 +289,7 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:14px 0}
   .membercard .mc-name{font-size:18px}
 }
 @media(max-width:520px){
+  :root{--bar-h:52px}
   .prod-grid{grid-template-columns:repeat(2,1fr);gap:9px}.pos-prods{grid-template-columns:repeat(2,1fr);gap:9px}
   .prod .ph .emoji{font-size:30px}
   .prod .add-fab{width:26px;height:26px}.prod .add-fab svg{width:16px;height:16px}
@@ -2032,5 +2033,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#003D7A;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2420f7d9fe1ce57',t:'MTc4NTU1ODEzMw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a24226c8c97bfe07',t:'MTc4NTU1OTA4Nw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
