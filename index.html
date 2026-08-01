@@ -66,8 +66,8 @@ h1,h2,h3,h4{margin:0;font-weight:800;letter-spacing:-.01em}
 .topbar .wrap{display:flex;align-items:center;gap:10px;height:var(--bar-h)}
 .brand{display:flex;align-items:center;gap:9px;font-weight:800;font-size:15.5px;color:var(--ink);flex:none}
 .brand .logo{width:36px;height:36px;border-radius:11px;background:linear-gradient(135deg,var(--navy),var(--blue));color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:19px;box-shadow:0 3px 8px rgba(0,61,122,.3)}
-.brand .logo-img{height:34px;width:auto;max-width:150px;object-fit:contain;flex:none;border-radius:8px}
-@media(max-width:520px){.brand .logo-img{height:30px;max-width:120px}}
+.brand .logo-img{height:42px;width:auto;max-width:220px;object-fit:contain;flex:none}
+@media(max-width:520px){.brand .logo-img{height:36px;max-width:160px}}
 .brand small{display:block;font-weight:600;color:var(--ink-3);font-size:10px;letter-spacing:.02em}
 .topbar .search-pill{flex:1;display:flex;align-items:center;gap:8px;background:#fff;border:1px solid rgba(0,61,122,.1);border-radius:999px;padding:0 14px;min-width:0;height:40px;transition:.15s}
 .topbar .search-pill:focus-within{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-l)}
@@ -292,6 +292,7 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:14px 0}
 }
 @media(max-width:520px){
   :root{--bar-h:52px}
+  .brand .logo-img{height:34px;max-width:140px}
   .prod .ph{aspect-ratio:3/2}
   .prod-grid{grid-template-columns:repeat(2,1fr);gap:9px}.pos-prods{grid-template-columns:repeat(2,1fr);gap:9px}
   .prod .ph .emoji{font-size:30px}
@@ -2059,7 +2060,7 @@ _Pesan via OmniPOS CMS — ${o.order_no}_
     try{ const data=await this.readSquare(f,128); await DB.saveSettings('favicon',{data}); document.querySelectorAll('link[rel="icon"],link[rel="apple-touch-icon"]').forEach(l=>l.setAttribute('href',data)); this.toast('Favicon disimpan ✓ & langsung dipakai','ok'); }catch(e){this.toast('Gagal: '+(e.message||e),'err');} },
   async resetFavicon(){ if(!confirm('Reset favicon ke default (favicon.png)?'))return; try{ await DB.saveSettings('favicon',{data:null}); document.querySelectorAll('link[rel="icon"],link[rel="apple-touch-icon"]').forEach(l=>l.setAttribute('href','favicon.png')); this.toast('Favicon direset ✓','ok'); }catch(e){this.toast('Gagal','err');} },
   async saveLogo(){ const f=document.getElementById('logo-file').files[0]; if(!f){this.toast('Pilih file gambar dulu','err');return;} if(f.size>3*1024*1024){this.toast('Maks 3MB','err');return;}
-    try{ const data=await this.readImage(f,320); await DB.saveSettings('logo',{data}); LOGO=data; document.querySelectorAll('.logo-img').forEach(i=>i.src=data); this.toast('Logo disimpan ✓ & dipakai di header','ok'); }catch(e){this.toast('Gagal: '+(e.message||e),'err');} },
+    try{ const data=await this.readImage(f,600); await DB.saveSettings('logo',{data}); LOGO=data; document.querySelectorAll('.logo-img').forEach(i=>i.src=data); this.toast('Logo disimpan ✓ & dipakai di header','ok'); }catch(e){this.toast('Gagal: '+(e.message||e),'err');} },
   async resetLogo(){ if(!confirm('Reset logo ke default?'))return; try{ await DB.saveSettings('logo',{data:null}); LOGO=LOGO_DEFAULT; document.querySelectorAll('.logo-img').forEach(i=>i.src=LOGO_DEFAULT); this.toast('Logo direset ✓','ok'); }catch(e){this.toast('Gagal','err');} },
   async addBanner(){ const f=document.getElementById('banner-file').files[0]; if(!f){this.toast('Pilih gambar dulu','err');return;} if(f.size>3*1024*1024){this.toast('Maks 3MB','err');return;}
     try{ const data=await this.readImage(f,900); const items=(this.state._banners||[]).slice();
@@ -2123,5 +2124,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#285FF4;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2470b3fb8054e3c',t:'MTc4NTYxMDM4OA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2472e709b225d38',t:'MTc4NTYxMTgyOQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
