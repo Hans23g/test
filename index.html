@@ -1056,6 +1056,7 @@ const App = {
           <div class="field"><label>Alamat pengiriman</label><textarea id="addr" rows="2" placeholder="Alamat lengkap untuk antar">${this.state.user.address||''}</textarea></div>
           <div class="field"><label>Catatan (opsional)</label><input id="note" placeholder="Catatan untuk penjual"></div>
           <button class="btn green block" onclick="App.placeOrder()">${IC.check} Buat Pesanan</button>
+          <button class="btn block" style="background:#25D366;margin-top:8px" onclick="App.orderViaWhatsApp()">💬 Pesan via WhatsApp</button>
           <p class="muted small center" style="margin-top:8px">+ ${pts} poin akan didapat dari pesanan ini</p>
         </div>
       </div>`;
@@ -1091,6 +1092,19 @@ const App = {
         <div class="row" style="justify-content:center;margin-top:16px"><button class="btn ghost" onclick="App.closeSheet();location.hash='store'">Lanjut Belanja</button>
         <button class="btn" onclick="App.closeSheet();location.hash='orders'">Lihat Pesanan</button></div></div>`);
     }catch(e){ this.toast('Gagal: '+e.message,'err'); }
+  },
+
+  orderViaWhatsApp(){
+    const c=this.state.cart; if(!c.length){this.toast('Keranjang kosong','err');return;}
+    const u=this.state.user||{};
+    let ph=(this.state._storePhone||'').replace(/\D/g,'');
+    if(!ph){this.toast('Set nomor WA di Pengaturan → Profil Toko','err');return;}
+    if(!ph.startsWith('62')) ph=ph.startsWith('0')?'62'+ph.slice(1):'62'+ph;
+    const items=c.map(it=>`• ${it.qty}x ${it.name} — ${this.money(it.price*it.qty)}`).join('\n');
+    const total=c.reduce((a,b)=>a+b.price*b.qty,0);
+    const msg=`Halo ${this.state._storeName||'Toko Hana'}! 👋\nSaya mau pesan:\n\n${items}\n\nTotal: *${this.money(total)}*\n\nNama: ${u.full_name||'-'}\nHP: ${u.phone||'-'}`;
+    window.open(`https://wa.me/${ph}?text=${encodeURIComponent(msg)}`,'_blank');
+    this.toast('Membuka WhatsApp…','ok');
   },
 
   /* ---- MEMBER ORDERS ---- */
@@ -1816,6 +1830,7 @@ const App = {
     if(s.banners&&Array.isArray(s.banners.items)) items=s.banners.items.map(x=>typeof x==='string'?{data:x}:x).filter(x=>x&&x.data);
     else if(s.banner&&s.banner.data) items=[{data:s.banner.data}];
     this.state._banners=items;
+    this.state._storeName=(s.store&&s.store.name)||'Toko Hana'; this.state._storePhone=(s.store&&s.store.phone)||'';
     const tc=(s.theme&&s.theme.primary)||'#003D7A'; this.state._themeColor=tc;
     this.applyThemeColor(tc);
     this.state._darkMode=(function(){try{return localStorage.getItem('omnipos_dark')==='1'}catch(e){return false}})();
@@ -1930,5 +1945,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#003D7A;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a23e2dd28850dc83',t:'MTc4NTUxNzQzMg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a241662dadedeb9e',t:'MTc4NTU1MTE5OA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
