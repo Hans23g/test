@@ -162,9 +162,9 @@ h1,h2,h3,h4{margin:0;font-weight:800;letter-spacing:-.01em}
 .prod .disc-badge{position:absolute;left:7px;top:7px;background:var(--rose);color:#fff;font-size:10px;font-weight:800;padding:2px 7px;border-radius:6px;z-index:2}
 .prod .info{padding:7px 9px 9px;flex:1;display:flex;flex-direction:column}
 .prod .nm{font-weight:800;font-size:12.5px;line-height:1.22;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:30px}
-.prod .unit{font-size:10.5px;color:var(--ink-3);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.prod .pr{font-weight:800;color:var(--navy);margin-top:auto;padding-top:4px;font-size:14px}
-.prod .old{font-size:11px;color:var(--ink-3);text-decoration:line-through;font-weight:600}
+.prod .unit{font-size:10px;color:var(--ink-3);margin-top:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prod .pr{font-weight:800;color:var(--navy);margin-top:auto;padding-top:2px;font-size:14px;line-height:1.1}
+.prod .old{font-size:10.5px;color:var(--ink-3);text-decoration:line-through;font-weight:600;margin-top:2px}
 .prod .add-fab{position:absolute;right:7px;bottom:7px;width:30px;height:30px;border-radius:50%;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 7px rgba(0,0,0,.28);z-index:2}
 .prod .add-fab svg{width:18px;height:18px}
 .prod .add-fab:disabled{background:var(--ink-3);opacity:.6}
@@ -1011,18 +1011,23 @@ const App = {
     if(!prods.length){ g.innerHTML=`<div class="empty" style="grid-column:1/-1">${IC.search}<p>Produk tidak ditemukan</p></div>`; return; }
     const guest=!this.state.user;
     g.innerHTML=prods.map(p=>{
-      const disc=p.cost&&p.price<p.cost; const em=p.emoji||'📦'; const out=Number(p.stock||0)<=0;
+      const em=p.emoji||'📦'; const out=Number(p.stock||0)<=0;
+      const hasTiers=p.tiers&&p.tiers.length>0;
+      const showPrice=hasTiers?Math.min(...p.tiers.map(t=>t.price)):p.price;
+      const hasDisc=p.compare_price&&p.compare_price>showPrice;
+      const disc=p.cost&&p.price<p.cost;
       const act=guest?`App.openLogin('Masuk dulu untuk belanja & dapat poin')`:`App.quickAdd('${p.id}')`;
       return `<div class="prod" onclick="App.openProduct('${p.id}')">
         <div class="ph">${p.image_url?`<img src="${p.image_url}">`:`<div class="emoji">${em}</div>`}
-          ${disc?`<span class="disc-badge">HEMAT</span>`:''}
+          ${(hasDisc||disc)?`<span class="disc-badge">HEMAT</span>`:''}
           ${out?`<span class="disc-badge" style="background:var(--ink-3)">HABIS</span>`:''}
           <button class="add-fab ${guest?'guest':''}" ${out?'disabled':''} onclick="event.stopPropagation();${act}" aria-label="Tambah">${out?'✕':IC.plus}</button>
         </div>
         <div class="info">
           <div class="nm">${p.name}</div>
-          <div class="unit">${p.brand||p.unit||''}</div>
-          <div class="pr">${this.money(p.price)}</div>
+          <div class="unit">${p.brand||''}${p.brand&&p.unit?' · ':''}${p.unit||''}</div>
+          ${hasDisc?`<div class="old">${this.money(p.compare_price)}</div>`:''}
+          <div class="pr">${hasTiers?'<span style="font-size:9px;font-weight:600;opacity:.7">mulai </span>':''}${this.money(showPrice)}</div>
         </div></div>`;
     }).join('');
   },
@@ -1042,17 +1047,22 @@ const App = {
         <div style="aspect-ratio:1/1;max-width:240px;margin:0 auto;background:var(--blue-ll);border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:90px">${p.emoji||'📦'}</div>
         <h2 style="margin-top:16px">${p.name}</h2>
         <div class="row" style="margin-top:6px"><span class="tag">${p.brand||'Produk'}</span><span class="muted small">${p.unit||'pcs'} · Stok ${p.stock}</span></div>
-        <div class="pr" style="font-size:26px;color:var(--navy);margin-top:10px">${this.money(p.price)}</div>
-        <p class="muted small" style="margin:10px 0">${p.description||'Produk kebutuhan harian berkualitas dari Toko Hana. Beli sekarang dan kumpulkan poin!'}</p>
+        <div class="pr" style="font-size:26px;color:var(--navy);margin-top:10px">${p.compare_price&&p.compare_price>p.price?`<span style="font-size:15px;color:var(--ink-3);text-decoration:line-through;margin-right:6px">${this.money(p.compare_price)}</span>`:''}${this.money(p.price)}</div>
+        <p class="muted small" style="margin:10px 0">${p.description||'Produk kebutuhan harian berkualitas dari Toko Hana.'}</p>
         <hr class="sep">
         <div class="row small muted"><span>💰 Dapat poin</span><b style="color:var(--gold)">${Math.floor(p.price/CONFIG.EARN_PER_RP)} poin</b></div>
-        <div class="row" style="gap:10px;margin-top:16px">
-          <button class="btn ghost block" onclick="App.quickAdd('${p.id}');App.closeSheet()">${IC.cart} Keranjang</button>
-          <button class="btn green block" onclick="App.buyNow('${p.id}')">Beli Sekarang</button>
-        </div>
+        ${p.tiers&&p.tiers.length?`<h4 style="margin:14px 0 8px">Pilih Varian:</h4><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">${p.tiers.map((t,i)=>`<button class="btn ghost sm" style="flex-direction:column;text-align:center" onclick="App.quickAddTier('${p.id}',${i})"><b>${t.label}</b><span style="font-size:12px">${this.money(t.price)}</span></button>`).join('')}</div>`:`<div class="row" style="gap:10px;margin-top:16px"><button class="btn ghost block" onclick="App.quickAdd('${p.id}');App.closeSheet()">${IC.cart} Keranjang</button><button class="btn green block" onclick="App.buyNow('${p.id}')">Beli Sekarang</button></div>`}
       </div>`);
   },
   buyNow(id){ if(!this.state.user){ this.openLogin('Masuk dulu untuk beli.'); return; } this.quickAdd(id); this.closeSheet(); location.hash='cart'; },
+  quickAddTier(id,tierIdx){
+    if(!this.state.user){this.openLogin('Masuk dulu untuk belanja.');return;}
+    const p=this.state._prods.find(x=>x.id===id); if(!p||!p.tiers)return;
+    const tier=p.tiers[tierIdx]; if(!tier)return;
+    this.state.cart.push({product_id:p.id,name:p.name+' ('+tier.label+')',price:tier.price,qty:1,emoji:p.emoji||'📦',stock:p.stock||99,barcode:p.barcode});
+    this.updateCartBadge(); this.closeSheet();
+    this.toast(p.name+' ('+tier.label+') ditambah ✓','ok');
+  },
 
   /* ---- CART / CHECKOUT ---- */
   viewCart(){
@@ -1560,17 +1570,20 @@ _Pesan via OmniPOS CMS — ${o.order_no}_
         <div class="field row2"><div><label>Barcode</label><input name="barcode" value="${p.barcode||''}" placeholder="899…"></div><div><label>SKU</label><input name="sku" value="${p.sku||''}"></div></div>
         <div class="field row2"><div><label>Kategori</label><select name="category_id">${cats.map(c=>`<option value="${c.id}" ${p.category_id===c.id?'selected':''}>${c.icon} ${c.name}</option>`).join('')}</select></div>
           <div><label>Emoji / Ikon</label><input name="emoji" value="${p.emoji||'📦'}" maxlength="3"></div></div>
-        <div class="field row2"><div><label>Harga Jual (Rp)</label><input name="price" type="number" value="${p.price||0}" required></div><div><label>Harga Modal (Rp)</label><input name="cost" type="number" value="${p.cost||0}"></div></div>
-        <div class="field row2"><div><label>Stok</label><input name="stock" type="number" value="${p.stock||0}"></div><div><label>Satuan</label><input name="unit" value="${p.unit||'pcs'}"></div></div>
-        <div class="field"><label>Brand / Deskripsi</label><input name="brand" value="${p.brand||''}"></div>
+        <div class="field row2"><div><label>Harga Jual (Rp)</label><input name="price" type="number" value="${p.price||0}" required></div><div><label>Harga Coret (Rp)</label><input name="compare_price" type="number" value="${p.compare_price||0}" placeholder="0 = tidak ada"></div></div>
+        <div class="field row2"><div><label>Harga Modal (Rp)</label><input name="cost" type="number" value="${p.cost||0}"></div><div><label>Stok</label><input name="stock" type="number" value="${p.stock||0}"></div></div>
+        <div class="field row2"><div><label>Satuan</label><input name="unit" value="${p.unit||'pcs'}"></div><div><label>Brand</label><input name="brand" value="${p.brand||''}"></div></div>
+        <div class="field"><label>Varian/Tier Harga (opsional, untuk curah)</label><textarea name="tiers_text" rows="3" placeholder="Format: label,harga per baris&#10;1/4 kg,5000&#10;1/2 kg,9000&#10;1 kg,17000">${(p.tiers||[]).map(t=>t.label+','+t.price).join('\n')}</textarea><div class="hint">Contoh: 1/4kg,5000 / 1/2kg,9000 / 1kg,17000</div></div>
         <div class="field row2"><div><label>URL Gambar</label><input name="image_url" value="${p.image_url||''}" placeholder="https://…"></div><div><label>Status</label><select name="is_active"><option value="1" ${p.is_active!==false?'selected':''}>Aktif</option><option value="0" ${p.is_active===false?'selected':''}>Nonaktif</option></select></div></div>
         <button class="btn green block" type="submit">${IC.check} Simpan</button>
       </form></div>`);
     document.getElementById('pform').onsubmit=async e=>{ e.preventDefault(); const f=new FormData(e.target);
       const obj={ id:p.id||null, name:f.get('name'), barcode:f.get('barcode'), sku:f.get('sku')||f.get('barcode'),
-        category_id:f.get('category_id'), price:Number(f.get('price')), cost:Number(f.get('cost')), stock:Number(f.get('stock')),
+        category_id:f.get('category_id'), price:Number(f.get('price')), compare_price:Number(f.get('compare_price'))||0,
+        cost:Number(f.get('cost')), stock:Number(f.get('stock')),
         unit:f.get('unit'), brand:f.get('brand'), description:f.get('brand'), emoji:f.get('emoji')||'📦', image_url:f.get('image_url'),
-        is_active:f.get('is_active')==='1' };
+        is_active:f.get('is_active')==='1',
+        tiers:(function(){const t=(f.get('tiers_text')||'').trim();if(!t)return null;return t.split('\n').map(l=>{const[lb,pr]=l.split(',').map(s=>s.trim());return{label:lb,price:Number(pr)||0}}).filter(x=>x.label&&x.price>0);})() };
       try{ await DB.saveProduct(obj); this.closeSheet(); this.toast('Produk disimpan ✓','ok'); this.viewProducts(); }catch(err){this.toast('Gagal: '+err.message,'err');} };
   },
   async delProduct(id){ if(!confirm('Hapus produk ini?'))return; try{await DB.deleteProduct(id);this.toast('Dihapus ✓','ok');this.viewProducts();}catch(e){this.toast('Gagal','err');} },
@@ -2049,5 +2062,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#003D7A;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a242f2bc3c52f8ff',t:'MTc4NTU2NzQ0MQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2431184da74c579',t:'MTc4NTU2ODcwMg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
