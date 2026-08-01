@@ -343,6 +343,8 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:14px 0}
 [data-theme="dark"] .prod .add-fab.guest { background: var(--card) !important; color: var(--ink) !important; }
 [data-theme="dark"] .ci .ic { background: rgba(255,255,255,.06) !important; }
 [data-theme="dark"] .prod .pr { color: var(--blue) !important; }
+[data-theme="dark"] .membercard .mc-bar { background: rgba(255,255,255,.95) !important; }
+[data-theme="dark"] .membercard .mc-logo .l { background: rgba(255,255,255,.9) !important; }
 [data-theme="dark"] [style*="background:var(--bg)"] { background: rgba(255,255,255,.04) !important; }
 [data-theme="dark"] [style*="background:var(--blue-ll)"] { background: rgba(255,255,255,.06) !important; }
 [data-theme="dark"] [style*="background:var(--blue-l)"] { background: rgba(255,255,255,.08) !important; }
@@ -1234,7 +1236,7 @@ _Pesan via OmniPOS CMS — ${o.order_no}_
         </div>
       </div>`;
     setTimeout(()=>{
-      try{ JsBarcode('#mc-barcode', u.referral_code||u.id, {format:"CODE128",width:2,height:50,displayValue:true,fontSize:12,background:"transparent"}); }catch(e){}
+      try{ JsBarcode('#mc-barcode', u.referral_code||u.id, {format:"CODE128",width:2,height:50,displayValue:true,fontSize:12,background:"#fff"}); }catch(e){}
       try{ new QRCode(document.getElementById('mc-qr'),{text:'MEMBER:'+u.id,width:160,height:160,correctLevel:1}); }catch(e){}
     },50);
   },
@@ -2030,5 +2032,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#003D7A;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a241fcc5bfd8fe0b',t:'MTc4NTU1NzM2Ng=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2420f7d9fe1ce57',t:'MTc4NTU1ODEzMw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
