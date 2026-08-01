@@ -752,6 +752,7 @@ const App = {
     document.getElementById('auth-root').innerHTML='';
     this.state.user=await DB.me();
     window.addEventListener('hashchange',()=>this.route());
+    if(location.hash) history.replaceState(null,'',location.pathname+location.search);
     if(this.state.user){ this.renderApp(); } else { this.renderPublicShell(); }
   },
   toast(msg,type=''){
@@ -939,6 +940,7 @@ const App = {
      ======================================================================= */
   async viewStore(forStaff=false){
     const v=document.getElementById('view'); if(!v)return; v.innerHTML=`<div class="spin"></div>`;
+    try{
     const [prods,cats]=await Promise.all([DB.listProducts({activeOnly:true}),DB.listCategories()]);
     this.state._prods=prods; this.state._cats=cats;
     const m=this.state.user||{}; const guest=!this.state.user;
@@ -962,6 +964,7 @@ const App = {
       <div class="prod-grid" id="pgrid"></div>`;
     this.applyFilter();
     if(this.state._banners&&this.state._banners.length>1) this.initBannerCarousel();
+    }catch(e){ v.innerHTML=`<div class="empty">${IC.box}<h3>Gagal memuat toko</h3><p class="muted">${(e&&e.message)||e}</p><button class="btn" style="margin-top:12px" onclick="App.route()">Coba Lagi</button></div>`; console.error('viewStore',e); }
   },
   applyFilter(){
     const q=(document.getElementById('psearch')?.value||'').toLowerCase().trim();
@@ -2005,5 +2008,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#003D7A;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a241b648598f72da',t:'MTc4NTU1NDQ3OQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a241d2cccbaa410f',t:'MTc4NTU1NTY0Nw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
