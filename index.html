@@ -653,7 +653,7 @@ const DB = (() => {
       if(o.points_earned>0) d.points[uid()]={id:uid(),member_id:m.id,order_id:id,type:'earn',points:o.points_earned,note:'Belanja '+o.order_no,created_at:now()};
       if(o.points_used>0) d.points[uid()]={id:uid(),member_id:m.id,order_id:id,type:'redeem',points:-o.points_used,note:'Tukar poin '+o.order_no,created_at:now()}; } }
     // kurangi stok
-    items.forEach(it=>{ const pr=Object.values(d.products).find(p=>p.id===it.product_id); if(pr)pr.stock=Math.max(0,(pr.stock||0)-Number(it.qty)); });
+    items.forEach(it=>{ const pr=Object.values(d.products).find(p=>p.id===it.product_id); if(pr){pr.stock=Math.max(0,(pr.stock||0)-Number(it.qty)); pr.sold=(pr.sold||0)+Number(it.qty||0);} });
     save(d); return o;
   }
   async function recordPoints(o,items){ /* hook supabase */ }
@@ -1028,6 +1028,7 @@ const App = {
           <div class="unit">${p.brand||''}${p.brand&&p.unit?' · ':''}${p.unit||''}</div>
           ${hasDisc?`<div class="old">${this.money(p.compare_price)}</div>`:''}
           <div class="pr">${hasTiers?'<span style="font-size:9px;font-weight:600;opacity:.7">mulai </span>':''}${this.money(showPrice)}</div>
+          <div class="unit" style="margin-top:1px">${(p.sold||0)>0?`${p.sold} terjual · `:''}stok ${p.stock!=null?p.stock:'-'}</div>
         </div></div>`;
     }).join('');
   },
@@ -2062,5 +2063,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#003D7A;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a245efbabad3f8d3',t:'MTc4NTU5ODc3NQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2461793ffe393d2',t:'MTc4NTYwMDQwNw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
