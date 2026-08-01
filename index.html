@@ -1234,10 +1234,12 @@ _Pesan via OmniPOS CMS — ${o.order_no}_
       <div class="card" style="margin-top:14px">
         <div class="row between"><h3>Undang Teman, Dapat ${CONFIG.REFERRAL_BONUS} Poin!</h3></div>
         <p class="muted small">Bagikan kode referral. Teman dapat ${CONFIG.SIGNUP_BONUS} poin saat daftar pakai kodemu, kamu dapat ${CONFIG.REFERRAL_BONUS} poin.</p>
-        <div class="row" style="margin-top:10px;gap:8px">
-          <input id="refcode" value="${u.referral_code}" readonly style="flex:1;padding:11px;border-radius:11px;border:1.5px solid var(--line);font-weight:800;text-align:center;color:var(--navy);font-size:16px;letter-spacing:2px">
-          <button class="btn" onclick="App.copyRef()">${IC.card} Salin</button>
-          <button class="btn green" onclick="App.shareRef()">Bagikan</button>
+        <div style="margin-top:10px;gap:8px">
+          <input id="refcode" value="${u.referral_code}" readonly style="width:100%;padding:13px;border-radius:12px;border:1.5px solid var(--line);font-weight:800;text-align:center;color:var(--navy);font-size:18px;letter-spacing:3px;margin-bottom:10px">
+          <div style="display:flex;gap:8px">
+            <button class="btn block" onclick="App.copyRef()">${IC.card} Salin Kode</button>
+            <button class="btn green block" onclick="App.shareRef()">Bagikan</button>
+          </div>
         </div>
       </div>
       <div class="section-title"><h3>Riwayat Poin</h3></div>
@@ -2008,5 +2010,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#003D7A;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a241d2cccbaa410f',t:'MTc4NTU1NTY0Nw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a241e4cd8ca08408',t:'MTc4NTU1NjM4NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
