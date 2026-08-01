@@ -87,12 +87,13 @@ h1,h2,h3,h4{margin:0;font-weight:800;letter-spacing:-.01em}
 .banner-carousel{position:relative;border-radius:14px;overflow:hidden;margin-bottom:14px;background:var(--blue-ll)}
 .banner-track{display:flex;transition:transform .55s cubic-bezier(.4,0,.2,1);will-change:transform}
 .banner-slide{flex:0 0 100%;min-width:0;cursor:pointer;position:relative;overflow:hidden}
-.banner-slide img{width:100%;max-height:130px;min-height:70px;object-fit:cover;display:block}
+.banner-slide img{width:100%;max-height:100px;min-height:56px;object-fit:cover;display:block}
 .banner-dots{position:absolute;bottom:9px;left:0;right:0;display:flex;justify-content:center;gap:6px;z-index:3}
 .banner-dots .dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.65);cursor:pointer;transition:.25s;border:none}
 .banner-dots .dot.active{background:#fff;width:20px;border-radius:4px}
-.banner-arrow{position:absolute;top:50%;transform:translateY(-50%);width:34px;height:34px;border-radius:50%;background:rgba(0,20,50,.45);color:#fff;font-size:22px;line-height:32px;font-weight:800;text-align:center;z-index:4;cursor:pointer;border:none}
-.banner-arrow.prev{left:8px}.banner-arrow.next{right:8px}
+.banner-arrow{position:absolute;top:50%;transform:translateY(-50%);width:32px;height:48px;background:none;color:#fff;font-size:32px;line-height:48px;font-weight:300;text-align:center;z-index:4;cursor:pointer;border:none;text-shadow:0 1px 8px rgba(0,0,0,.5);opacity:.85}
+.banner-arrow:hover{opacity:1}
+.banner-arrow.prev{left:0}.banner-arrow.next{right:0}
 .banner-cap{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:flex-end;background:linear-gradient(to top,rgba(0,20,50,.82),transparent);z-index:2;pointer-events:none}
 .banner-cap .bc-inner{padding:14px 16px;color:#fff;max-width:86%}
 .banner-cap .bc-title{font-weight:800;font-size:15px;text-shadow:0 1px 4px rgba(0,0,0,.5)}
@@ -2124,5 +2125,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#285FF4;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2472e709b225d38',t:'MTc4NTYxMTgyOQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a24777c52acbfd36',t:'MTc4NTYxNDgzMw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
