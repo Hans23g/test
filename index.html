@@ -1083,6 +1083,7 @@ const App = {
     const card=(o,act)=>`<div class="card" style="margin-bottom:10px">
       <div class="row between"><b class="kbd small">${o.order_no}</b>${this.statusTag(o.status)}</div>
       <div class="muted small" style="margin:6px 0">📍 ${(o.address||'').slice(0,50)} · ${this.money(o.total)}</div>
+      ${o.delivery_note?`<div class="muted small" style="margin-bottom:4px">📝 ${o.delivery_note}</div>`:''}
       ${act}</div>`;
     v.innerHTML=`<div class="section-title"><h2>📦 Job Antar</h2></div>
       <h4 style="margin:4px 0 8px">🟢 Job Tersedia (${available.length})</h4>
@@ -1489,6 +1490,7 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
         <div class="row between" style="margin-top:8px"><span class="muted small">${o.address?o.address.slice(0,40):'Kasir Toko Hana'}</span><b style="color:var(--navy)">${this.money(o.total)}</b></div>
         ${o.points_earned?`<div class="tag green" style="margin-top:8px">${IC.coin} +${o.points_earned} poin</div>`:''}
         ${o.tracking_no?`<div class="muted small" style="margin-top:6px">📦 Resi: <b class="kbd">${o.tracking_no}</b></div>`:''}
+        ${o.status==='pending' && !/^cod/i.test(o.payment_method||'')?`<button class="btn green sm block" style="margin-top:6px" onclick="event.stopPropagation();App.memberConfirmPaid('${o.id}')">✅ Saya Sudah Bayar</button>`:''}
         ${o.status==='delivering'?`<button class="btn green sm block" style="margin-top:8px" onclick="event.stopPropagation();App.memberConfirmReceived('${o.id}')">${IC.check} Pesanan Diterima</button>`:''}
         ${o.status==='pending'?`<button class="btn ghost xs block" style="margin-top:6px" onclick="event.stopPropagation();App.cancelMyOrder('${o.id}')">${IC.trash} Batalkan</button>`:''}
       </div>`).join('')}</div>`;
@@ -1968,6 +1970,7 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
       <div class="pill-toggle" style="margin-bottom:12px">
         <button class="${this.state._ordFilter===''?'active':''}" onclick="App.setOrdFilter('')">Semua (${orders.length})</button>
         <button class="${this.state._ordFilter==='pending'?'active':''}" onclick="App.setOrdFilter('pending')">Baru (${cnt.pending})</button>
+        <button class="${this.state._ordFilter==='paid'?'active':''}" onclick="App.setOrdFilter('paid')">Dibayar (${cnt.paid})</button>
         <button class="${this.state._ordFilter==='processing'?'active':''}" onclick="App.setOrdFilter('processing')">Diproses (${cnt.processing})</button>
         <button class="${this.state._ordFilter==='delivering'?'active':''}" onclick="App.setOrdFilter('delivering')">Dikirim (${cnt.delivering})</button>
         <button class="${this.state._ordFilter==='completed'?'active':''}" onclick="App.setOrdFilter('completed')">Selesai (${cnt.completed})</button>
@@ -1996,7 +1999,7 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
           ${o.address?`<div class="muted small" style="margin-top:8px">📍 ${o.address}</div>`:''}
           ${o.note?`<div class="muted small">📝 ${o.note}</div>`:''}
         </div>
-        ${dmLabel?`<div class="card" style="background:var(--blue-ll);margin-top:10px;padding:12px;font-size:12.5px"><b>🚚 Pengiriman</b><br>${dmLabel}${o.tracking_no?`<br>📦 No. Resi: <b class="kbd">${o.tracking_no}</b>`:''}${o.courier_name?`<br>🛵 Kurir: <b>${o.courier_name}</b>`:''}</div>`:''}
+        ${dmLabel?`<div class="card" style="background:var(--blue-ll);margin-top:10px;padding:12px;font-size:12.5px"><b>🚚 Pengiriman</b><br>${dmLabel}${o.tracking_no?`<br>📦 No. Resi: <b class="kbd">${o.tracking_no}</b>`:''}${o.courier_name?`<br>🛵 Kurir: <b>${o.courier_name}</b>`:''}${o.courier_phone?`<br>📞 WA Pengantar: <b>${o.courier_phone}</b>`:''}${o.delivery_note?`<br>📝 ${o.delivery_note}`:''}</div>`:''}
         <h4 style="margin:14px 0 8px">Item (${items.length})</h4>
         ${items.map(it=>`<div class="ci"><div class="ic">📦</div><div class="col"><div class="nm">${it.name}</div><div class="pr">${it.qty} × ${this.money(it.price)}</div></div><b style="color:var(--navy)">${this.money(it.subtotal)}</b></div>`).join('')}
         <hr class="sep">
@@ -2006,10 +2009,10 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
         <div class="sum-line tot"><span>Total</span><span>${this.money(o.total)}</span></div>
         ${o.paid_amount?`<div class="sum-line"><span>Dibayar</span><span>${this.money(o.paid_amount)}</span></div><div class="sum-line"><span>Kembalian</span><span>${this.money(o.change_amount)}</span></div>`:''}
         <div style="margin-top:14px">
-          ${o.status==='pending'?`<div class="grid" style="grid-template-columns:1fr 1fr;gap:8px"><button class="btn green" onclick="App.ordAction('${id}','processing','Diproses')">${IC.check} Proses</button><button class="btn rose" onclick="App.ordAction('${id}','rejected','Ditolak')">${IC.trash} Tolak</button></div>`:''}
-          ${o.status==='processing'?(o.delivery_method==='pickup'?`<button class="btn green block" onclick="App.ordAction('${id}','completed','Selesai')">${IC.check} Selesai (Sudah Diambil)</button>`:o.delivery_method==='antar'?(o.courier_id?`<div class="card" style="background:var(--green-l);padding:10px;font-size:12.5px">🛵 Kurir: <b>${o.courier_name}</b> — menunggu dikirim/diterima</div>`:`<div class="card" style="background:var(--bg);padding:10px;margin-bottom:8px"><b>Tugasi Kurir:</b><select id="assign-courier" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--line);margin:8px 0">${couriers.length?couriers.map(c=>`<option value="${c.id}|${(c.full_name||'').replace(/\|/g,'')}">${c.full_name} ${c.courier_status==='off'?'(nonaktif)':'(aktif)'}</option>`).join(''):'<option value="">Belum ada kurir</option>'}</select><button class="btn green block sm" ${couriers.length?'':'disabled'} onclick="App.assignCourier('${id}')">${IC.check} Tugasi</button></div>`):o.delivery_method==='ekspedisi'?`<div class="card" style="background:var(--bg);padding:10px;margin-bottom:8px"><b>No. Resi Ekspedisi:</b><input id="resi-input" value="${o.tracking_no||''}" placeholder="Mis. JNE12345678" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--line);margin:8px 0"><button class="btn green block sm" onclick="App.saveResi('${id}')">${IC.check} Simpan Resi & Tandai Dikirim</button></div>`:''):''}
+          ${(o.status==='pending'||o.status==='paid')?`<div class="grid" style="grid-template-columns:1fr 1fr;gap:8px"><button class="btn green" onclick="App.ordAction('${id}','processing','Diproses')">${IC.check} Proses</button><button class="btn rose" onclick="App.ordAction('${id}','rejected','Ditolak')">${IC.trash} Tolak</button></div>`:''}
+          ${o.status==='processing'?(o.delivery_method==='pickup'?`<button class="btn green block" onclick="App.ordAction('${id}','completed','Selesai')">${IC.check} Selesai (Sudah Diambil)</button>`:o.delivery_method==='antar'?(o.courier_id?`<div class="card" style="background:var(--green-l);padding:10px;font-size:12.5px">🛵 Kurir: <b>${o.courier_name}</b>${o.courier_phone?`<br>📞 WA: <b>${o.courier_phone}</b>`:''}${o.delivery_note?`<br>📝 ${o.delivery_note}`:''}<br><span class="muted">menunggu dikirim/diterima</span></div>`:`<div class="card" style="background:var(--bg);padding:10px;margin-bottom:8px"><b>Tugasi Kurir:</b><select id="assign-courier" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--line);margin:8px 0">${couriers.length?couriers.map(c=>`<option value="${c.id}|${(c.full_name||'').replace(/\|/g,'')}|${(c.phone||'').replace(/\|/g,'')}">${c.full_name} ${c.courier_status==='off'?'(nonaktif)':'(aktif)'}</option>`).join(''):'<option value="">Belum ada kurir</option>'}</select><input id="assign-note" placeholder="Catatan untuk kurir (opsional)" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--line);margin-bottom:8px"><button class="btn green block sm" ${couriers.length?'':'disabled'} onclick="App.assignCourier('${id}')">${IC.check} Tugasi</button></div>`):o.delivery_method==='ekspedisi'?`<div class="card" style="background:var(--bg);padding:10px;margin-bottom:8px"><b>No. Resi Ekspedisi:</b><input id="resi-input" value="${o.tracking_no||''}" placeholder="Mis. JNE12345678" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--line);margin:8px 0"><button class="btn green block sm" onclick="App.saveResi('${id}')">${IC.check} Simpan Resi & Tandai Dikirim</button></div>`:''):''}
           ${o.status==='delivering'?`<div class="card" style="background:var(--amber-l);padding:10px;font-size:12.5px;margin-bottom:8px">📦 Sedang diantar — menunggu pembeli konfirmasi <b>Diterima</b>.</div><button class="btn ghost block sm" onclick="App.ordAction('${id}','completed','Selesai')">Force Selesai (admin)</button>`:''}
-          ${['completed','rejected','cancelled'].includes(o.status)?`<button class="btn ghost block" onclick="App.printReceipt(window.__ord,window.__items)">${IC.print} Cetak Struk</button>`:''}
+          ${['processing','delivering','completed','rejected','cancelled'].includes(o.status)?`<button class="btn ghost block" onclick="App.printReceipt(window.__ord,window.__items)">${IC.print} Cetak Struk</button>`:''}
           ${['pending','processing','delivering'].includes(o.status)?`<button class="btn rose block sm" style="margin-top:8px" onclick="App.cancelOrder('${id}')">${IC.trash} Batalkan Pesanan</button>`:''}
         </div>
       </div>`);
@@ -2027,9 +2030,10 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     catch(e){ this.toast('Gagal: '+(e.message||e),'err'); }
   },
   async assignCourier(id){
-    const v=document.getElementById('assign-courier')?.value; if(!v||!v.includes('|')){this.toast('Pilih kurir dulu','err');return;}
-    const [cid,cname]=v.split('|');
-    try{ await DB.updateOrderStatus(id,'processing',{courier_id:cid,courier_name:cname}); this.closeSheet(); this.toast('Kurir ditugasin: '+cname,'ok'); this.viewOnlineOrders(); }catch(e){this.toast('Gagal: '+(e.message||e),'err');}
+    const v=document.getElementById('assign-courier')?.value; if(!v||!v.split('|')[0]){this.toast('Pilih kurir dulu','err');return;}
+    const parts=v.split('|'); const cid=parts[0],cname=parts[1]||'',cphone=parts[2]||'';
+    const note=document.getElementById('assign-note')?.value||'';
+    try{ await DB.updateOrderStatus(id,'processing',{courier_id:cid,courier_name:cname,courier_phone:cphone,delivery_note:note}); this.closeSheet(); this.toast('Kurir ditugasin: '+cname,'ok'); this.viewOnlineOrders(); }catch(e){this.toast('Gagal: '+(e.message||e),'err');}
   },
   async saveResi(id){
     const r=(document.getElementById('resi-input')?.value||'').trim();
@@ -2046,6 +2050,10 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
   async memberConfirmReceived(id){
     if(!confirm('Konfirmasi pesanan DITERIMA?'))return;
     try{ await DB.updateOrderStatus(id,'completed',{}); this.toast('Pesanan diterima ✓ terima kasih!','ok'); this.viewMemberOrders(); }catch(e){this.toast('Gagal: '+(e.message||e),'err');}
+  },
+  async memberConfirmPaid(id){
+    if(!confirm('Konfirmasi SUDAH BAYAR untuk pesanan ini? Admin akan verifikasi.'))return;
+    try{ await DB.updateOrderStatus(id,'paid',{}); this.toast('Pembayaran dikonfirmasi ✓ menunggu verifikasi','ok'); this.viewMemberOrders(); }catch(e){this.toast('Gagal: '+(e.message||e),'err');}
   },
 
   /* ---- RECEIPT ---- */
@@ -2648,5 +2656,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#285FF4;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a24fcf16df2efcfc',t:'MTc4NTcwMjI5Ng=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a24fec4a1b14ef6c',t:'MTc4NTcwMzQ5Mg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
