@@ -768,6 +768,20 @@ const DB = (() => {
     if(!isDemo){ const {data,error}=await sb.from('orders').update({status,...patch}).eq('id',id).select().single(); if(error)throw error; return data; }
     const d=load(); Object.assign(d.orders[id],{status,...patch,updated_at:now()}); save(d); return d.orders[id];
   }
+  /* batalkan order + kembalikan stok */
+  async function cancelOrder(id){
+    if(!isDemo){
+      const {data:items}=await sb.from('order_items').select('product_id,qty').eq('order_id',id);
+      await sb.from('orders').update({status:'cancelled'}).eq('id',id);
+      for(const it of (items||[])){ const {data:pr}=await sb.from('products').select('stock,sold').eq('id',it.product_id).maybeSingle();
+        if(pr) await sb.from('products').update({stock:(pr.stock||0)+Number(it.qty),sold:Math.max(0,(pr.sold||0)-Number(it.qty))}).eq('id',it.product_id).catch(()=>{}); }
+      return;
+    }
+    const d=load(); if(d.orders[id]) d.orders[id].status='cancelled';
+    Object.values(d.items).filter(x=>x.order_id===id).forEach(it=>{ const pr=Object.values(d.products).find(p=>p.id===it.product_id);
+      if(pr){ pr.stock=(pr.stock||0)+Number(it.qty); pr.sold=Math.max(0,(pr.sold||0)-Number(it.qty)); } });
+    save(d);
+  }
 
   /* ---- members ---- */
   async function listMembers(search=''){
@@ -838,7 +852,7 @@ const DB = (() => {
   }
 
   return {init,signIn,signUp,signOut,me,updateProfile,listProducts,getProductByBarcode,saveProduct,
-    deleteProduct,bulkUpsertProducts,listCategories,saveCategory,deleteCategory,createOrder,listOrders,getOrder,updateOrderStatus,
+    deleteProduct,bulkUpsertProducts,listCategories,saveCategory,deleteCategory,createOrder,listOrders,getOrder,updateOrderStatus,cancelOrder,
     listMembers,getMember,listAllProfiles,deleteAccount,listPoints,listReferrals,stats,getSettings,saveSettings,
     resetPassword,setPassword,changeOwnPassword,changeOwnEmail,setEmail,demo,setForceDemo,resetDemo};
 })();
@@ -1476,6 +1490,7 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
         ${o.points_earned?`<div class="tag green" style="margin-top:8px">${IC.coin} +${o.points_earned} poin</div>`:''}
         ${o.tracking_no?`<div class="muted small" style="margin-top:6px">📦 Resi: <b class="kbd">${o.tracking_no}</b></div>`:''}
         ${o.status==='delivering'?`<button class="btn green sm block" style="margin-top:8px" onclick="event.stopPropagation();App.memberConfirmReceived('${o.id}')">${IC.check} Pesanan Diterima</button>`:''}
+        ${o.status==='pending'?`<button class="btn ghost xs block" style="margin-top:6px" onclick="event.stopPropagation();App.cancelMyOrder('${o.id}')">${IC.trash} Batalkan</button>`:''}
       </div>`).join('')}</div>`;
   },
   statusTag(s){ const map={pending:['Menunggu','amber'],paid:['Dibayar','green'],processing:['Diproses','amber'],delivering:['Dikirim','amber'],completed:['Selesai','green'],cancelled:['Batal','rose'],rejected:['Ditolak','rose']};
@@ -1995,11 +2010,22 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
           ${o.status==='processing'?(o.delivery_method==='pickup'?`<button class="btn green block" onclick="App.ordAction('${id}','completed','Selesai')">${IC.check} Selesai (Sudah Diambil)</button>`:o.delivery_method==='antar'?(o.courier_id?`<div class="card" style="background:var(--green-l);padding:10px;font-size:12.5px">🛵 Kurir: <b>${o.courier_name}</b> — menunggu dikirim/diterima</div>`:`<div class="card" style="background:var(--bg);padding:10px;margin-bottom:8px"><b>Tugasi Kurir:</b><select id="assign-courier" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--line);margin:8px 0">${couriers.length?couriers.map(c=>`<option value="${c.id}|${(c.full_name||'').replace(/\|/g,'')}">${c.full_name} ${c.courier_status==='off'?'(nonaktif)':'(aktif)'}</option>`).join(''):'<option value="">Belum ada kurir</option>'}</select><button class="btn green block sm" ${couriers.length?'':'disabled'} onclick="App.assignCourier('${id}')">${IC.check} Tugasi</button></div>`):o.delivery_method==='ekspedisi'?`<div class="card" style="background:var(--bg);padding:10px;margin-bottom:8px"><b>No. Resi Ekspedisi:</b><input id="resi-input" value="${o.tracking_no||''}" placeholder="Mis. JNE12345678" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--line);margin:8px 0"><button class="btn green block sm" onclick="App.saveResi('${id}')">${IC.check} Simpan Resi & Tandai Dikirim</button></div>`:''):''}
           ${o.status==='delivering'?`<div class="card" style="background:var(--amber-l);padding:10px;font-size:12.5px;margin-bottom:8px">📦 Sedang diantar — menunggu pembeli konfirmasi <b>Diterima</b>.</div><button class="btn ghost block sm" onclick="App.ordAction('${id}','completed','Selesai')">Force Selesai (admin)</button>`:''}
           ${['completed','rejected','cancelled'].includes(o.status)?`<button class="btn ghost block" onclick="App.printReceipt(window.__ord,window.__items)">${IC.print} Cetak Struk</button>`:''}
+          ${['pending','processing','delivering'].includes(o.status)?`<button class="btn rose block sm" style="margin-top:8px" onclick="App.cancelOrder('${id}')">${IC.trash} Batalkan Pesanan</button>`:''}
         </div>
       </div>`);
     window.__ord=o; window.__items=items;
   },
   async ordAction(id,status,label){ try{ await DB.updateOrderStatus(id,status,{cashier_id:this.state.user.id}); this.closeSheet(); this.toast('Pesanan → '+label,'ok'); this.updateOnlineBadge(); this.viewOnlineOrders(); }catch(e){this.toast('Gagal','err');} },
+  async cancelOrder(id){
+    if(!confirm('Batalkan pesanan ini? Stok dikembalikan & pesanan jadi BATAL.'))return;
+    try{ await DB.cancelOrder(id); this.closeSheet(); this.toast('Pesanan dibatalkan ✓','ok'); this.updateOnlineBadge(); this.viewOnlineOrders(); }
+    catch(e){ this.toast('Gagal: '+(e.message||e),'err'); }
+  },
+  async cancelMyOrder(id){
+    if(!confirm('Batalkan pesanan ini?'))return;
+    try{ await DB.cancelOrder(id); this.toast('Pesanan dibatalkan ✓','ok'); this.viewMemberOrders(); }
+    catch(e){ this.toast('Gagal: '+(e.message||e),'err'); }
+  },
   async assignCourier(id){
     const v=document.getElementById('assign-courier')?.value; if(!v||!v.includes('|')){this.toast('Pilih kurir dulu','err');return;}
     const [cid,cname]=v.split('|');
@@ -2622,5 +2648,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#285FF4;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a24f7fb38891f88c',t:'MTc4NTY5OTA0NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a24fcf16df2efcfc',t:'MTc4NTcwMjI5Ng=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
