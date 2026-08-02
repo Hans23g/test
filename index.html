@@ -461,7 +461,7 @@ const DB = (() => {
       // SELF-HEAL: selalu pastikan akun demo ada & password benar (untuk data lama/tersangkut)
       const heal=(id,name,email,role,phone,ref)=>{
         if(!d.profiles || !d.profiles[id]) (d.profiles=d.profiles||{})[id]={id,full_name:name,email,password_plain:email.split('@')[0]+'123',role,phone,points:0,referral_code:ref,referred_by:null,is_active:true,created_at:new Date().toISOString()};
-        else if(!d.profiles[id].password_plain || d.profiles[id].password_plain!==email.split('@')[0]+'123') d.profiles[id].password_plain=email.split('@')[0]+'123';
+        else if(!d.profiles[id].password_plain) d.profiles[id].password_plain=email.split('@')[0]+'123';
         if(!d.profiles[id].referral_code) d.profiles[id].referral_code=ref;
       };
       heal('admin-1','Bu Hana (Admin)','admin@tokohana.id','admin','0812-1111-1111','ADMIN01');
@@ -603,6 +603,52 @@ const DB = (() => {
   async function updateProfile(id,patch){
     if(!isDemo){ const {data,error}=await sb.from('profiles').update(patch).eq('id',id).select().single(); if(error)throw error; return data; }
     const d=load(); Object.assign(d.profiles[id],patch); save(d); return d.profiles[id];
+  }
+  /* ---- PASSWORD ---- */
+  // Admin bantu: kirim email reset (Supabase) — demo gak butuh email
+  async function resetPassword(email){
+    if(!isDemo){
+      const {error}=await sb.auth.resetPasswordForEmail(email,{ redirectTo: location.origin+location.pathname });
+      if(error) throw error;
+      return 'email';
+    }
+    return 'demo';
+  }
+  // Admin bantu (demo): set password baru langsung
+  async function setPassword(id,newpw){
+    if(!isDemo) throw new Error('Mode Supabase: gunakan kirim email reset.');
+    const d=load(); if(!d.profiles[id]) throw new Error('Akun tidak ditemukan');
+    d.profiles[id].password_plain=newpw; save(d); return true;
+  }
+  // Member ganti password sendiri (yg sedang login)
+  async function changeOwnPassword(newpw){
+    if(!isDemo){ const {error}=await sb.auth.updateUser({password:newpw}); if(error)throw error; return; }
+    const d=load(); if(!d.session||!d.profiles[d.session]) throw new Error('Sesi tidak ditemukan');
+    d.profiles[d.session].password_plain=newpw; save(d);
+  }
+  // Member ganti email sendiri
+  async function changeOwnEmail(newEmail){
+    newEmail=(newEmail||'').toLowerCase().trim();
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(newEmail)) throw new Error('Format email tidak valid');
+    if(!isDemo){
+      const {error}=await sb.auth.updateUser({ email:newEmail });
+      if(error) throw error;
+      const u=await me(); if(u){ try{ await sb.from('profiles').update({email:newEmail}).eq('id',u.id); }catch(e){} }
+      return 'confirm';
+    }
+    const d=load();
+    if(!d.session||!d.profiles[d.session]) throw new Error('Sesi tidak ditemukan');
+    if(Object.values(d.profiles).some(x=>x.id!==d.session && x.email.toLowerCase()===newEmail)) throw new Error('Email sudah dipakai akun lain');
+    d.profiles[d.session].email=newEmail; save(d); return 'ok';
+  }
+  // Admin bantu ganti email member (demo langsung; Supabase tidak bisa via anon key)
+  async function setEmail(id,newEmail){
+    newEmail=(newEmail||'').toLowerCase().trim();
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(newEmail)) throw new Error('Format email tidak valid');
+    if(!isDemo) throw new Error('Mode Supabase: email hanya bisa diganti member sendiri (Profil→Keamanan) atau via dashboard Supabase.');
+    const d=load(); if(!d.profiles[id]) throw new Error('Akun tidak ditemukan');
+    if(Object.values(d.profiles).some(x=>x.id!==id && x.email.toLowerCase()===newEmail)) throw new Error('Email sudah dipakai akun lain');
+    d.profiles[id].email=newEmail; save(d); return true;
   }
 
   /* ---- products ---- */
@@ -767,7 +813,8 @@ const DB = (() => {
 
   return {init,signIn,signUp,signOut,me,updateProfile,listProducts,getProductByBarcode,saveProduct,
     deleteProduct,bulkUpsertProducts,listCategories,saveCategory,deleteCategory,createOrder,listOrders,getOrder,updateOrderStatus,
-    listMembers,getMember,listAllProfiles,deleteAccount,listPoints,listReferrals,stats,getSettings,saveSettings,demo,setForceDemo,resetDemo};
+    listMembers,getMember,listAllProfiles,deleteAccount,listPoints,listReferrals,stats,getSettings,saveSettings,
+    resetPassword,setPassword,changeOwnPassword,changeOwnEmail,setEmail,demo,setForceDemo,resetDemo};
 })();
 
 /* =================================================================================
@@ -844,6 +891,7 @@ const App = {
         </div>
         <button class="btn green block auth-submit" type="submit" id="auth-submit">${IC.check} Masuk</button>
       </form>
+      <div class="center" style="margin-top:14px;font-size:12.5px"><span class="muted">Lupa kata sandi? </span><b style="color:var(--blue);cursor:pointer" onclick="App.forgotPassword()">Reset di sini</b></div>
       ${DB.demo()?`<div class="auth-demo-toggle">Akun demo? <b onclick="App.fillDemo('admin@tokohana.id','admin123')">Isi otomatis</b></div>`:''}`;
   },
   bindAuth(onSuccess){
@@ -1386,6 +1434,13 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
         </form>
       </div>
       <div class="card" style="margin-top:14px">
+        <h3>🔑 Keamanan</h3>
+        <div class="field" style="margin-bottom:8px"><label>Email Akun</label><input id="prof-email" type="email" value="${u.email||''}" placeholder="email@aktif.com"></div>
+        <button class="btn ghost sm" style="margin-bottom:14px" onclick="App.changeMyEmail()">Simpan Email</button>
+        <div class="field" style="margin-bottom:8px"><label>Password Baru</label><input id="prof-newpw" type="password" placeholder="Min. 6 karakter"></div>
+        <button class="btn green sm" onclick="App.changeMyPw()">Ubah Password</button>
+      </div>
+      <div class="card" style="margin-top:14px">
         <h3>Akun</h3>
         <div class="nav-item" onclick="location.hash='card'">${IC.card} Kartu Member</div>
         <div class="nav-item" onclick="location.hash='points'">${IC.coin} Poin & Referral</div>
@@ -1817,12 +1872,31 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
           <div class="field"><label>No. HP</label><input name="phone" value="${m.phone||''}"></div>
           <button class="btn green block" type="submit">${IC.check} Simpan Nama &amp; HP</button>
         </form>
+        <h4 style="margin:14px 0 8px">📧 Email Akun</h4>
+        ${DB.demo()?`
+          <div class="field" style="margin-bottom:8px"><input id="staff-email" type="email" value="${m.email||''}" placeholder="email@aktif.com"></div>
+          <button class="btn block" onclick="App.adminSetEmail('${m.id}')">Simpan Email Baru</button>
+          <p class="muted small center" style="margin-top:6px">Buat member yg salah ketik / email lama tidak aktif lagi.</p>
+        `:`
+          <input value="${m.email||''}" disabled style="width:100%;padding:11px 13px;border-radius:11px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink-3);margin-bottom:6px">
+          <p class="muted small center">Di Supabase, email cuma bisa diganti member sendiri (Profil→Keamanan) atau via dashboard Supabase.</p>
+        `}
         <h4 style="margin:14px 0 8px">Ubah Peran</h4>
         <div class="row" style="gap:8px;flex-wrap:wrap">
           <button class="btn sm ${m.role==='admin'?'green':'ghost'}" onclick="App.setRole('${m.id}','admin')">👑 Admin</button>
           <button class="btn sm ${m.role==='kasir'?'green':'ghost'}" onclick="App.setRole('${m.id}','kasir')">🧾 Kasir</button>
           <button class="btn sm ${m.role==='member'?'green':'ghost'}" onclick="App.setRole('${m.id}','member')">🛒 Member</button>
         </div>
+        <hr class="sep">
+        <h4 style="margin:0 0 8px">🔑 Reset Password</h4>
+        ${DB.demo()?`
+          <div class="field" style="margin-bottom:8px"><label>Password Baru</label><input id="staff-newpw" type="password" placeholder="Min. 6 karakter"></div>
+          <button class="btn block" onclick="App.adminSetPw('${m.id}')">Simpan Password Baru</button>
+          <p class="muted small center" style="margin-top:6px">Member bisa login pakai password baru ini.</p>
+        `:`
+          <button class="btn block" onclick="App.adminResetPw('${(m.email||'').replace(/'/g,'')}')">✉️ Kirim Email Reset Password</button>
+          <p class="muted small center" style="margin-top:6px">Link reset dikirim ke <b>${m.email||'-'}</b>. Pastikan URL redirect sudah diatur di dashboard Supabase.</p>
+        `}
         <hr class="sep">
         <button class="btn rose block" onclick="App.deleteAccount('${m.id}','${(m.email||'').replace(/'/g,'')}')">${IC.trash} Hapus Akun</button>
         <p class="muted small center" style="margin-top:8px">Hapus = permanen, akun tidak bisa login lagi.</p>
@@ -1858,6 +1932,54 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     if(!confirm('Ubah peran akun ini menjadi "'+role+'"?')) return;
     try{ await DB.updateProfile(id,{role}); this.toast('Peran diubah → '+role,'ok'); this.closeSheet(); this.viewMembers(); }
     catch(e){ this.toast('Gagal: '+e.message,'err'); }
+  },
+  async adminSetPw(id){
+    const np=document.getElementById('staff-newpw')?.value?.trim();
+    if(!np||np.length<6){this.toast('Password min. 6 karakter','err');return;}
+    if(!confirm('Set password baru untuk akun ini?'))return;
+    try{ await DB.setPassword(id,np); this.toast('Password baru tersimpan ✓','ok'); this.closeSheet(); }
+    catch(e){ this.toast('Gagal: '+(e.message||e),'err'); }
+  },
+  async adminResetPw(email){
+    if(!email){this.toast('Email akun kosong','err');return;}
+    if(!confirm('Kirim email reset password ke '+email+'?'))return;
+    try{ await DB.resetPassword(email); this.toast('Email reset terkirim ke '+email+' ✓','ok'); this.closeSheet(); }
+    catch(e){ this.toast('Gagal: '+(e.message||e),'err'); }
+  },
+  async forgotPassword(){
+    const email=(prompt('Masukkan email akun untuk reset password:')||'').trim();
+    if(!email)return;
+    try{
+      const r=await DB.resetPassword(email);
+      if(r==='email') this.toast('Cek email '+email+' untuk link reset ✓','ok');
+      else this.toast('Mode Demo: minta Admin reset via menu Kelola Akun, atau login pakai akun demo (admin@tokohana.id/admin123).','');
+    }catch(e){ this.toast('Gagal: '+(e.message||e),'err'); }
+  },
+  async changeMyPw(){
+    const np=document.getElementById('prof-newpw')?.value?.trim();
+    if(!np||np.length<6){this.toast('Password min. 6 karakter','err');return;}
+    if(!confirm('Ubah password akunmu?'))return;
+    try{ await DB.changeOwnPassword(np); this.toast('Password diubah ✓','ok'); const e=document.getElementById('prof-newpw'); if(e)e.value=''; }
+    catch(e){ this.toast('Gagal: '+(e.message||e),'err'); }
+  },
+  async changeMyEmail(){
+    const em=(document.getElementById('prof-email')?.value||'').trim();
+    if(!em){this.toast('Isi email baru','err');return;}
+    if(!confirm('Ganti email akunmu jadi '+em+'?'))return;
+    try{
+      const r=await DB.changeOwnEmail(em);
+      this.state.user={...this.state.user,email:em};
+      if(r==='confirm') this.toast('Link konfirmasi dikirim ke '+em+'. Cek email untuk aktifkan ✓','ok');
+      else this.toast('Email diubah ✓','ok');
+      this.viewMemberProfile();
+    }catch(e){ this.toast('Gagal: '+(e.message||e),'err'); }
+  },
+  async adminSetEmail(id){
+    const em=(document.getElementById('staff-email')?.value||'').trim();
+    if(!em){this.toast('Isi email baru','err');return;}
+    if(!confirm('Ganti email akun ini jadi '+em+'?'))return;
+    try{ await DB.setEmail(id,em); this.toast('Email diubah ✓','ok'); this.closeSheet(); }
+    catch(e){ this.toast('Gagal: '+(e.message||e),'err'); }
   },
   registerCustModal(){ this.openSheet(`<div class="sheet-head"><h3>Daftarkan Member Offline</h3><button class="iconbtn" onclick="App.closeSheet()">${IC.x}</button></div>
       <div class="sheet-body"><form id="rc-form">
@@ -2254,5 +2376,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#285FF4;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a24dc3d5d9725fa8',t:'MTc4NTY4MDg2Mw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a24dec61bb1efd22',t:'MTc4NTY4MjUyNA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
