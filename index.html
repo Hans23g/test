@@ -105,7 +105,6 @@ h1,h2,h3,h4{margin:0;font-weight:800;letter-spacing:-.01em}
 .cat-tile span{font-size:10px;font-weight:700;color:var(--ink-2);text-align:center;line-height:1.2;max-width:62px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cat-tile.active .cat-ico{background:var(--navy)}.cat-tile.active span{color:var(--navy)}
 .cats .cat-tile{width:48px;flex:none}
-.cats .cat-tile.all .cat-ico{background:var(--navy)}
 .cat-dropdown{background:#fff;border-radius:16px;box-shadow:var(--shadow-lg);padding:8px;margin-bottom:14px;display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
 .cat-dropdown.hide{display:none}
 .cat-dropdown .dd-item{padding:12px 8px;border-radius:11px;font-weight:700;font-size:12.5px;cursor:pointer;text-align:center;color:var(--ink-2)}
@@ -366,6 +365,14 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:14px 0}
 .theme-swatch{width:40px;height:40px;border-radius:50%;cursor:pointer;border:3px solid transparent;transition:.15s;flex:none}
 .theme-swatch.on{border-color:var(--ink);transform:scale(1.1)}
 .theme-presets{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}
+/* tombol geser kategori — gede & gampang di-tap jempol (min 38px) */
+.cat-move{height:40px;padding:0 14px;border-radius:10px;border:1.5px solid var(--line);background:#fff;color:var(--navy);font-size:12.5px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:6px;min-width:48px;justify-content:center;transition:.15s;-webkit-tap-highlight-color:transparent}
+.cat-move:hover:not(:disabled){background:var(--blue-l);border-color:var(--blue)}
+.cat-move:active:not(:disabled){transform:scale(.94)}
+.cat-move:disabled{opacity:.32;cursor:not-allowed;background:var(--bg)}
+.cat-move.del{color:var(--rose)}
+.cat-move.del:hover:not(:disabled){background:#FDE8EC;border-color:var(--rose)}
+.cat-row{background:var(--bg);padding:8px;border-radius:12px;margin-bottom:8px}
 </style>
 </head>
 <body>
@@ -989,7 +996,7 @@ const App = {
         ${guest?`<span class="promo-cta">Masuk untuk Belanja →</span>`:''}
       </div>`:'')}
       <div class="cats" id="catbar">
-        <div class="cat-tile all" onclick="App.toggleCatDropdown()"><div class="cat-ico">🗂️</div><span>Semua ▾</span></div>
+        <div class="cat-tile ${this.state.category==='all'?'active':''}" data-c="all" onclick="App.clickSemua()" title="Semua produk + buka/tutup kategori"><div class="cat-ico">🗂️</div><span>Semua ▾</span></div>
         ${cats.map(c=>`<div class="cat-tile ${this.state.category===c.id?'active':''}" data-c="${c.id}" onclick="App.pickCat('${c.id}')"><div class="cat-ico">${c.icon||'📦'}</div><span>${c.name}</span></div>`).join('')}
       </div>
       <div class="cat-dropdown hide" id="cat-dropdown">
@@ -1057,6 +1064,14 @@ const App = {
     document.querySelectorAll('#catbar .cat-tile').forEach(t=>t.classList.toggle('active', t.dataset.c===c));
     document.querySelectorAll('#cat-dropdown .dd-item').forEach(t=>t.classList.toggle('on', t.dataset.c===c));
     const dd=document.getElementById('cat-dropdown'); if(dd) dd.classList.add('hide');
+    this.applyFilter();
+  },
+  /* "Semua ▾": selalu reset ke semua produk (aktif) + toggle dropdown buka/tutup */
+  clickSemua(){
+    this.state.category='all'; this.state._page=1;
+    document.querySelectorAll('#catbar .cat-tile').forEach(t=>t.classList.toggle('active', t.dataset.c==='all'));
+    document.querySelectorAll('#cat-dropdown .dd-item').forEach(t=>t.classList.toggle('on', t.dataset.c==='all'));
+    const dd=document.getElementById('cat-dropdown'); if(dd) dd.classList.toggle('hide');
     this.applyFilter();
   },
   toggleCatDropdown(){ const dd=document.getElementById('cat-dropdown'); if(dd) dd.classList.toggle('hide'); },
@@ -1960,7 +1975,7 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
             <div class="field col" style="margin:0;min-width:160px"><label>Nama Kategori</label><input id="cat-name" placeholder="Mis. Minuman"></div>
             <button class="btn green sm" onclick="App.addCategory()">${IC.plus} Tambah</button>
           </div>
-          <div>${(this.state._cats||[]).map((c,i)=>`<div class="row" style="gap:6px;align-items:center;background:var(--bg);padding:6px 8px;border-radius:10px;margin-bottom:6px"><span style="font-size:20px;width:28px;text-align:center">${c.icon||'📦'}</span><input value="${(c.name||'').replace(/"/g,'&quot;')}" onchange="App.updateCategory('${c.id}','name',this.value)" style="flex:1;background:#fff;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-weight:700;font-size:13px"><input value="${c.icon||'📦'}" maxlength="3" onchange="App.updateCategory('${c.id}','icon',this.value)" style="width:42px;background:#fff;border:1px solid var(--line);border-radius:8px;padding:8px;text-align:center;font-size:15px"><div style="display:flex;flex-direction:column;gap:2px"><button class="iconbtn" style="width:26px;height:18px;font-size:12px;color:var(--navy)" title="Naik" onclick="App.moveCategory(${i},-1)">▲</button><button class="iconbtn" style="width:26px;height:18px;font-size:12px;color:var(--navy)" title="Turun" onclick="App.moveCategory(${i},1)">▼</button></div><button class="iconbtn" style="width:28px;height:28px;color:var(--rose)" onclick="App.delCategory('${c.id}')">${IC.trash}</button></div>`).join('')||'<div class="muted small center">Belum ada kategori</div>'}</div>
+          <div>${(this.state._cats||[]).map((c,i,arr)=>{const first=i===0,last=i===arr.length-1;return `<div class="cat-row"><div class="row" style="gap:8px;align-items:center"><span style="font-size:22px;width:32px;text-align:center;flex:none">${c.icon||'📦'}</span><input value="${(c.name||'').replace(/"/g,'&quot;')}" onchange="App.updateCategory('${c.id}','name',this.value)" style="flex:1;min-width:0;background:#fff;border:1px solid var(--line);border-radius:9px;padding:10px 12px;font-weight:700;font-size:14px"><input value="${c.icon||'📦'}" maxlength="3" onchange="App.updateCategory('${c.id}','icon',this.value)" style="width:48px;flex:none;background:#fff;border:1px solid var(--line);border-radius:9px;padding:10px;text-align:center;font-size:16px"></div><div class="row" style="gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap"><span class="muted small" style="flex:1;min-width:80px">Urutan ${i+1} / ${arr.length}</span><button class="cat-move" ${first?'disabled':''} title="Naikkan urutan" onclick="App.moveCategory(${i},-1)">▲ Naik</button><button class="cat-move" ${last?'disabled':''} title="Turunkan urutan" onclick="App.moveCategory(${i},1)">▼ Turun</button><button class="cat-move del" title="Hapus kategori" onclick="App.delCategory('${c.id}')">${IC.trash} Hapus</button></div></div>`;}).join('')||'<div class="muted small center">Belum ada kategori</div>'}</div>
         </div>`;
     } else if(tab==='tema'){
       const presets=[['#285FF4','Biru BCA'],['#0E7C5A','Hijau Fresh'],['#D2691E','Oranye'],['#6B2FB5','Ungu'],['#C53030','Merah'],['#0E7C9E','Tosca'],['#C5306B','Pink'],['#2D5F3F','Forest'],['#1A1A2E','Hitam Elegan']];
@@ -2101,13 +2116,20 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
   async updateCategory(id,field,val){ try{ await DB.saveCategory({id,[field]:val}); this.state._cats=await DB.listCategories(); }catch(e){} },
   async delCategory(id){ if(!confirm('Hapus kategori ini?'))return; try{ await DB.deleteCategory(id); this.state._cats=await DB.listCategories(); this.renderSetTab('kategori',await DB.getSettings()); this.toast('Dihapus ✓','ok'); }catch(e){this.toast('Gagal','err');} },
   async moveCategory(i,dir){
-    const cats=(this.state._cats||[]); const j=i+dir;
-    if(j<0||j>=cats.length)return;
-    const a=cats[i],b=cats[j];
-    await DB.saveCategory({id:a.id,sort_order:b.sort_order});
-    await DB.saveCategory({id:b.id,sort_order:a.sort_order});
-    this.state._cats=await DB.listCategories();
-    this.renderSetTab('kategori',await DB.getSettings());
+    const cats=[...(this.state._cats||[])];
+    const j=i+dir;
+    if(j<0||j>=cats.length){ this.toast('Sudah di posisi paling '+(dir<0?'atas':'bawah'),''); return; }
+    // tukar posisi, lalu RENUMBER semua biar urutan selalu konsisten
+    [cats[i],cats[j]]=[cats[j],cats[i]];
+    try{
+      for(let k=0;k<cats.length;k++){
+        // bawa name+icon supaya aman untuk upsert Supabase (hindari constraint NOT NULL)
+        await DB.saveCategory({id:cats[k].id, name:cats[k].name||'Kategori', icon:cats[k].icon||'📦', sort_order:k+1});
+      }
+      this.state._cats=await DB.listCategories();
+      this.renderSetTab('kategori',await DB.getSettings());
+      this.toast('Urutan diubah ✓','ok');
+    }catch(e){ console.error('moveCategory error',e); this.toast('Gagal geser: '+(e.message||e),'err'); }
   },
   async applyBizPreset(key){ const p=BIZ_PRESETS[key]; if(!p)return;
     if(!confirm('Terapkan preset "'+p.label+'"? Ini akan MENGGANTI semua kategori saat ini.'))return;
@@ -2232,5 +2254,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#285FF4;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a24d5d50bbdd5888',t:'MTc4NTY3NjY2NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a24dc3d5d9725fa8',t:'MTc4NTY4MDg2Mw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
