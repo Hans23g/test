@@ -965,7 +965,10 @@ const App = {
   renderApp(){
     document.getElementById('auth-root').classList.add('hide');
     const root=document.getElementById('app-root'); root.classList.remove('hide');
-    if(this.isAdmin()) this.renderStaffShell(); else this.renderMemberShell();
+    const r=this.state.user.role;
+    if(r==='admin'||r==='kasir') this.renderStaffShell();
+    else if(r==='kurir') this.renderCourierShell();
+    else this.renderMemberShell();
     this.route();
   },
   renderStaffShell(){
@@ -1021,6 +1024,56 @@ const App = {
     document.querySelectorAll('.bn-item, .chip-points').forEach(el=>el.onclick=()=>location.hash=el.dataset.v);
     this.updateCartBadge();
   },
+  renderCourierShell(){
+    const u=this.state.user;
+    document.getElementById('app-root').innerHTML=`
+      <div class="topbar"><div class="wrap">
+        <div class="brand"><img class="logo-img" src="${LOGO}" alt="Toko Hana"><div class="brand-text">Toko Hana<small>KURIR</small></div></div>
+        <div class="spacer"></div>
+        <span class="tag amber">🛵 Kurir</span>
+        <button class="menu-btn" onclick="App.openDrawer()" title="Menu">${IC.menu}</button>
+      </div></div>
+      <main class="main" style="min-height:calc(100vh - var(--bar-h))"><div class="content" id="view"></div></main>
+      <nav class="bottomnav">
+        <div class="bn-item active" data-v="courier-home">${IC.home}Home</div>
+        <div class="bn-item" data-v="courier-orders">${IC.bag}Antar</div>
+        <div class="bn-item" data-v="courier-profile">${IC.user}Profil</div>
+      </nav>`;
+    document.querySelectorAll('.bn-item').forEach(el=>el.onclick=()=>location.hash=el.dataset.v);
+  },
+  viewCourierHome(){
+    const v=document.getElementById('view'); const u=this.state.user;
+    const active=u.courier_status!=='off';
+    v.innerHTML=`<div class="section-title"><h2>Halo, ${u.full_name?.split(' ')[0]||'Kurir'} 🛵</h2><span class="tag ${active?'green':'gray'}">${active?'Aktif':'Nonaktif'}</span></div>
+      <div class="card" style="text-align:center">
+        <div style="font-size:48px">${active?'🟢':'🔴'}</div>
+        <h3 style="margin:6px 0">Status: ${active?'Siap Pickup':'Tidak Aktif'}</h3>
+        <p class="muted small">Ubah status kesiapanmu menerima job antar.</p>
+        <button class="btn ${active?'rose':'green'} block" style="margin-top:12px" onclick="App.toggleCourierStatus()">${active?'🔴 Nonaktifkan':'🟢 Aktifkan'}</button>
+      </div>
+      <div class="card" style="margin-top:14px;background:var(--blue-ll)">
+        <b>📦 Job Antar</b>
+        <p class="muted small" style="margin:6px 0 0">Fitur ambil job & update status pengiriman menyusul (Tahap 2). Sekarang kurir bisa atur status kesiapan.</p>
+      </div>`;
+  },
+  toggleCourierStatus(){
+    const u=this.state.user; const newSt=u.courier_status==='off'?'active':'off';
+    DB.updateProfile(u.id,{courier_status:newSt}).then(()=>{ this.state.user={...u,courier_status:newSt}; this.toast('Status: '+(newSt==='active'?'Aktif 🟢':'Nonaktif 🔴'),'ok'); this.viewCourierHome(); }).catch(e=>this.toast('Gagal: '+(e.message||e),'err'));
+  },
+  viewCourierOrders(){
+    const v=document.getElementById('view');
+    v.innerHTML=`<div class="section-title"><h2>📦 Job Antar</h2></div>
+      <div class="card" style="text-align:center;color:var(--ink-3)"><div style="font-size:40px">🚧</div><p>Daftar job & update status pengiriman menyusul di <b>Tahap 2</b>.</p></div>`;
+  },
+  viewCourierProfile(){
+    const v=document.getElementById('view'); const u=this.state.user;
+    v.innerHTML=`<div class="section-title"><h2>Profil Kurir</h2></div>
+      <div class="card"><div class="row" style="gap:12px"><div style="width:50px;height:50px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800">${(u.full_name||'?')[0]}</div>
+        <div class="col"><h3>${u.full_name}</h3><div class="muted small">${u.email}</div><span class="tag amber">🛵 KURIR</span></div></div>
+        <hr class="sep"><form id="kurir-form"><div class="field"><label>Nama</label><input name="full_name" value="${u.full_name||''}"></div><div class="field"><label>No. HP</label><input name="phone" value="${u.phone||''}"></div><button class="btn green" type="submit">${IC.check} Simpan</button></form>
+        <div class="nav-item" style="color:var(--rose);margin-top:10px" onclick="App.doLogout()">${IC.logout} Keluar</div></div>`;
+    document.getElementById('kurir-form').onsubmit=async e=>{ e.preventDefault(); const f=new FormData(e.target); try{ const p=await DB.updateProfile(u.id,{full_name:f.get('full_name'),phone:f.get('phone')}); this.state.user={...u,...p}; this.toast('Tersimpan ✓','ok'); }catch(err){this.toast('Gagal','err');} };
+  },
   async doLogout(){ await DB.signOut(); this.state.user=null; this.state.cart=[]; this.renderPublicShell(); },
   goCart(){ location.hash='cart'; },
   focusSearch(){ const i=document.getElementById('psearch');
@@ -1037,6 +1090,10 @@ const App = {
     const v=document.getElementById('view'); if(!v)return;
     // TAMU (belum login): hanya katalog publik
     if(!this.state.user){ this.viewStore(); return; }
+    if(this.state.user.role==='kurir'){
+      ({'courier-home':()=>this.viewCourierHome(),'courier-orders':()=>this.viewCourierOrders(),'courier-profile':()=>this.viewCourierProfile()}[h]||(()=>this.viewCourierHome()))();
+      return;
+    }
     if(this.isAdmin()){
       const isBoss=this.state.user.role==='admin';
       if(['store','cart','product'].includes(h)) { return this.viewStore(true); } // admin lihat toko
@@ -1238,43 +1295,73 @@ const App = {
         <div class="card" id="checkout-box" style="position:sticky;top:78px">
           <h3>Ringkasan</h3>
           <div class="sum-line"><span>Subtotal</span><span>${this.money(sub)}</span></div>
-          <div class="sum-line"><span>Ongkos kirim</span><span class="green">Gratis</span></div>
-          <div class="field" style="margin:10px 0">
-            <label>Gunakan poin (1 poin = ${this.money(CONFIG.REDEEM_VALUE)})</label>
-            <div class="row"><input type="number" id="use-pts" min="0" max="${this.state.user.points||0}" value="0" oninput="App.calcCart()"><span class="tag" style="margin-left:6px">saldo ${this.state.user.points||0}</span></div>
-          </div>
-          <div class="sum-line"><span>Potongan poin</span><span id="pts-disc">- ${this.money(0)}</span></div>
-          <div class="sum-line tot"><span>Total</span><span id="grand-tot">${this.money(sub)}</span></div>
-          <div class="field"><label>Alamat pengiriman</label><textarea id="addr" rows="2" placeholder="Alamat lengkap untuk antar">${this.state.user.address||''}</textarea></div>
+          <div class="field"><label>Metode Pengiriman</label><select id="ship-method" onchange="App.calcShip()">
+            <option value="pickup">🏪 Ambil di Toko (Gratis)</option>
+            ${(this.state._delivery?.on!==false)?`<option value="antar" selected>🛵 Antar ke Alamat</option>`:''}
+            <option value="ekspedisi" ${(this.state._delivery?.on===false)?'selected':''}>🎒 Ekspedisi (Luar Daerah)</option>
+          </select></div>
+          <div id="ship-detail"></div>
+          <div class="field"><label>Alamat</label><textarea id="addr" rows="2" placeholder="Alamat lengkap (sebut RT/RW/kelurahan biar zona ke-detect)" oninput="App.calcShip()">${this.state.user.address||''}</textarea></div>
           <div class="field"><label>Catatan (opsional)</label><input id="note" placeholder="Catatan untuk penjual"></div>
           <div class="field"><label>Metode Pembayaran</label><select id="pay-method" onchange="document.getElementById('pay-detail').innerHTML=App.payDetail(this.value)">${this.payMethods().map(m=>`<option value="${m.id}">${m.label}</option>`).join('')}</select></div>
           <div id="pay-detail"></div>
           <div class="field"><label>Keterangan / Bukti Bayar (untuk WA)</label><textarea id="wa-note" rows="2" placeholder="Mis: Sudah transfer ke BCA / Bayar cash saat sampai"></textarea></div>
+          <div class="field" style="margin:10px 0"><label>Gunakan poin (1 poin = ${this.money(CONFIG.REDEEM_VALUE)})</label><div class="row"><input type="number" id="use-pts" min="0" max="${this.state.user.points||0}" value="0" oninput="App.calcCart()"><span class="tag" style="margin-left:6px">saldo ${this.state.user.points||0}</span></div></div>
+          <div class="sum-line"><span>Ongkir</span><span id="ship-line">${this.money(0)}</span></div>
+          <div class="sum-line"><span>Potongan poin</span><span id="pts-disc">- ${this.money(0)}</span></div>
+          <div class="sum-line tot"><span>Total</span><span id="grand-tot">${this.money(sub)}</span></div>
           <button class="btn green block" onclick="App.placeOrder()">${IC.check} Buat Pesanan</button>
           <button class="btn block" style="background:#25D366;margin-top:8px" onclick="App.orderViaWhatsApp()">💬 Pesan via WhatsApp</button>
           <p class="muted small center" style="margin-top:8px">+ ${pts} poin akan didapat dari pesanan ini</p>
         </div>
       </div>`;
-    this.calcCart();
+    this.calcShip();
     if(window.innerWidth<=880){ document.getElementById('cart-layout').style.gridTemplateColumns='1fr'; document.getElementById('checkout-box').style.position='static'; }
   },
   cartQty(i,d){ const it=this.state.cart[i]; const nv=it.qty+d; if(nv<=0){this.cartRemove(i);return;} if(nv>it.stock){this.toast('Stok tidak cukup','err');return;} it.qty=nv; this.viewCart(); this.updateCartBadge(); },
   cartRemove(i){ this.state.cart.splice(i,1); this.viewCart(); this.updateCartBadge(); },
   calcCart(){ const sub=this.state.cart.reduce((a,b)=>a+b.price*b.qty,0);
     const use=Math.min(Number(document.getElementById('use-pts').value||0),this.state.user.points||0,Math.floor(sub/CONFIG.REDEEM_VALUE));
-    const disc=use*CONFIG.REDEEM_VALUE; const tot=sub-disc;
-    const pd=document.getElementById('pts-disc'),gt=document.getElementById('grand-tot');
-    if(pd)pd.textContent='- '+this.money(disc); if(gt)gt.textContent=this.money(tot);
+    const disc=use*CONFIG.REDEEM_VALUE; const ship=this.state._ship||0; const tot=sub-disc+ship;
+    const pd=document.getElementById('pts-disc'),gt=document.getElementById('grand-tot'),sl=document.getElementById('ship-line');
+    if(pd)pd.textContent='- '+this.money(disc); if(sl)sl.textContent=this.money(ship); if(gt)gt.textContent=this.money(tot);
   },
+  /* hitung ongkir berdasar metode pengiriman + deteksi zona dari alamat */
+  calcShip(){
+    const m=document.getElementById('ship-method')?.value||'pickup';
+    const detail=document.getElementById('ship-detail'); let ship=0, info='';
+    if(m==='pickup'){ ship=0; info='<div class="card" style="background:var(--green-l);padding:10px;margin:0 0 10px;font-size:12.5px"><b>🏪 Ambil di Toko</b> — Gratis. Pembeli ambil sendiri.</div>'; }
+    else if(m==='antar'){
+      const addr=(document.getElementById('addr')?.value||'').toLowerCase();
+      const z=this.detectZone(addr); ship=z.tarif;
+      info=`<div class="card" style="background:var(--blue-ll);padding:10px;margin:0 0 10px;font-size:12.5px"><b>🛵 Zona ${z.nama}</b> &mdash; ongkir <b>${this.money(z.tarif)}</b> ${z.detected?'<span class="tag green">terdeteksi</span>':'<span class="tag amber">default</span>'}<div style="margin-top:8px"><select id="ship-zone" style="width:100%;padding:9px;border-radius:9px;border:1px solid var(--line)" onchange="App.applyShipZone()">${(this.state._delivery?.zones||[]).map(zn=>`<option value="${zn.id}" ${zn.id===z.id?'selected':''}>${zn.nama} — ${this.money(zn.tarif)}</option>`).join('')}</select></div></div>`;
+    } else { ship=0; info=`<div class="card" style="background:var(--amber-l);padding:10px;margin:0 0 10px;font-size:12.5px"><b>🎒 Ekspedisi Luar Daerah</b> — ongkir bayar ke ekspedisi (${(this.state._delivery?.expedisi||'JNE/J&T')}). Admin input no. resi setelah dikirim.</div>`; }
+    if(detail) detail.innerHTML=info;
+    this.state._ship=ship; this.state._shipMethod=m; this.calcCart();
+  },
+  detectZone(addrText){
+    addrText=(addrText||'').toLowerCase();
+    const zones=(this.state._delivery?.zones||[]);
+    for(const z of zones){ const kws=(z.keywords||'').split(',').map(x=>x.trim().toLowerCase()).filter(Boolean);
+      if(kws.length && kws.some(k=>addrText.includes(k))) return {...z, detected:true}; }
+    const fb=zones.slice().sort((a,b)=>(a.tarif||0)-(b.tarif||0))[0]||{id:'dekat',nama:'Dekat',tarif:2000};
+    return {...fb, detected:false};
+  },
+  applyShipZone(){ const id=document.getElementById('ship-zone')?.value; const z=(this.state._delivery?.zones||[]).find(x=>x.id===id);
+    if(z){ this.state._ship=z.tarif||0; this.calcCart(); } },
   async placeOrder(){
     if(!this.state.cart.length)return;
     const sub=this.state.cart.reduce((a,b)=>a+b.price*b.qty,0);
     const use=Math.min(Number(document.getElementById('use-pts').value||0),this.state.user.points||0);
-    const disc=use*CONFIG.REDEEM_VALUE; const tot=sub-disc;
-    const addr=document.getElementById('addr').value.trim(); if(!addr){this.toast('Alamat pengiriman wajib diisi','err');return;}
+    const disc=use*CONFIG.REDEEM_VALUE;
+    const dm=this.state._shipMethod||'pickup'; const ship=this.state._ship||0;
+    let dz=''; if(dm==='antar'){ dz=document.getElementById('ship-zone')?.value || this.detectZone((document.getElementById('addr')?.value||'').toLowerCase()).id; }
+    const tot=sub-disc+ship;
+    const addr=document.getElementById('addr').value.trim(); if(dm!=='pickup' && !addr){this.toast('Alamat wajib diisi untuk pengantaran','err');return;}
     const ptsEarn=Math.floor(tot/CONFIG.EARN_PER_RP);
     const order={ order_no:'ONL'+Date.now().toString().slice(-8), customer_id:this.state.user.id, customer_name:this.state.user.full_name,
-      channel:'online', status:'pending', subtotal:sub, discount:disc, points_used:use, points_earned:ptsEarn, shipping:0,
+      channel:'online', status:'pending', subtotal:sub, discount:disc, points_used:use, points_earned:ptsEarn, shipping:ship,
+      delivery_method:dm, delivery_zone:dz,
       total:tot, address:addr, note:document.getElementById('note').value, payment_method:document.getElementById('pay-method')?.value||'COD' };
     const items=this.state.cart.map(it=>({product_id:it.product_id,name:it.name,price:it.price,qty:it.qty,subtotal:it.price*it.qty}));
     try{
@@ -1297,15 +1384,19 @@ const App = {
     if(!ph.startsWith('62')) ph=ph.startsWith('0')?'62'+ph.slice(1):'62'+ph;
     const sub=c.reduce((a,b)=>a+b.price*b.qty,0);
     const usePts=Math.min(Number(document.getElementById('use-pts')?.value||0),u.points||0,Math.floor(sub/CONFIG.REDEEM_VALUE));
-    const disc=usePts*CONFIG.REDEEM_VALUE; const tot=sub-disc;
-    const addr=document.getElementById('addr')?.value?.trim(); if(!addr){this.toast('Alamat wajib diisi','err');return;}
+    const disc=usePts*CONFIG.REDEEM_VALUE;
+    const dm=this.state._shipMethod||'pickup'; const ship=this.state._ship||0;
+    let dz=''; if(dm==='antar'){ dz=document.getElementById('ship-zone')?.value || this.detectZone((document.getElementById('addr')?.value||'').toLowerCase()).id; }
+    const tot=sub-disc+ship;
+    const addr=document.getElementById('addr')?.value?.trim(); if(dm!=='pickup' && !addr){this.toast('Alamat wajib diisi','err');return;}
     const note=(document.getElementById('note')?.value||'').trim();
     const payEl=document.getElementById('pay-method'); const pay=payEl?.value||'COD (Bayar di tempat)';
     const waNote=(document.getElementById('wa-note')?.value||'').trim();
     const ptsEarn=Math.floor(tot/CONFIG.EARN_PER_RP);
     // 1) buat order dulu (sama kayak placeOrder tapi dengan payment_method + note WA)
     const order={ order_no:'ONL'+Date.now().toString().slice(-8), customer_id:u.id, customer_name:u.full_name,
-      channel:'online', status:'pending', subtotal:sub, discount:disc, points_used:usePts, points_earned:ptsEarn, shipping:0,
+      channel:'online', status:'pending', subtotal:sub, discount:disc, points_used:usePts, points_earned:ptsEarn, shipping:ship,
+      delivery_method:dm, delivery_zone:dz,
       total:tot, address:addr, note:(note?note+'\n':'')+'[Order via WhatsApp'+(waNote?' — '+waNote:'')+']', payment_method:pay };
     const items=c.map(it=>({product_id:it.product_id,name:it.name,price:it.price,qty:it.qty,subtotal:it.price*it.qty}));
     try{
@@ -1329,7 +1420,7 @@ ${itemList}
 💰 *RINGKASAN*
 ───────────────
 Subtotal: ${this.money(sub)}
-${disc>0?`Diskon Poin: -${this.money(disc)}\n`:''}*TOTAL: ${this.money(tot)}*
+${disc>0?`Diskon Poin: -${this.money(disc)}\n`:''}${ship>0?`Ongkir: ${this.money(ship)}\n`:''}*TOTAL: ${this.money(tot)}*
 
 ───────────────
 🚚 *PENGIRIMAN*
@@ -1940,7 +2031,7 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     }catch(e){ v.innerHTML=`<div class="empty">${IC.users}<h3>Gagal memuat</h3><p class="muted">${e.message||e}</p></div>`; }
   },
   setMemMode(m){ this.state._memMode=m; this.viewMembers(); },
-  roleBadge(r){ const m={admin:['👑 Admin','green'],kasir:['🧾 Kasir','amber'],member:['🛒 Member','']}; const [t,c]=m[r]||[r,'gray']; return `<span class="tag ${c}">${t}</span>`; },
+  roleBadge(r){ const m={admin:['👑 Admin','green'],kasir:['🧾 Kasir','amber'],kurir:['🛵 Kurir','amber'],member:['🛒 Member','']}; const [t,c]=m[r]||[r,'gray']; return `<span class="tag ${c}">${t}</span>`; },
   renderMembers(m){ const body=document.getElementById('m-body');
     body.innerHTML=m.length?m.map(x=>`<tr>
       <td><div class="row"><div style="width:34px;height:34px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800">${(x.full_name||'?')[0]}</div><div><b style="font-size:13px">${x.full_name||'-'}</b><div class="muted small">${x.email}</div></div></div></td>
@@ -1974,6 +2065,7 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
         <div class="row" style="gap:8px;flex-wrap:wrap">
           <button class="btn sm ${m.role==='admin'?'green':'ghost'}" onclick="App.setRole('${m.id}','admin')">👑 Admin</button>
           <button class="btn sm ${m.role==='kasir'?'green':'ghost'}" onclick="App.setRole('${m.id}','kasir')">🧾 Kasir</button>
+          <button class="btn sm ${m.role==='kurir'?'green':'ghost'}" onclick="App.setRole('${m.id}','kurir')">🛵 Kurir</button>
           <button class="btn sm ${m.role==='member'?'green':'ghost'}" onclick="App.setRole('${m.id}','member')">🛒 Member</button>
         </div>
         <hr class="sep">
@@ -2012,6 +2104,7 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
         <div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:6px">
           <button class="btn sm ${m.role==='admin'?'green':'ghost'}" onclick="App.setRole('${m.id}','admin')">👑 Admin</button>
           <button class="btn sm ${m.role==='kasir'?'green':'ghost'}" onclick="App.setRole('${m.id}','kasir')">🧾 Kasir</button>
+          <button class="btn sm ${m.role==='kurir'?'green':'ghost'}" onclick="App.setRole('${m.id}','kurir')">🛵 Kurir</button>
           <button class="btn sm ${m.role==='member'?'green':'ghost'}" onclick="App.setRole('${m.id}','member')">🛒 Member</button>
         </div>
         <div class="muted small">👑 Admin = akses penuh · 🧾 Kasir = POS &amp; order · 🛒 Member = belanja online.</div>
@@ -2122,6 +2215,7 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
           <button class="${this.state._setTab==='tema'?'active':''}" onclick="App.setSetTab('tema')">🎨 Tema</button>
           <button class="${this.state._setTab==='pay'?'active':''}" onclick="App.setSetTab('pay')">💳 Bayar</button>
           <button class="${this.state._setTab==='poin'?'active':''}" onclick="App.setSetTab('poin')">🪙 Poin</button>
+          <button class="${this.state._setTab==='antar'?'active':''}" onclick="App.setSetTab('antar')">🛵 Antar</button>
         </div>
         <div id="set-body"></div>`;
       this.renderSetTab(this.state._setTab, s);
@@ -2234,6 +2328,16 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
         CONFIG.REFERRAL_BONUS=Number(f.get('referral_bonus')); CONFIG.SIGNUP_BONUS=Number(f.get('signup_bonus'));
         await DB.saveSettings('points',{earn_per_rp:CONFIG.EARN_PER_RP,redeem_value:CONFIG.REDEEM_VALUE,referral_bonus:CONFIG.REFERRAL_BONUS,signup_bonus:CONFIG.SIGNUP_BONUS});
         this.toast('Pengaturan poin disimpan ✓','ok'); };
+    } else if(tab==='antar'){
+      const dv=this.state._delivery||{on:true,zones:[],expedisi:''};
+      body.innerHTML=`<div class="card"><h3>🛵 Pengantaran & Zona</h3>
+        <p class="muted small">Atur zona ongkir dari wilayah. Sistem cocokin alamat pembeli (RT/RW/nama wilayah) ke zona &rarr; tarif otomatis. Tarif terdekat mulai Rp 2.000. "Ambil di toko" selalu gratis. Luar daerah pakai ekspedisi (info resi saja).</p>
+        <div class="row between" style="margin:12px 0"><b class="small">Aktifkan layanan antar</b><label class="row" style="gap:6px;font-size:13px;font-weight:700;cursor:pointer"><input type="checkbox" id="dv-on" ${dv.on?'checked':''}> Aktif</label></div>
+        <h4 style="margin:6px 0 10px">📍 Zona &amp; Tarif</h4>
+        ${(dv.zones||[]).map((z,i)=>`<div style="background:var(--bg);padding:10px;border-radius:10px;margin-bottom:10px"><div class="row" style="gap:8px;margin-bottom:8px"><div class="field" style="margin:0;flex:1"><label>Nama Zona</label><input class="dv-nama" data-i="${i}" value="${(z.nama||'').replace(/"/g,'&quot;')}" placeholder="Dekat"></div><div class="field" style="margin:0;width:130px"><label>Tarif (Rp)</label><input class="dv-tarif" data-i="${i}" type="number" value="${z.tarif||0}"></div></div><div class="field" style="margin:0"><label>Kata kunci wilayah <span class="muted small">(pisah koma: RT01, RT02, Kel Sukamaju)</span></label><input class="dv-kw" data-i="${i}" value="${(z.keywords||'').replace(/"/g,'&quot;')}" placeholder="RT01, RT02, Kel Sukamaju"></div></div>`).join('')}
+        <hr class="sep">
+        <div class="field"><label>🎒 Ekspedisi luar daerah <span class="muted small">(info aja, pisah koma)</span></label><input id="dv-exp" value="${(dv.expedisi||'').replace(/"/g,'&quot;')}" placeholder="JNE, J&T, SiCepat, AnterAja"></div>
+        <button class="btn green block" onclick="App.saveDelivery()">${IC.check} Simpan Pengantaran</button></div>`;
     } else {
       body.innerHTML=`<div class="card"><form id="store-form">
         <h3>Profil Toko</h3>
@@ -2289,6 +2393,7 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     this.state._footer=s.footer||{};
     const tc=(s.theme&&s.theme.primary)||'#285FF4'; this.state._themeColor=tc;
     this.state._pay=s.payment||{};
+    this.state._delivery=s.delivery||{on:true,zones:[{id:'dekat',nama:'Dekat',tarif:2000,keywords:''},{id:'sedang',nama:'Sedang',tarif:5000,keywords:''},{id:'jauh',nama:'Jauh',tarif:10000,keywords:''}],expedisi:'JNE, J&T, SiCepat, AnterAja'};
     this.applyThemeColor(tc);
     this.state._darkMode=(function(){try{return localStorage.getItem('omnipos_dark')==='1'}catch(e){return false}})();
     this.applyThemeMode(this.state._darkMode?'dark':'light',tc);
@@ -2382,6 +2487,16 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     await DB.saveSettings('payment',pay); this.state._pay=pay;
     this.renderSetTab('pay',await DB.getSettings());
   },
+  async saveDelivery(){
+    const dv={on:document.getElementById('dv-on')?.checked||false, zones:[], expedisi:document.getElementById('dv-exp')?.value||''};
+    const old=this.state._delivery||{};
+    document.querySelectorAll('.dv-nama').forEach(el=>{
+      const i=+el.dataset.i;
+      dv.zones[i]={id:(old.zones?.[i]?.id)||('z'+i), nama:el.value||('Zona '+(i+1)), tarif:Number(document.querySelectorAll('.dv-tarif')[i]?.value)||0, keywords:document.querySelectorAll('.dv-kw')[i]?.value||''};
+    });
+    try{ await DB.saveSettings('delivery',dv); this.state._delivery=dv; this.toast('Pengaturan pengantaran disimpan ✓','ok'); }
+    catch(e){ this.toast('Gagal: '+(e.message||e),'err'); }
+  },
   payMethods(){
     const p=this.state._pay||{}; const m=[];
     if(p.cod?.on!==false)m.push({id:'cod',label:'💵 COD (Bayar di Tempat)'});
@@ -2420,7 +2535,8 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     if(u){
       head=`<div class="row" style="gap:12px;min-width:0">${u.avatar_url?`<img src="${u.avatar_url}" style="width:42px;height:42px;border-radius:50%;object-fit:cover;flex:none">`:`<div class="av">${(u.full_name||'?')[0]}</div>`}<div class="col" style="min-width:0"><b style="font-size:15px">${u.full_name||'Pengguna'}</b><div style="opacity:.9;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.email||''}</div></div></div>`;
       let items=[];
-      if(this.isAdmin()) items=[['store','Home',IC.home],['products','Produk',IC.box],['pos','Kasir',IC.scan],['online-orders','Order Online',IC.bag],['members','Member',IC.users],['reports','Laporan',IC.chart],...(this.state.user.role==='admin'?[['dashboard','Dashboard',IC.grid],['settings','Pengaturan',IC.settings]]:[])];
+      if(this.state.user.role==='kurir') items=[['courier-home','Home',IC.home],['courier-orders','Antar',IC.bag],['courier-profile','Profil',IC.user]];
+      else if(this.isAdmin()) items=[['store','Home',IC.home],['products','Produk',IC.box],['pos','Kasir',IC.scan],['online-orders','Order Online',IC.bag],['members','Member',IC.users],['reports','Laporan',IC.chart],...(this.state.user.role==='admin'?[['dashboard','Dashboard',IC.grid],['settings','Pengaturan',IC.settings]]:[])];
       else items=[['store','Toko',IC.store],['cart','Keranjang',IC.cart],['orders','Pesanan',IC.list],['card','Kartu Member',IC.card],['points','Poin & Referral',IC.coin],['profile','Profil',IC.user]];
       body=items.map(([v,l,ic])=>`<div class="drawer-item" onclick="App.drawerGo('${v}')">${ic}<span>${l}</span>${v==='cart'?'<span class="cart-badge hide" id="cart-count" style="margin-left:auto;background:var(--rose)"></span>':''}</div>`).join('')
         +`<div class="drawer-item" onclick="App.toggleDarkMode()">${this.state._darkMode?'☀️':'🌙'}<span>${this.state._darkMode?'Mode Terang':'Mode Malam'}</span></div>`
@@ -2466,5 +2582,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#285FF4;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a24f06eedd9423a5',t:'MTc4NTY5NDA5Nw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a24f39324cc0aa0f',t:'MTc4NTY5NjE1Ng=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
