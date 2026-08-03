@@ -2097,10 +2097,16 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     if(!items){ const d=await DB.getOrder(o.id); o=d.order; items=d.items; }
     const settings=await DB.getSettings(); const st=settings.store||{};
     const paid=o.paid_amount||o.total;
-    const logoImg = (LOGO && LOGO.startsWith('data:'))?`<img src="${LOGO}" style="height:30px;width:auto;object-fit:contain">`:'';
+    const rc=this.state._receipt||{logo:'logo',showName:true};
+    let logoSrc='';
+    if(rc.logo==='logo') logoSrc=(LOGO&&LOGO.startsWith('data:'))?LOGO:'';
+    else if(rc.logo==='favicon') logoSrc=document.querySelector('link[rel=icon]')?.href||'favicon.png';
+    const logoImg=logoSrc?`<img src="${logoSrc}" style="height:34px;width:auto;object-fit:contain">`:'';
+    const nameTxt=(rc.showName!==false)?`<h4 style="margin:0">${st.name||'Toko Hana'}</h4>`:'';
+    const kop=(logoImg||nameTxt)?`<div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:2px">${logoImg}${nameTxt}</div>`:'';
     const kirim = o.delivery_method?(o.delivery_method==='pickup'?'Ambil di Toko':o.delivery_method==='antar'?('Antar'+(o.delivery_zone?` (${o.delivery_zone})`:'')):('Ekspedisi'+(o.tracking_no?` ${o.tracking_no}`:''))):'';
     const html=`<div class="receipt">
-      <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:2px">${logoImg}<h4 style="margin:0">${st.name||'Toko Hana'}</h4></div>
+      ${kop}
       <div class="c">${st.tagline||'Grocery Warungnya Rakyat ID'}<br>${st.address||''}<br>Telp: ${st.phone||''}</div>
       <hr>
       <div class="l"><span>No</span><span>${o.order_no}</span></div>
@@ -2500,6 +2506,14 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
         <button class="btn green sm" onclick="App.saveFooter()">${IC.check} Simpan Footer</button>
       </div>
       <hr class="sep">
+      <div class="card">
+        <h3>🧾 Struk / Nota</h3>
+        <p class="muted small">Atur kop struk. Kalau logo lu udah ada nama toko, matikan "nama toko" biar gak dobel.</p>
+        <div class="field"><label>Logo di kop struk</label><select id="rc-logo"><option value="logo" ${(this.state._receipt?.logo||'logo')==='logo'?'selected':''}>Logo Header</option><option value="favicon" ${this.state._receipt?.logo==='favicon'?'selected':''}>Favicon (ikon)</option><option value="none" ${this.state._receipt?.logo==='none'?'selected':''}>Tanpa Logo</option></select></div>
+        <label class="row" style="gap:6px;font-size:13px;font-weight:700;cursor:pointer;margin:10px 0"><input type="checkbox" id="rc-name" ${(this.state._receipt?.showName!==false)?'checked':''}> Tampilkan nama toko di kop struk</label>
+        <button class="btn green sm" onclick="App.saveReceipt()">${IC.check} Simpan Setingan Struk</button>
+      </div>
+      <hr class="sep">
       <div class="card" style="background:var(--blue-ll)">
         <b>📊 Status Koneksi</b>
         <div class="row" style="margin-top:6px"><span class="dot ${DB.demo()?'off':'on'}"></span> ${DB.demo()?'Mode Demo (data di browser)':'Terhubung Supabase'}</div>
@@ -2522,6 +2536,7 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     const tc=(s.theme&&s.theme.primary)||'#285FF4'; this.state._themeColor=tc;
     this.state._pay=s.payment||{};
     this.state._delivery=s.delivery||{on:true,zones:[{id:'dekat',nama:'Dekat',tarif:2000,keywords:''},{id:'sedang',nama:'Sedang',tarif:5000,keywords:''},{id:'jauh',nama:'Jauh',tarif:10000,keywords:''}],expedisi:'JNE, J&T, SiCepat, AnterAja'};
+    this.state._receipt=s.receipt||{logo:'logo',showName:true};
     this.applyThemeColor(tc);
     this.state._darkMode=(function(){try{return localStorage.getItem('omnipos_dark')==='1'}catch(e){return false}})();
     this.applyThemeMode(this.state._darkMode?'dark':'light',tc);
@@ -2588,6 +2603,10 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     const showName=document.getElementById('ft-showname')?.checked!==false;
     const bg=document.getElementById('ft-bg')?.value||'#0d1421';
     try{ const ft={...(this.state._footer||{}),text,showName,bg}; await DB.saveSettings('footer',ft); this.state._footer=ft; this.toast('Footer disimpan ✓','ok'); }catch(e){this.toast('Gagal','err');}
+  },
+  async saveReceipt(){
+    const rc={logo:document.getElementById('rc-logo')?.value||'logo', showName:document.getElementById('rc-name')?.checked!==false};
+    try{ await DB.saveSettings('receipt',rc); this.state._receipt=rc; this.toast('Setingan struk disimpan ✓','ok'); }catch(e){this.toast('Gagal','err');}
   },
   async saveFooterLogo(reset){
     if(reset){
@@ -2710,5 +2729,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#285FF4;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2517c3beae855de',t:'MTc4NTcxOTg3Mw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2519f79c8fefce3',t:'MTc4NTcyMTMxNw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
