@@ -2097,20 +2097,23 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     if(!items){ const d=await DB.getOrder(o.id); o=d.order; items=d.items; }
     const settings=await DB.getSettings(); const st=settings.store||{};
     const paid=o.paid_amount||o.total;
-    const area=document.getElementById('print-area'); area.classList.remove('hide');
-    area.innerHTML=`<div class="receipt">
-      <h4>${st.name||'Toko Hana'}</h4>
+    const logoImg = (LOGO && LOGO.startsWith('data:'))?`<img src="${LOGO}" style="height:30px;width:auto;object-fit:contain">`:'';
+    const kirim = o.delivery_method?(o.delivery_method==='pickup'?'Ambil di Toko':o.delivery_method==='antar'?('Antar'+(o.delivery_zone?` (${o.delivery_zone})`:'')):('Ekspedisi'+(o.tracking_no?` ${o.tracking_no}`:''))):'';
+    const html=`<div class="receipt">
+      <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:2px">${logoImg}<h4 style="margin:0">${st.name||'Toko Hana'}</h4></div>
       <div class="c">${st.tagline||'Grocery Warungnya Rakyat ID'}<br>${st.address||''}<br>Telp: ${st.phone||''}</div>
       <hr>
       <div class="l"><span>No</span><span>${o.order_no}</span></div>
       <div class="l"><span>Tgl</span><span>${new Date(o.created_at).toLocaleString('id-ID')}</span></div>
-      <div class="l"><span>Kasir</span><span>${this.state.user.full_name}</span></div>
-      <div class="l"><span>Pelanggan</span><span>${o.customer_name}</span></div>
+      <div class="l"><span>Kasir</span><span>${(this.state.user&&this.state.user.full_name)||'-'}</span></div>
+      <div class="l"><span>Pelanggan</span><span>${o.customer_name||'-'}</span></div>
+      ${kirim?`<div class="l"><span>Kirim</span><span>${kirim}</span></div>`:''}
       <hr>
-      ${items.map(it=>`<div class="l"><span>${it.qty}× ${it.name.slice(0,16)}</span><span>${this.money(it.subtotal)}</span></div>`).join('')}
+      ${items.map(it=>`<div class="l"><span>${it.qty}× ${(it.name||'').slice(0,16)}</span><span>${this.money(it.subtotal)}</span></div>`).join('')}
       <hr>
       <div class="l"><span>Subtotal</span><span>${this.money(o.subtotal)}</span></div>
       ${o.discount?`<div class="l"><span>Diskon</span><span>- ${this.money(o.discount)}</span></div>`:''}
+      ${o.shipping?`<div class="l"><span>Ongkir</span><span>${this.money(o.shipping)}</span></div>`:''}
       <div class="l b"><span>TOTAL</span><span>${this.money(o.total)}</span></div>
       <div class="l"><span>Bayar (${o.payment_method||''})</span><span>${this.money(paid)}</span></div>
       <div class="l b"><span>Kembali</span><span>${this.money(o.change_amount||0)}</span></div>
@@ -2118,7 +2121,22 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
       <hr>
       <div class="c">★ Terima kasih ★<br>Selamat berbelanja kembali<br><small>Simpan struk ini sebagai bukti</small></div>
     </div>`;
-    setTimeout(()=>{ window.print(); area.classList.add('hide'); },300);
+    // tampilkan struk di layar (visible) + tombol cetak -> fix struk blank di HP
+    this.openSheet(`<div class="sheet-head"><h3>🖨️ Struk ${o.order_no}</h3><button class="iconbtn" onclick="App.closeSheet()">${IC.x}</button></div>
+      <div class="sheet-body" style="background:#fff"><div id="receipt-preview">${html}</div>
+      <button class="btn green block" style="margin-top:14px" onclick="App.doPrintReceipt()">${IC.print} Cetak / Simpan PDF</button>
+      <p class="muted small center" style="margin-top:8px">Di HP: kalau hasil cetak kosong, cukup <b>screenshot</b> struk ini ya 📷</p>
+      </div>`);
+  },
+  doPrintReceipt(){
+    const preview=document.getElementById('receipt-preview'); if(!preview)return;
+    const area=document.getElementById('print-area');
+    area.innerHTML=preview.innerHTML;
+    area.classList.remove('hide');
+    const cleanup=()=>{ area.classList.add('hide'); window.removeEventListener('afterprint',cleanup); };
+    window.addEventListener('afterprint',cleanup);
+    setTimeout(()=>{ window.print(); }, 250);
+    setTimeout(cleanup, 60000);
   },
 
   /* ---- MEMBERS ---- */
@@ -2692,5 +2710,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#285FF4;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2515f547b8aa057',t:'MTc4NTcxODY4OQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2517c3beae855de',t:'MTc4NTcxOTg3Mw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
