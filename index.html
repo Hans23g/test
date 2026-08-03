@@ -1079,17 +1079,21 @@ const App = {
     const u=this.state.user;
     const orders=(await DB.listOrders({channel:'online'})).filter(o=>o.delivery_method==='antar');
     const available=orders.filter(o=>o.status==='processing' && !o.courier_id);
-    const mine=orders.filter(o=>o.courier_id===u.id && ['processing','delivering'].includes(o.status));
+    const mine=orders.filter(o=>o.courier_id===u.id && ['pickup','at_store','delivering','delivered'].includes(o.status));
     const card=(o,act)=>`<div class="card" style="margin-bottom:10px">
       <div class="row between"><b class="kbd small">${o.order_no}</b>${this.statusTag(o.status)}</div>
       <div class="muted small" style="margin:6px 0">📍 ${(o.address||'').slice(0,50)} · ${this.money(o.total)}</div>
       ${o.delivery_note?`<div class="muted small" style="margin-bottom:4px">📝 ${o.delivery_note}</div>`:''}
       ${act}</div>`;
+    const mineAct=o=>o.status==='pickup'?'<div class="muted small">🏪 Ambil pesanan ke toko — tunggu admin tandai <b>tiba</b></div>'
+      :o.status==='at_store'?`<button class="btn green block sm" onclick="App.courierStartDelivery('${o.id}')">🛵 Antar Pesanan</button>`
+      :o.status==='delivering'?`<button class="btn block sm" onclick="App.courierHandover('${o.id}')">📦 Paket Telah Diserahkan</button>`
+      :o.status==='delivered'?'<div class="muted small">✅ Selesai diantar — tunggu konfirmasi pembeli</div>':'';
     v.innerHTML=`<div class="section-title"><h2>📦 Job Antar</h2></div>
       <h4 style="margin:4px 0 8px">🟢 Job Tersedia (${available.length})</h4>
       ${available.length?available.map(o=>card(o,`<button class="btn green block sm" onclick="App.courierClaim('${o.id}')">${IC.check} Ambil Job</button>`)).join(''):'<div class="card" style="text-align:center;color:var(--ink-3)"><p>Belum ada job tersedia.</p></div>'}
       <h4 style="margin:16px 0 8px">🛵 Job Saya (${mine.length})</h4>
-      ${mine.length?mine.map(o=>card(o, o.status==='processing'?`<button class="btn block sm" onclick="App.courierDeliver('${o.id}')">📦 Tandai Terkirim</button>`:'<div class="muted small">⏳ Menunggu konfirmasi pembeli</div>')).join(''):'<div class="card" style="text-align:center;color:var(--ink-3)"><p>Belum ada job diambil.</p></div>'}`;
+      ${mine.length?mine.map(o=>card(o,mineAct(o))).join(''):'<div class="card" style="text-align:center;color:var(--ink-3)"><p>Belum ada job diambil.</p></div>'}`;
   },
   viewCourierProfile(){
     const v=document.getElementById('view'); const u=this.state.user;
@@ -1490,13 +1494,16 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
         <div class="row between" style="margin-top:8px"><span class="muted small">${o.address?o.address.slice(0,40):'Kasir Toko Hana'}</span><b style="color:var(--navy)">${this.money(o.total)}</b></div>
         ${o.points_earned?`<div class="tag green" style="margin-top:8px">${IC.coin} +${o.points_earned} poin</div>`:''}
         ${o.tracking_no?`<div class="muted small" style="margin-top:6px">📦 Resi: <b class="kbd">${o.tracking_no}</b></div>`:''}
+        ${['pickup','at_store'].includes(o.status)?`<div class="muted small" style="margin-top:6px">🏪 Menyiapkan pengiriman...</div>`:''}
+        ${o.status==='delivering'?`<div class="muted small" style="margin-top:6px">🛵 Dalam pengiriman${o.courier_name?` — ${o.courier_name}`:''}${o.courier_phone?` · ☎ ${o.courier_phone}`:''}</div>`:''}
+        ${o.status==='delivered'?`<div class="muted small" style="margin-top:6px">📦 Paket telah sampai${o.courier_name?` — ${o.courier_name}`:''}</div>`:''}
         ${o.status==='pending' && !/^cod/i.test(o.payment_method||'')?`<button class="btn green sm block" style="margin-top:6px" onclick="event.stopPropagation();App.memberConfirmPaid('${o.id}')">✅ Saya Sudah Bayar</button>`:''}
         ${o.status==='paid'?`<button class="btn sm block" style="margin-top:6px;background:#25D366" onclick="event.stopPropagation();App.showPayProofGuide('${o.id}')">💬 Kirim Bukti Bayar</button>`:''}
-        ${o.status==='delivering'?`<button class="btn green sm block" style="margin-top:8px" onclick="event.stopPropagation();App.memberConfirmReceived('${o.id}')">${IC.check} Pesanan Diterima</button>`:''}
+        ${(o.status==='delivered'||(o.status==='delivering'&&o.delivery_method==='ekspedisi'))?`<button class="btn green sm block" style="margin-top:8px" onclick="event.stopPropagation();App.memberConfirmReceived('${o.id}')">${IC.check} Pesanan Diterima</button>`:''}
         ${o.status==='pending'?`<button class="btn ghost xs block" style="margin-top:6px" onclick="event.stopPropagation();App.cancelMyOrder('${o.id}')">${IC.trash} Batalkan</button>`:''}
       </div>`).join('')}</div>`;
   },
-  statusTag(s){ const map={pending:['Menunggu','amber'],paid:['Dibayar','green'],processing:['Diproses','amber'],delivering:['Dikirim','amber'],completed:['Selesai','green'],cancelled:['Batal','rose'],rejected:['Ditolak','rose']};
+  statusTag(s){ const map={pending:['Menunggu','amber'],paid:['Dibayar','green'],processing:['Diproses','amber'],pickup:['Disiapkan','amber'],at_store:['Siap Antar','amber'],delivering:['Dikirim','amber'],delivered:['Tiba','green'],completed:['Selesai','green'],cancelled:['Batal','rose'],rejected:['Ditolak','rose']};
     const [t,c]=map[s]||[s,'gray']; return `<span class="tag ${c}">${t}</span>`; },
 
   /* ---- MEMBER CARD ---- */
@@ -1965,7 +1972,7 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     const v=document.getElementById('view'); v.innerHTML=`<div class="spin"></div>`;
     this.state._ordFilter=this.state._ordFilter||'pending';
     const orders=await DB.listOrders({channel:'online'});
-    const cnt={pending:0,paid:0,processing:0,delivering:0,completed:0,cancelled:0}; orders.forEach(o=>cnt[o.status]=(cnt[o.status]||0)+1);
+    const cnt={pending:0,paid:0,processing:0,pickup:0,at_store:0,delivering:0,delivered:0,completed:0,cancelled:0}; orders.forEach(o=>cnt[o.status]=(cnt[o.status]||0)+1);
     v.innerHTML=`
       <div class="section-title"><h2>Order Online Pelanggan</h2><span class="tag">${orders.length} pesanan</span></div>
       <div class="pill-toggle" style="margin-bottom:12px">
@@ -1973,11 +1980,11 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
         <button class="${this.state._ordFilter==='pending'?'active':''}" onclick="App.setOrdFilter('pending')">Baru (${cnt.pending})</button>
         <button class="${this.state._ordFilter==='paid'?'active':''}" onclick="App.setOrdFilter('paid')">Dibayar (${cnt.paid})</button>
         <button class="${this.state._ordFilter==='processing'?'active':''}" onclick="App.setOrdFilter('processing')">Diproses (${cnt.processing})</button>
-        <button class="${this.state._ordFilter==='delivering'?'active':''}" onclick="App.setOrdFilter('delivering')">Dikirim (${cnt.delivering})</button>
+        <button class="${this.state._ordFilter==='antar'?'active':''}" onclick="App.setOrdFilter('antar')">🛵 Antar (${(cnt.pickup||0)+(cnt.at_store||0)+(cnt.delivering||0)+(cnt.delivered||0)})</button>
         <button class="${this.state._ordFilter==='completed'?'active':''}" onclick="App.setOrdFilter('completed')">Selesai (${cnt.completed})</button>
       </div>
       <div class="tablewrap"><table class="tbl"><thead><tr><th>No. Order</th><th>Pelanggan</th><th>Waktu</th><th>Total</th><th>Status</th><th></th></tr></thead>
-      <tbody>${(this.state._ordFilter?orders.filter(o=>o.status===this.state._ordFilter):orders).map(o=>`<tr>
+      <tbody>${(this.state._ordFilter?(this.state._ordFilter==='antar'?orders.filter(o=>['pickup','at_store','delivering','delivered'].includes(o.status)):orders.filter(o=>o.status===this.state._ordFilter)):orders).map(o=>`<tr>
         <td class="kbd small">${o.order_no}</td>
         <td><b style="font-size:13px">${o.customer_name}</b><div class="muted small">${o.customer?.phone||''}</div></td>
         <td class="small muted">${new Date(o.created_at).toLocaleString('id-ID',{dateStyle:'short',timeStyle:'short'})}</td>
@@ -2012,9 +2019,12 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
         <div style="margin-top:14px">
           ${(o.status==='pending'||o.status==='paid')?`<div class="grid" style="grid-template-columns:1fr 1fr;gap:8px"><button class="btn green" onclick="App.ordAction('${id}','processing','Diproses')">${IC.check} Proses</button><button class="btn rose" onclick="App.ordAction('${id}','rejected','Ditolak')">${IC.trash} Tolak</button></div>`:''}
           ${o.status==='processing'?(o.delivery_method==='pickup'?`<button class="btn green block" onclick="App.ordAction('${id}','completed','Selesai')">${IC.check} Selesai (Sudah Diambil)</button>`:o.delivery_method==='antar'?(o.courier_id?`<div class="card" style="background:var(--green-l);padding:10px;font-size:12.5px">🛵 Kurir: <b>${o.courier_name}</b>${o.courier_phone?`<br>📞 WA: <b>${o.courier_phone}</b>`:''}${o.delivery_note?`<br>📝 ${o.delivery_note}`:''}<br><span class="muted">menunggu dikirim/diterima</span></div>`:`<div class="card" style="background:var(--bg);padding:10px;margin-bottom:8px"><b>Tugasi Kurir:</b><select id="assign-courier" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--line);margin:8px 0">${couriers.length?couriers.map(c=>`<option value="${c.id}|${(c.full_name||'').replace(/\|/g,'')}|${(c.phone||'').replace(/\|/g,'')}">${c.full_name} ${c.courier_status==='off'?'(nonaktif)':'(aktif)'}</option>`).join(''):'<option value="">Belum ada kurir</option>'}</select><input id="assign-note" placeholder="Catatan untuk kurir (opsional)" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--line);margin-bottom:8px"><button class="btn green block sm" ${couriers.length?'':'disabled'} onclick="App.assignCourier('${id}')">${IC.check} Tugasi</button></div>`):o.delivery_method==='ekspedisi'?`<div class="card" style="background:var(--bg);padding:10px;margin-bottom:8px"><b>No. Resi Ekspedisi:</b><input id="resi-input" value="${o.tracking_no||''}" placeholder="Mis. JNE12345678" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--line);margin:8px 0"><button class="btn green block sm" onclick="App.saveResi('${id}')">${IC.check} Simpan Resi & Tandai Dikirim</button></div>`:''):''}
-          ${o.status==='delivering'?`<div class="card" style="background:var(--amber-l);padding:10px;font-size:12.5px;margin-bottom:8px">📦 Sedang diantar — menunggu pembeli konfirmasi <b>Diterima</b>.</div><button class="btn ghost block sm" onclick="App.ordAction('${id}','completed','Selesai')">Force Selesai (admin)</button>`:''}
-          ${['processing','delivering','completed','rejected','cancelled'].includes(o.status)?`<button class="btn ghost block" onclick="App.printReceipt(window.__ord,window.__items)">${IC.print} Cetak Struk</button>`:''}
-          ${['pending','processing','delivering'].includes(o.status)?`<button class="btn rose block sm" style="margin-top:8px" onclick="App.cancelOrder('${id}')">${IC.trash} Batalkan Pesanan</button>`:''}
+          ${o.status==='pickup'?`<div class="card" style="background:var(--blue-ll);padding:10px;font-size:12.5px;margin-bottom:8px">🛵 Kurir <b>${o.courier_name||''}</b> menuju toko${o.courier_phone?` · ☎ ${o.courier_phone}`:''}</div><button class="btn green block sm" onclick="App.adminCourierArrived('${id}')">📍 Kurir Telah Tiba</button>`:''}
+          ${o.status==='at_store'?`<div class="card" style="background:var(--blue-ll);padding:10px;font-size:12.5px;margin-bottom:8px">🏪 Kurir <b>${o.courier_name||''}</b> tiba di toko — menunggu kurir antar pesanan.</div>`:''}
+          ${o.status==='delivering'?`<div class="card" style="background:var(--amber-l);padding:10px;font-size:12.5px;margin-bottom:8px">🛵 Sedang diantar oleh <b>${o.courier_name||'kurir'}</b> — menunggu tiba/diserahkan.</div><button class="btn ghost block sm" onclick="App.ordAction('${id}','completed','Selesai')">Force Selesai</button>`:''}
+          ${o.status==='delivered'?`<div class="card" style="background:var(--green-l);padding:10px;font-size:12.5px;margin-bottom:8px">📦 Paket telah sampai — menunggu pembeli konfirmasi <b>Diterima</b>.</div><button class="btn ghost block sm" onclick="App.ordAction('${id}','completed','Selesai')">Force Selesai</button>`:''}
+          ${['processing','pickup','at_store','delivering','delivered','completed','rejected','cancelled'].includes(o.status)?`<button class="btn ghost block" onclick="App.printReceipt(window.__ord,window.__items)">${IC.print} Cetak Struk</button>`:''}
+          ${['pending','paid','processing','pickup','at_store','delivering','delivered'].includes(o.status)?`<button class="btn rose block sm" style="margin-top:8px" onclick="App.cancelOrder('${id}')">${IC.trash} Batalkan Pesanan</button>`:''}
         </div>
       </div>`);
     window.__ord=o; window.__items=items;
@@ -2034,7 +2044,7 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     const v=document.getElementById('assign-courier')?.value; if(!v||!v.split('|')[0]){this.toast('Pilih kurir dulu','err');return;}
     const parts=v.split('|'); const cid=parts[0],cname=parts[1]||'',cphone=parts[2]||'';
     const note=document.getElementById('assign-note')?.value||'';
-    try{ await DB.updateOrderStatus(id,'processing',{courier_id:cid,courier_name:cname,courier_phone:cphone,delivery_note:note}); this.closeSheet(); this.toast('Kurir ditugasin: '+cname,'ok'); this.viewOnlineOrders(); }catch(e){this.toast('Gagal: '+(e.message||e),'err');}
+    try{ await DB.updateOrderStatus(id,'pickup',{courier_id:cid,courier_name:cname,courier_phone:cphone,delivery_note:note}); this.closeSheet(); this.toast('Kurir ditugasin: '+cname,'ok'); this.viewOnlineOrders(); }catch(e){this.toast('Gagal: '+(e.message||e),'err');}
   },
   async saveResi(id){
     const r=(document.getElementById('resi-input')?.value||'').trim();
@@ -2042,11 +2052,18 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
   },
   async courierClaim(id){
     const u=this.state.user; if(!u)return;
-    try{ await DB.updateOrderStatus(id,'processing',{courier_id:u.id,courier_name:u.full_name}); this.toast('Job diambil ✓','ok'); this.viewCourierOrders(); }catch(e){this.toast('Gagal: '+(e.message||e),'err');}
+    try{ await DB.updateOrderStatus(id,'pickup',{courier_id:u.id,courier_name:u.full_name,courier_phone:u.phone||''}); this.toast('Job diambil ✓ ambil pesanan ke toko','ok'); this.viewCourierOrders(); }catch(e){this.toast('Gagal: '+(e.message||e),'err');}
   },
-  async courierDeliver(id){
-    if(!confirm('Tandai pesanan ini TERKIRIM?'))return;
-    try{ await DB.updateOrderStatus(id,'delivering',{}); this.toast('Ditandai terkirim ✓ menunggu konfirmasi pembeli','ok'); this.viewCourierOrders(); }catch(e){this.toast('Gagal: '+(e.message||e),'err');}
+  async courierStartDelivery(id){
+    if(!confirm('Mulai antar pesanan ini?'))return;
+    try{ await DB.updateOrderStatus(id,'delivering',{}); this.toast('Sedang mengantar \u{1F6F5}\u{FE0F}','ok'); this.viewCourierOrders(); }catch(e){this.toast('Gagal: '+(e.message||e),'err');}
+  },
+  async courierHandover(id){
+    if(!confirm('Paket telah TIBA & DISERAHKAN ke pembeli?'))return;
+    try{ await DB.updateOrderStatus(id,'delivered',{}); this.toast('Paket ditandai sampai \u2713','ok'); this.viewCourierOrders(); }catch(e){this.toast('Gagal: '+(e.message||e),'err');}
+  },
+  async adminCourierArrived(id){
+    try{ await DB.updateOrderStatus(id,'at_store',{}); this.closeSheet(); this.toast('Kurir ditandai tiba di toko','ok'); this.viewOnlineOrders(); }catch(e){this.toast('Gagal: '+(e.message||e),'err');}
   },
   async memberConfirmReceived(id){
     if(!confirm('Konfirmasi pesanan DITERIMA?'))return;
@@ -2675,5 +2692,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#285FF4;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2502803d92a2925',t:'MTc4NTcwNTkzOA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a25125ec8ac0fdb4',t:'MTc4NTcxNjMzOA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
