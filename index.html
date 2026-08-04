@@ -1510,6 +1510,7 @@ const App = {
   applyShipZone(){ const id=document.getElementById('ship-zone')?.value; const z=(this.state._delivery?.zones||[]).find(x=>x.id===id);
     if(z){ this.state._ship=z.tarif||0; this.calcCart(); } },
   async placeOrder(){
+    if(this.state._ordering) return;  // 🔒 anti-double
     if(!this.state.cart.length)return;
     const sub=this.state.cart.reduce((a,b)=>a+b.price*b.qty,0);
     const use=Math.min(Number(document.getElementById('use-pts').value||0),this.state.user.points||0);
@@ -1524,6 +1525,7 @@ const App = {
       delivery_method:dm, delivery_zone:dz,
       total:tot, address:addr, note:document.getElementById('note').value, payment_method:document.getElementById('pay-method')?.value||'COD' };
     const items=this.state.cart.map(it=>({product_id:it.product_id,name:it.name,price:it.price,qty:it.qty,subtotal:it.price*it.qty}));
+    this.state._ordering=true;
     try{
       const o=await DB.createOrder(order,items);
       this.state.user.points=(this.state.user.points||0)+ptsEarn-use;
@@ -1534,9 +1536,11 @@ const App = {
         <div class="row" style="justify-content:center;margin-top:16px"><button class="btn ghost" onclick="App.closeSheet();location.hash='store'">Lanjut Belanja</button>
         <button class="btn" onclick="App.closeSheet();location.hash='orders'">Lihat Pesanan</button></div></div>`);
     }catch(e){ this.toast('Gagal: '+e.message,'err'); }
+    finally{ this.state._ordering=false; }
   },
 
   async orderViaWhatsApp(){
+    if(this.state._ordering) return;  // 🔒 anti-double
     const c=this.state.cart; if(!c.length){this.toast('Keranjang kosong','err');return;}
     const u=this.state.user;
     let ph=(this.state._storePhone||'').replace(/\D/g,'');
@@ -1559,6 +1563,7 @@ const App = {
       delivery_method:dm, delivery_zone:dz,
       total:tot, address:addr, note:(note?note+'\n':'')+'[Order via WhatsApp'+(waNote?' — '+waNote:'')+']', payment_method:pay };
     const items=c.map(it=>({product_id:it.product_id,name:it.name,price:it.price,qty:it.qty,subtotal:it.price*it.qty}));
+    this.state._ordering=true;
     try{
       const o=await DB.createOrder(order,items);
       this.state.user.points=(this.state.user.points||0)+ptsEarn-usePts;
@@ -1609,6 +1614,7 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
         <div class="row" style="justify-content:center;margin-top:16px"><button class="btn ghost" onclick="App.closeSheet();location.hash='store'">Lanjut Belanja</button>
         <button class="btn" onclick="App.closeSheet();location.hash='orders'">Lihat Pesanan</button></div></div>`);
     }catch(e){ this.toast('Gagal: '+e.message,'err'); }
+    finally{ this.state._ordering=false; }
   },
 
   /* ---- MEMBER ORDERS ---- */
@@ -1849,7 +1855,7 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
           <div class="sum-line"><span>Kembalian</span><span id="pos-change" class="green">Rp 0</span></div>
           <div class="field"><label>Metode bayar</label><select id="pos-pay"><option>Tunai</option><option>QRIS</option><option>Debit</option><option>Transfer</option></select></div>
           <div class="field"><label>📝 Catatan struk / No. Token</label><input id="pos-struk-note" placeholder="Mis. No. token listrik PLN"></div>
-          <button class="btn green block" onclick="App.posCheckout()">${IC.check} Bayar & Struk</button>
+          <button class="btn green block" id="pos-checkout-btn" onclick="App.posCheckout()">${IC.check} Bayar & Struk</button>
         </div>
       </div>
       <div class="section-title"><h3 style="font-size:15px">Pilih Produk</h3></div>
@@ -1985,9 +1991,16 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     el.innerHTML=list.slice(0,30).map(m=>`<div class="card nav-item" style="margin-bottom:6px" onclick="App.pickCust('${m.id}')"><div style="width:36px;height:36px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center">${m.full_name[0]}</div><div class="col"><b style="font-size:13px">${m.full_name}</b><div class="muted small">${m.phone} · ${IC.coin} ${m.points}</div></div><span class="tag">Pilih</span></div>`).join('')||`<div class="empty small">Tidak ada member</div>`; },
   async pickCust(id){ const m=await DB.getMember(id); this.state.posCustomer=m; this.renderCustInfo(); this.posTotals(); this.closeSheet(); this.toast('Member: '+m.full_name,'ok'); },
   async posCheckout(){
+    if(this.state._posChecking) return;  // 🔒 cegah transaksi dobel (lag/proses lambat)
     const c=this.state.posCart; if(!c.length){this.toast('Keranjang kosong','err');return;}
     const t=this.state._posTot; const paid=Number(document.getElementById('pos-paid').value||0);
     if(paid<t.tot){this.toast('Uang bayar kurang','err');return;}
+    // 🔒 lock tombol + flag
+    this.state._posChecking=true;
+    const btn=document.getElementById('pos-checkout-btn');
+    const btnOld=btn?btn.innerHTML:'';
+    if(btn){btn.disabled=true;btn.innerHTML='⏳ Memproses…';}
+    try{
     const cust=this.state.posCustomer;
     const ptsEarn=Math.floor((t.sub-t.disc)/CONFIG.EARN_PER_RP);
     let order={ order_no:'POS'+Date.now().toString().slice(-8), customer_id:cust?cust.id:null, customer_name:cust?cust.full_name:'Tamu (Walk-in)',
@@ -2013,12 +2026,15 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
       delivMsg=cid?(' — diantar oleh '+cname):' — masuk job antar kurir';
     }
     const items=c.map(it=>({product_id:it.product_id,name:it.name,price:it.price,qty:it.qty,subtotal:it.price*it.qty}));
-    try{
       const o=await DB.createOrder(order,items);
       this.state.posCart=[]; this.state.posCustomer=null; const d=document.getElementById('pos-deliv-on'); if(d)d.checked=false; this.posToggleDeliv(false);
       this.posRender(); this.renderCustInfo(); this.updateOnlineBadge();
       this.printReceipt(o,items); this.toast('Transaksi sukses ✓ '+o.order_no+delivMsg,'ok');
     }catch(e){ this.toast('Gagal: '+e.message,'err'); }
+    finally{
+      this.state._posChecking=false;
+      if(btn){btn.disabled=false;btn.innerHTML=btnOld;}
+    }
   },
 
   /* ---- BARCODE SCANNER ---- */
@@ -3031,5 +3047,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#285FF4;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a25e29f6c943f330',t:'MTc4NTg1MjgxOQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a25e8bdf2a14cdfe',t:'MTc4NTg1NjgyOQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
