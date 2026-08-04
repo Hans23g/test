@@ -2007,7 +2007,7 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
         </div>
         <div class="field"><label>Bayar BON (Rp)</label><input type="number" id="bon-pay" value="${c._bon}" min="0" oninput="document.getElementById('bon-sisa').textContent=App.money(Math.max(0,${c._bon}-Number(this.value||0)))"></div>
         <div class="sum-line" style="color:#E11D48"><span>Sisa BON setelah bayar</span><span id="bon-sisa">Rp 0</span></div>
-        <button class="btn green block" style="margin-top:12px" onclick="App.doPayBon()">${IC.check} Lunasin BON</button>
+        <button class="btn green block" id="bon-pay-btn" style="margin-top:12px" onclick="App.doPayBon()">${IC.check} Lunasin BON</button>
       </div>`,true);
   },
   async doPayBon(){
@@ -2016,24 +2016,29 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     const pay=Number(document.getElementById('bon-pay')?.value||0);
     if(pay<=0){this.toast('Masukkan nominal','err');return;}
     if(pay>c._bon){this.toast('Kelebihan! Bon cuma '+this.money(c._bon),'err');return;}
+    // 🔒 lock tombol + flag (anti-dobel + feedback "memproses")
     this.state._bonPaying=true;
+    const btn=document.getElementById('bon-pay-btn'); const btnOld=btn?btn.innerHTML:'';
+    if(btn){btn.disabled=true;btn.innerHTML='⏳ Melunasi…';}
+    const BON_STAT=['completed','paid'];
+    const calcBon=arr=>arr.filter(o=>Number(o.change_amount||0)<0&&BON_STAT.includes(o.status)).reduce((s,o)=>s+Math.abs(Number(o.change_amount||0)),0);
+    let remaining=pay, failed=0;
+    // terapkan pembayaran ke 1 order; throw kalau update ditolak/gagal (ditangkap pemanggil)
+    const settleOne=async(o)=>{ const bon=Math.abs(Number(o.change_amount||0)); if(bon<=0||remaining<=0||!BON_STAT.includes(o.status))return;
+      const apply=Math.min(remaining,bon);
+      await DB.updateOrderStatus(o.id,o.status,{change_amount:Number(o.change_amount)+apply,paid_amount:Number(o.paid_amount||0)+apply});
+      remaining-=apply; };
     try{
-      const ords=(await DB.listOrders({customer_id:c.id})).reverse();
-      let remaining=pay;
-      for(const o of ords){
-        if(remaining<=0)break;
-        const bon=Math.abs(Number(o.change_amount||0));
-        if(bon<=0||!['completed','paid'].includes(o.status))continue;
-        const apply=Math.min(remaining,bon);
-        await DB.updateOrderStatus(o.id,o.status,{change_amount:Number(o.change_amount)+apply,paid_amount:Number(o.paid_amount||0)+apply});
-        remaining-=apply;
-      }
-      const fresh=await DB.listOrders({customer_id:c.id});
-      c._bon=fresh.filter(o=>Number(o.change_amount||0)<0&&['completed','paid'].includes(o.status)).reduce((s,o)=>s+Math.abs(Number(o.change_amount||0)),0);
+      // ronde 1: FIFO lunasin bon terlama dulu
+      for(const o of (await DB.listOrders({customer_id:c.id})).reverse()){ try{await settleOne(o);}catch(e){failed++;console.warn('[payBon] order',o.id,e);} if(remaining<=0)break; }
+      // ronde 2: VERIFIKASI — baca ulang; order yg masih bon (gagal sesaat / RLS) dicoba sekali lagi
+      let fresh=await DB.listOrders({customer_id:c.id});
+      if(remaining>0||failed>0){ for(const o of fresh){ try{await settleOne(o);}catch(e){} if(remaining<=0)break; } fresh=await DB.listOrders({customer_id:c.id}); }
+      c._bon=calcBon(fresh);
       this.renderCustInfo(); this.closeSheet();
-      this.toast(c._bon>0?('BON tersisa '+this.money(c._bon)):'✅ BON lunas! Terima kasih','ok');
-    }catch(e){this.toast('Gagal: '+(e.message||e),'err');}
-    finally{this.state._bonPaying=false;}
+      this.toast(c._bon<=0?'✅ BON lunas! Terima kasih 🙏':(failed>0?('⚠️ '+failed+' order blm tersimpan — bon tersisa '+this.money(c._bon)):'BON tersisa '+this.money(c._bon)), c._bon<=0?'ok':(failed>0?'err':'ok'));
+    }catch(e){ console.error('[payBon]',e); this.toast('Gagal: '+(e.message||e),'err'); }
+    finally{ this.state._bonPaying=false; if(btn){btn.disabled=false;btn.innerHTML=btnOld;} }
   },
   async posCheckout(){
     if(this.state._posChecking) return;  // 🔒 cegah transaksi dobel (lag/proses lambat)
@@ -3097,5 +3102,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#285FF4;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a25f30bc8a9ef920',t:'MTc4NTg2MzU4Mg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a25f59932c7cf938',t:'MTc4NTg2NTI1NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
