@@ -977,6 +977,12 @@ const App = {
     const c=this._brandCache();
     const ar=document.getElementById('auth-root'); if(ar) ar.innerHTML=this._splashHtml(c);
     if(c&&c.navy){ try{this.applyThemeColor(c.navy)}catch(e){} }
+    this._applySplashThemeColor(c);
+  },
+  _applySplashThemeColor(c){
+    const sp=(c&&c.splash)||{}; let col;
+    if(sp.bg==='solid'||sp.bg==='gradient') col=sp.color1; else col=(c&&c.navy)||'#285FF4';
+    const m=document.querySelector('meta[name=theme-color]'); if(m) m.setAttribute('content', col||'#285FF4');
   },
   updateSplash(){
     const c={ logo:(LOGO&&LOGO.indexOf&&LOGO.indexOf('data:')===0)?LOGO:null,
@@ -984,6 +990,7 @@ const App = {
       navy:this.state._themeColor||'#285FF4', splash:this.state._splash||this._spDef() };
     this._saveBrandCache(c);
     const ar=document.getElementById('auth-root'); if(ar) ar.innerHTML=this._splashHtml(c);
+    this._applySplashThemeColor(c);
   },
   /* ---- editor splash ---- */
   toggleSpOpts(){ const on=document.getElementById('sp-on')?.checked; const o=document.getElementById('sp-opts'); if(o){ o.style.opacity=on?'1':'.45'; o.style.pointerEvents=on?'':'none'; } this.previewSplash(); },
@@ -1003,6 +1010,7 @@ const App = {
     try{ await DB.saveSettings('splash',sp); this.state._splash=sp; const cache=this._brandCache()||{}; cache.splash=sp; this._saveBrandCache(cache); this.toast('Setingan splash disimpan ✓','ok'); }catch(e){ this.toast('Gagal: '+(e.message||e),'err'); }
   },
   hideSplash(){
+    const m=document.querySelector('meta[name=theme-color]'); if(m) m.setAttribute('content', this.state._themeColor||'#285FF4');
     const ar=document.getElementById('auth-root'); if(!ar)return;
     const sp=ar.querySelector('.splash');
     if(sp){ sp.style.transition='opacity .32s ease'; sp.style.opacity='0'; setTimeout(()=>{ ar.classList.add('hide'); ar.innerHTML=''; },340); }
@@ -3024,5 +3032,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#285FF4;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a25dde6adf3bfd78',t:'MTc4NTg0OTcyNA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a25dfb7838450548',t:'MTc4NTg1MDkxNA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
