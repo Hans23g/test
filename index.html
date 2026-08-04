@@ -1097,7 +1097,7 @@ const App = {
   async viewCourierOrders(){
     const v=document.getElementById('view'); v.innerHTML=`<div class="spin"></div>`;
     const u=this.state.user;
-    const orders=(await DB.listOrders({channel:'online'})).filter(o=>o.delivery_method==='antar');
+    const orders=(await DB.listOrders({})).filter(o=>o.delivery_method==='antar');
     const available=orders.filter(o=>o.status==='processing' && !o.courier_id);
     const mine=orders.filter(o=>o.courier_id===u.id && ['pickup','at_store','delivering','delivered'].includes(o.status));
     const card=(o,act)=>`<div class="card" style="margin-bottom:10px">
@@ -1684,8 +1684,12 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
   async updateOnlineBadge(){ try{const o=await DB.listOrders({channel:'online',status:'pending'});const el=document.getElementById('nb-online');if(el){if(o.length){el.classList.remove('hide');el.textContent=o.length;}else el.classList.add('hide');}}catch(e){} },
 
   /* ---- POS OFFLINE ---- */
-  viewPOS(){
-    this.state.posCart=this.state.posCart||[]; this.state.posCustomer=null;
+  async viewPOS(){
+    this.state.posCart=this.state.posCart||[]; this.state.posCustomer=null; this.state.posDelivery={on:false};
+    if(!this.state._couriers) this.state._couriers=(await DB.listAllProfiles('').catch(()=>[])).filter(p=>p.role==='kurir');
+    const dv=this.state._delivery||{};
+    const zoneOpts=(dv.zones||[]).length?(dv.zones||[]).map((z,i)=>`<option value="${i}">${z.nama||('Zona '+(i+1))} — ${this.money(z.tarif||0)}</option>`).join(''):'<option value="">Belum ada zona (atur di Pengaturan→Antar)</option>';
+    const curOpts='<option value="">Antrian (kurir ambil sendiri)</option>'+(this.state._couriers||[]).map(c=>`<option value="${c.id}|${(c.full_name||'').replace(/\|/g,'')}|${(c.phone||'').replace(/\|/g,'')}">${c.full_name}${c.courier_status==='off'?' (nonaktif)':' (aktif)'}</option>`).join('');
     const v=document.getElementById('view');
     v.innerHTML=`
       <div class="section-title"><h2>🧾 Kasir Offline</h2><button class="btn ghost sm" onclick="App.openScanner()">${IC.scan} Scan</button></div>
@@ -1705,7 +1709,18 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
           <div class="field" id="pts-field" style="display:none"><label>Pakai poin member</label><input type="number" id="pos-pts" value="0" min="0" oninput="App.posTotals()"></div>
           <div class="sum-line"><span>Subtotal</span><span id="pos-sub">Rp 0</span></div>
           <div class="sum-line"><span>Diskon poin</span><span id="pos-disc">- Rp 0</span></div>
+          <div class="sum-line hide" id="pos-ship-line"><span>Ongkir antar</span><span id="pos-ship">Rp 0</span></div>
           <div class="sum-line tot"><span>Total</span><span id="pos-total">Rp 0</span></div>
+          <label class="row between" style="gap:8px;cursor:pointer;margin:8px 0;padding:11px 13px;background:var(--bg);border-radius:11px;box-shadow:inset 0 0 0 1.5px var(--line)">
+            <b class="small" style="display:flex;align-items:center;gap:6px">🛵 Antar ke pelanggan</b>
+            <input type="checkbox" id="pos-deliv-on" onchange="App.posToggleDeliv(this.checked)" style="width:20px;height:20px">
+          </label>
+          <div id="pos-deliv-box" class="hide">
+            <div class="field" style="margin-bottom:8px"><label>Zona antar (auto tarif)</label><select id="pos-deliv-zone" onchange="App.posTotals()">${zoneOpts}</select></div>
+            <div class="field" style="margin-bottom:8px"><label>📍 Alamat antar</label><textarea id="pos-deliv-addr" rows="2" placeholder="Jl. Melati No.5 RT01/RW02 …"></textarea></div>
+            <div class="field row2" style="margin-bottom:8px"><div><label>👤 Nama penerima</label><input id="pos-deliv-name" placeholder="Nama pelanggan"></div><div><label>📱 HP penerima</label><input id="pos-deliv-phone" placeholder="08xxx"></div></div>
+            <div class="field" style="margin-bottom:10px"><label>🛵 Tugasi kurir <span class="muted small">(kosongkan = masuk antrian job)</span></label><select id="pos-deliv-courier">${curOpts}</select></div>
+          </div>
           <div class="field"><label>Bayar (tunai)</label><input type="number" id="pos-paid" value="0" oninput="App.posTotals()" placeholder="0"></div>
           <div class="sum-line"><span>Kembalian</span><span id="pos-change" class="green">Rp 0</span></div>
           <div class="field"><label>Metode bayar</label><select id="pos-pay"><option>Tunai</option><option>QRIS</option><option>Debit</option><option>Transfer</option></select></div>
@@ -1790,17 +1805,30 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     this.posTotals();
   },
   posQty(i,d){ const it=this.state.posCart[i]; const nv=it.qty+d; if(nv<=0){this.state.posCart.splice(i,1);} else if(nv>it.stock){this.toast('Stok tidak cukup','err');return;} else it.qty=nv; this.posRender(); },
-  posClear(){ this.state.posCart=[]; this.state.posCustomer=null; this.posRender(); this.renderCustInfo(); },
+  posClear(){ this.state.posCart=[]; this.state.posCustomer=null; const d=document.getElementById('pos-deliv-on'); if(d)d.checked=false; this.posToggleDeliv(false); this.posRender(); this.renderCustInfo(); },
+  posShip(){
+    const on=document.getElementById('pos-deliv-on')?.checked; if(!on) return 0;
+    const zi=Number(document.getElementById('pos-deliv-zone')?.value);
+    return Number(this.state._delivery?.zones?.[zi]?.tarif||0);
+  },
+  posToggleDeliv(on){
+    const box=document.getElementById('pos-deliv-box'); if(box) box.classList.toggle('hide',!on);
+    const sl=document.getElementById('pos-ship-line'); if(sl) sl.classList.toggle('hide',!on);
+    if(on){ const c=this.state.posCustomer; const n=document.getElementById('pos-deliv-name'),p=document.getElementById('pos-deliv-phone');
+      if(c&&n&&!n.value) n.value=c.full_name||''; if(c&&p&&!p.value) p.value=c.phone||''; }
+    this.posTotals();
+  },
   posTotals(){
     const sub=this.state.posCart.reduce((a,b)=>a+b.price*b.qty,0);
     const cust=this.state.posCustomer; const pts=cust?Math.min(Number(document.getElementById('pos-pts')?.value||0),cust.points,Math.floor(sub/CONFIG.REDEEM_VALUE)):0;
-    const disc=pts*CONFIG.REDEEM_VALUE; const tot=sub-disc;
+    const disc=pts*CONFIG.REDEEM_VALUE; const ship=this.posShip(); const tot=sub-disc+ship;
     document.getElementById('pos-sub').textContent=this.money(sub);
     document.getElementById('pos-disc').textContent='- '+this.money(disc);
+    const shEl=document.getElementById('pos-ship'); if(shEl) shEl.textContent=this.money(ship);
     document.getElementById('pos-total').textContent=this.money(tot);
     const paid=Number(document.getElementById('pos-paid').value||0);
     document.getElementById('pos-change').textContent=this.money(Math.max(0,paid-tot));
-    this.state._posTot={sub,disc,pts,tot};
+    this.state._posTot={sub,disc,pts,ship,tot};
   },
   renderCustInfo(){ const c=this.state.posCustomer; const el=document.getElementById('cust-info');
     if(c) el.innerHTML=`<div class="card" style="background:var(--blue-ll);padding:10px 12px;margin-top:8px"><div class="row between"><div class="row"><div style="width:36px;height:36px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800">${c.full_name[0]}</div><div><b style="font-size:13px">${c.full_name}</b><div class="muted small">${IC.coin} ${c.points} poin · ${c.referral_code||''}</div></div></div><button class="iconbtn" style="width:30px;height:30px" onclick="App.state.posCustomer=null;App.renderCustInfo();App.posTotals();document.getElementById('pts-field').style.display='none'">${IC.x}</button></div></div>`;
@@ -1837,17 +1865,35 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     const t=this.state._posTot; const paid=Number(document.getElementById('pos-paid').value||0);
     if(paid<t.tot){this.toast('Uang bayar kurang','err');return;}
     const cust=this.state.posCustomer;
-    const ptsEarn=Math.floor(t.tot/CONFIG.EARN_PER_RP);
-    const order={ order_no:'POS'+Date.now().toString().slice(-8), customer_id:cust?cust.id:null, customer_name:cust?cust.full_name:'Tamu (Walk-in)',
-      channel:'offline', status:'completed', subtotal:t.sub, discount:t.disc, points_used:t.pts, points_earned:cust?ptsEarn:0, shipping:0,
+    const ptsEarn=Math.floor((t.sub-t.disc)/CONFIG.EARN_PER_RP);
+    let order={ order_no:'POS'+Date.now().toString().slice(-8), customer_id:cust?cust.id:null, customer_name:cust?cust.full_name:'Tamu (Walk-in)',
+      channel:'offline', status:'completed', subtotal:t.sub, discount:t.disc, points_used:t.pts, points_earned:cust?ptsEarn:0, shipping:t.ship||0,
       total:t.tot, paid_amount:paid, change_amount:paid-t.tot, payment_method:document.getElementById('pos-pay').value,
       struk_note:document.getElementById('pos-struk-note')?.value?.trim()||'',
       cashier_id:this.state.user.id };
+    let delivMsg='';
+    const delivOn=document.getElementById('pos-deliv-on')?.checked;
+    if(delivOn){
+      const zi=Number(document.getElementById('pos-deliv-zone')?.value); const zone=this.state._delivery?.zones?.[zi];
+      const addr=(document.getElementById('pos-deliv-addr')?.value||'').trim();
+      if(!addr){this.toast('Isi alamat antar dulu 🙂','err');return;}
+      if(!zone){this.toast('Pilih zona antar dulu 🙂','err');return;}
+      const cv=document.getElementById('pos-deliv-courier')?.value||''; let cid=null,cname=null,cphone=null;
+      if(cv){const p=cv.split('|');cid=p[0]||null;cname=p[1]||'';cphone=p[2]||'';}
+      const rcvName=(document.getElementById('pos-deliv-name')?.value||'').trim();
+      const rcvPhone=(document.getElementById('pos-deliv-phone')?.value||'').trim();
+      order={...order, delivery_method:'antar', delivery_zone:zone.nama||('Zona '+(zi+1)), address:addr,
+        status:cid?'pickup':'processing', courier_id:cid, courier_name:cname, courier_phone:cphone,
+        delivery_note:rcvPhone?('Penerima: '+(rcvName||order.customer_name)+' · ☎ '+rcvPhone):''};
+      if(!cust&&rcvName) order.customer_name=rcvName;
+      delivMsg=cid?(' — diantar oleh '+cname):' — masuk job antar kurir';
+    }
     const items=c.map(it=>({product_id:it.product_id,name:it.name,price:it.price,qty:it.qty,subtotal:it.price*it.qty}));
     try{
       const o=await DB.createOrder(order,items);
-      this.state.posCart=[]; this.state.posCustomer=null; this.posRender(); this.renderCustInfo(); this.updateOnlineBadge();
-      this.printReceipt(o,items); this.toast('Transaksi sukses ✓ '+o.order_no,'ok');
+      this.state.posCart=[]; this.state.posCustomer=null; const d=document.getElementById('pos-deliv-on'); if(d)d.checked=false; this.posToggleDeliv(false);
+      this.posRender(); this.renderCustInfo(); this.updateOnlineBadge();
+      this.printReceipt(o,items); this.toast('Transaksi sukses ✓ '+o.order_no+delivMsg,'ok');
     }catch(e){ this.toast('Gagal: '+e.message,'err'); }
   },
 
@@ -2086,7 +2132,7 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
         <div class="sum-line tot"><span>Total</span><span>${this.money(o.total)}</span></div>
         ${o.paid_amount?`<div class="sum-line"><span>Dibayar</span><span>${this.money(o.paid_amount)}</span></div><div class="sum-line"><span>Kembalian</span><span>${this.money(o.change_amount)}</span></div>`:''}
         ${this.isAdmin()?`<div style="margin-top:14px">
-          ${o.channel==='offline'?`<div class="card" style="background:var(--blue-ll);padding:10px;font-size:12.5px;margin-bottom:8px">🧾 <b>Transaksi Offline (Kasir)</b><br>Bayar & kembalian sudah beres di tempat — gak perlu alur kirim/antar.</div>${!['completed','cancelled','rejected'].includes(o.status)?`<button class="btn green block" onclick="App.ordAction('${id}','completed','Selesai')">${IC.check} Tandai Selesai</button><button class="btn ghost block sm" style="margin-top:6px" onclick="App.printReceipt(window.__ord,window.__items)">${IC.print} Cetak Struk</button><button class="btn rose block sm" style="margin-top:6px" onclick="App.cancelOrder('${id}')">${IC.trash} Batalkan</button>`:`<button class="btn ghost block" onclick="App.printReceipt(window.__ord,window.__items)">${IC.print} Cetak Struk</button><div class="card" style="background:var(--green-l);padding:10px;font-size:12.5px;color:#0c6b3f;margin-top:8px;text-align:center">${IC.check} Transaksi selesai · pembayaran tunai diterima di kasir</div>`}`:`
+          ${o.channel==='offline'&&o.delivery_method!=='antar'?`<div class="card" style="background:var(--blue-ll);padding:10px;font-size:12.5px;margin-bottom:8px">🧾 <b>Transaksi Offline (Kasir)</b><br>Bayar & kembalian sudah beres di tempat — gak perlu alur kirim/antar.</div>${!['completed','cancelled','rejected'].includes(o.status)?`<button class="btn green block" onclick="App.ordAction('${id}','completed','Selesai')">${IC.check} Tandai Selesai</button><button class="btn ghost block sm" style="margin-top:6px" onclick="App.printReceipt(window.__ord,window.__items)">${IC.print} Cetak Struk</button><button class="btn rose block sm" style="margin-top:6px" onclick="App.cancelOrder('${id}')">${IC.trash} Batalkan</button>`:`<button class="btn ghost block" onclick="App.printReceipt(window.__ord,window.__items)">${IC.print} Cetak Struk</button><div class="card" style="background:var(--green-l);padding:10px;font-size:12.5px;color:#0c6b3f;margin-top:8px;text-align:center">${IC.check} Transaksi selesai · pembayaran tunai diterima di kasir</div>`}`:`
           ${(o.status==='pending'||o.status==='paid')?`<div class="grid" style="grid-template-columns:1fr 1fr;gap:8px"><button class="btn green" onclick="App.ordAction('${id}','processing','Diproses')">${IC.check} Proses</button><button class="btn rose" onclick="App.ordAction('${id}','rejected','Ditolak')">${IC.trash} Tolak</button></div>`:''}
           ${o.status==='processing'?(o.delivery_method==='pickup'?`<button class="btn green block" onclick="App.ordAction('${id}','completed','Selesai')">${IC.check} Selesai (Sudah Diambil)</button>`:o.delivery_method==='antar'?(o.courier_id?`<div class="card" style="background:var(--green-l);padding:10px;font-size:12.5px">🛵 Kurir: <b>${o.courier_name}</b>${o.courier_phone?`<br>📞 WA: <b>${o.courier_phone}</b>`:''}${o.delivery_note?`<br>📝 ${o.delivery_note}`:''}<br><span class="muted">menunggu dikirim/diterima</span></div>`:`<div class="card" style="background:var(--bg);padding:10px;margin-bottom:8px"><b>Tugasi Kurir:</b><select id="assign-courier" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--line);margin:8px 0">${couriers.length?couriers.map(c=>`<option value="${c.id}|${(c.full_name||'').replace(/\|/g,'')}|${(c.phone||'').replace(/\|/g,'')}">${c.full_name} ${c.courier_status==='off'?'(nonaktif)':'(aktif)'}</option>`).join(''):'<option value="">Belum ada kurir</option>'}</select><input id="assign-note" placeholder="Catatan untuk kurir (opsional)" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--line);margin-bottom:8px"><button class="btn green block sm" ${couriers.length?'':'disabled'} onclick="App.assignCourier('${id}')">${IC.check} Tugasi</button></div>`):o.delivery_method==='ekspedisi'?`<div class="card" style="background:var(--bg);padding:10px;margin-bottom:8px"><b>No. Resi Ekspedisi:</b><input id="resi-input" value="${o.tracking_no||''}" placeholder="Mis. JNE12345678" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--line);margin:8px 0"><button class="btn green block sm" onclick="App.saveResi('${id}')">${IC.check} Simpan Resi & Tandai Dikirim</button></div>`:''):''}
           ${o.status==='pickup'?`<div class="card" style="background:var(--blue-ll);padding:10px;font-size:12.5px;margin-bottom:8px">🛵 Kurir <b>${o.courier_name||''}</b> menuju toko${o.courier_phone?` · ☎ ${o.courier_phone}`:''}</div><button class="btn green block sm" onclick="App.adminCourierArrived('${id}')">📍 Kurir Telah Tiba</button>`:''}
@@ -2819,5 +2865,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#285FF4;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a25b94bed826b00b',t:'MTc4NTgyNTczNQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a25bb58afbc0fce0',t:'MTc4NTgyNzA3OA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
