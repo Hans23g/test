@@ -1692,6 +1692,7 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
             <div class="field"><label>Bayar (tunai)</label><input type="number" id="pos-paid" value="0" oninput="App.posTotals()" placeholder="0"></div>
             <div class="sum-line"><span>Kembalian</span><span id="pos-change" class="green">Rp 0</span></div>
             <div class="field"><label>Metode bayar</label><select id="pos-pay"><option>Tunai</option><option>QRIS</option><option>Debit</option><option>Transfer</option></select></div>
+            <div class="field"><label>📝 Catatan struk / No. Token</label><input id="pos-struk-note" placeholder="Mis. No. token listrik PLN"></div>
             <button class="btn green block" onclick="App.posCheckout()">${IC.check} Bayar & Struk</button>
           </div>
         </div>
@@ -1813,6 +1814,7 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     const order={ order_no:'POS'+Date.now().toString().slice(-8), customer_id:cust?cust.id:null, customer_name:cust?cust.full_name:'Tamu (Walk-in)',
       channel:'offline', status:'paid', subtotal:t.sub, discount:t.disc, points_used:t.pts, points_earned:cust?ptsEarn:0, shipping:0,
       total:t.tot, paid_amount:paid, change_amount:paid-t.tot, payment_method:document.getElementById('pos-pay').value,
+      struk_note:document.getElementById('pos-struk-note')?.value?.trim()||'',
       cashier_id:this.state.user.id };
     const items=c.map(it=>({product_id:it.product_id,name:it.name,price:it.price,qty:it.qty,subtotal:it.price*it.qty}));
     try{
@@ -2124,12 +2126,14 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
       <div class="l"><span>Bayar (${o.payment_method||''})</span><span>${this.money(paid)}</span></div>
       <div class="l b"><span>Kembali</span><span>${this.money(o.change_amount||0)}</span></div>
       ${o.points_earned?`<div class="l"><span>Poin +</span><span>${o.points_earned}</span></div>`:''}
+      <div id="rcpt-note-line">${o.struk_note?`<hr><div class="b" style="text-align:center;border:1.5px dashed #000;padding:6px;margin:4px 0;font-size:13px">${(o.struk_note||'').replace(/</g,'&lt;')}</div>`:''}</div>
       <hr>
       <div class="c">★ Terima kasih ★<br>Selamat berbelanja kembali<br><small>Simpan struk ini sebagai bukti</small></div>
     </div>`;
     // tampilkan struk di layar (visible) + tombol cetak -> fix struk blank di HP
     this.openSheet(`<div class="sheet-head"><h3>🖨️ Struk ${o.order_no}</h3><button class="iconbtn" onclick="App.closeSheet()">${IC.x}</button></div>
       <div class="sheet-body" style="background:#fff"><div id="receipt-preview">${html}</div>
+      <div class="field" style="margin-top:12px"><label>📝 Catatan struk / No. Token (opsional)</label><textarea id="struk-note-edit" rows="2" placeholder="Mis. No. token listrik PLN / catatan lain" oninput="App.updateStrukNote()">${o.struk_note||''}</textarea></div>
       <button class="btn green block" style="margin-top:14px" onclick="App.doPrintReceipt()">${IC.print} Cetak / Simpan PDF</button>
       <p class="muted small center" style="margin-top:8px">Di HP: kalau hasil cetak kosong, cukup <b>screenshot</b> struk ini ya 📷</p>
       </div>`);
@@ -2143,6 +2147,12 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     window.addEventListener('afterprint',cleanup);
     setTimeout(()=>{ window.print(); }, 250);
     setTimeout(cleanup, 60000);
+  },
+  /* update live catatan struk di preview (biar keliatan pas cetak) */
+  updateStrukNote(){
+    const v=(document.getElementById('struk-note-edit')?.value||'').trim();
+    const line=document.getElementById('rcpt-note-line');
+    if(line) line.innerHTML=v?`<hr><div class="b" style="text-align:center;border:1.5px dashed #000;padding:6px;margin:4px 0;font-size:13px">${v.replace(/</g,'&lt;')}</div>`:'';
   },
 
   /* ---- MEMBERS ---- */
@@ -2729,5 +2739,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#285FF4;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a251b1519caade6c',t:'MTc4NTcyMjA0OA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a25962b39e7e9b8d',t:'MTc4NTgwMjcxNA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
