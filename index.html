@@ -44,7 +44,7 @@ h1,h2,h3,h4{margin:0;font-weight:800;letter-spacing:-.01em}
 
 /* ============================ SPLASH ============================ */
 #auth-root{min-height:100vh;min-height:100dvh;background:#0e1b33}
-.splash{position:fixed;top:0;left:0;right:0;bottom:0;width:100%;height:100%;min-height:100vh;min-height:100dvh;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(var(--navy,#285FF4),var(--blue,#5782F6));color:#fff;text-align:center;padding:24px;padding-top:max(24px,env(safe-area-inset-top));padding-bottom:max(24px,env(safe-area-inset-bottom));animation:spIn .4s ease}
+.splash{position:fixed;top:0;left:0;right:0;bottom:0;width:100%;height:100%;min-height:100vh;min-height:100dvh;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--navy,#285FF4),var(--blue,#5782F6));color:#fff;text-align:center;padding:24px;padding-top:max(24px,env(safe-area-inset-top));padding-bottom:max(24px,env(safe-area-inset-bottom));animation:spIn .4s ease}
 @keyframes spIn{from{opacity:0}to{opacity:1}}
 .splash .sp-logo{position:relative;display:flex;align-items:center;justify-content:center;margin-bottom:22px}
 .splash .sp-logo::before{content:"";position:absolute;left:50%;top:50%;width:240px;height:210px;max-width:94vw;transform:translate(-50%,-50%);background:radial-gradient(ellipse at center,rgba(255,255,255,.5),rgba(255,255,255,.16) 42%,rgba(255,255,255,0) 70%);z-index:0;pointer-events:none}
@@ -68,7 +68,7 @@ h1,h2,h3,h4{margin:0;font-weight:800;letter-spacing:-.01em}
 @keyframes speq{0%,100%{transform:scaleY(.3)}50%{transform:scaleY(1)}}
 .splash .sp-foot{position:absolute;bottom:22px;font-size:11px;opacity:.72;letter-spacing:.02em}
 /* preview mini di editor splash */
-.sp-prev{position:relative;height:200px;border-radius:14px;overflow:hidden;box-shadow:var(--shadow);margin-bottom:14px}
+.sp-prev{position:relative;height:182px;border-radius:14px;overflow:hidden;box-shadow:var(--shadow);margin-bottom:14px}
 .sp-prev .splash{position:absolute;inset:0;animation:none}
 .sp-prev .sp-logo{margin-bottom:8px}
 .sp-prev .sp-logo::before{width:96px;height:84px}
@@ -76,12 +76,7 @@ h1,h2,h3,h4{margin:0;font-weight:800;letter-spacing:-.01em}
 .sp-prev .sp-letter{width:40px;height:40px;font-size:20px;border-radius:13px}
 .sp-prev .sp-name{font-size:13px}
 .sp-prev .sp-tag{font-size:9px;margin-top:2px}
-.sp-prev .sp-load{margin-top:14px}
-.sp-prev .sp-load.slide{width:120px;height:6px}
-.sp-prev .sp-load.dots{gap:9px}.sp-prev .sp-load.dots>i{width:11px;height:11px}
-.sp-prev .sp-load.pulse>i{width:34px;height:34px;border-width:3px}
-.sp-prev .sp-load.ring>i{width:32px;height:32px;border-width:4px}
-.sp-prev .sp-load.eq{height:30px;gap:5px}.sp-prev .sp-load.eq>i{width:6px}
+.sp-prev .sp-load{margin-top:10px;transform:scale(.7)}
 .sp-prev .sp-foot{font-size:8px;bottom:6px}
 
 /* ============================ BUTTONS ============================ */
@@ -969,7 +964,7 @@ const App = {
     const sp=Object.assign(this._spDef(),(c&&c.splash)||{});
     if(sp.on===false) return '<div style="display:flex;align-items:center;justify-content:center;min-height:100vh"><div class="spin"></div></div>';
     const name=(c&&c.name)||'Toko Hana', tag=(c&&c.tagline)||'Grocery Warungnya Rakyat ID', logo=c&&c.logo;
-    const bg = sp.bg==='solid'?sp.color1 : sp.bg==='gradient'?`linear-gradient(${sp.color1}, ${sp.color2})` : 'linear-gradient(var(--navy,#285FF4), var(--blue,#5782F6))';
+    const bg = sp.bg==='solid'?sp.color1 : sp.bg==='gradient'?`linear-gradient(135deg, ${sp.color1}, ${sp.color2})` : 'linear-gradient(135deg, var(--navy,#285FF4), var(--blue,#5782F6))';
     const logoBlock = sp.showLogo!==false ? `<div class="sp-logo">${(logo&&logo.indexOf&&logo.indexOf('data:')===0)?`<img src="${logo}" alt="${name.replace(/"/g,'&quot;')}">`:`<div class="sp-letter">${(name||'H')[0]||'H'}</div>`}</div>` : '';
     const nameBlock = sp.showName!==false ? `<div class="sp-name">${String(name).replace(/</g,'&lt;')}</div>` : '';
     const tagBlock = sp.showTagline!==false ? `<div class="sp-tag">${String(tag).replace(/</g,'&lt;')}</div>` : '';
@@ -980,12 +975,6 @@ const App = {
     const c=this._brandCache();
     const ar=document.getElementById('auth-root'); if(ar) ar.innerHTML=this._splashHtml(c);
     if(c&&c.navy){ try{this.applyThemeColor(c.navy)}catch(e){} }
-    this._applySplashThemeColor(c);
-  },
-  _applySplashThemeColor(c){
-    const sp=(c&&c.splash)||{}; let col;
-    if(sp.bg==='solid'||sp.bg==='gradient') col=sp.color1; else col=(c&&c.navy)||'#285FF4';
-    const m=document.querySelector('meta[name=theme-color]'); if(m) m.setAttribute('content', col||'#285FF4');
   },
   updateSplash(){
     const c={ logo:(LOGO&&LOGO.indexOf&&LOGO.indexOf('data:')===0)?LOGO:null,
@@ -993,7 +982,6 @@ const App = {
       navy:this.state._themeColor||'#285FF4', splash:this.state._splash||this._spDef() };
     this._saveBrandCache(c);
     const ar=document.getElementById('auth-root'); if(ar) ar.innerHTML=this._splashHtml(c);
-    this._applySplashThemeColor(c);
   },
   /* ---- editor splash ---- */
   toggleSpOpts(){ const on=document.getElementById('sp-on')?.checked; const o=document.getElementById('sp-opts'); if(o){ o.style.opacity=on?'1':'.45'; o.style.pointerEvents=on?'':'none'; } this.previewSplash(); },
@@ -1013,7 +1001,6 @@ const App = {
     try{ await DB.saveSettings('splash',sp); this.state._splash=sp; const cache=this._brandCache()||{}; cache.splash=sp; this._saveBrandCache(cache); this.toast('Setingan splash disimpan ✓','ok'); }catch(e){ this.toast('Gagal: '+(e.message||e),'err'); }
   },
   hideSplash(){
-    const m=document.querySelector('meta[name=theme-color]'); if(m) m.setAttribute('content', this.state._themeColor||'#285FF4');
     const ar=document.getElementById('auth-root'); if(!ar)return;
     const sp=ar.querySelector('.splash');
     if(sp){ sp.style.transition='opacity .32s ease'; sp.style.opacity='0'; setTimeout(()=>{ ar.classList.add('hide'); ar.innerHTML=''; },340); }
@@ -3035,5 +3022,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#285FF4;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a25d695faf00ddfc',t:'MTc4NTg0NDkzMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a25cd493be0e447c',t:'MTc4NTgzODgzNQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
