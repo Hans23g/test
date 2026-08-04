@@ -2034,10 +2034,15 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
   async viewOnlineOrders(){
     const v=document.getElementById('view'); v.innerHTML=`<div class="spin"></div>`;
     this.state._ordFilter=this.state._ordFilter??'pending';
-    const orders=await DB.listOrders({channel:'online'});
+    this.state._ordChannel=this.state._ordChannel??'online';
+    const orders=this.state._ordChannel?await DB.listOrders({channel:this.state._ordChannel}):await DB.listOrders({});
     const cnt={pending:0,paid:0,processing:0,pickup:0,at_store:0,delivering:0,delivered:0,completed:0,cancelled:0}; orders.forEach(o=>cnt[o.status]=(cnt[o.status]||0)+1);
     v.innerHTML=`
-      <div class="section-title"><h2>Order Online Pelanggan</h2><span class="tag">${orders.length} pesanan</span></div>
+      <div class="section-title"><h2>Pesanan</h2><span class="tag">${orders.length} pesanan</span></div>
+      <div class="pill-toggle" style="margin-bottom:8px">
+        <button class="${this.state._ordChannel==='online'?'active':''}" onclick="App.setOrdChannel('online')">🛒 Online</button>
+        <button class="${this.state._ordChannel==='offline'?'active':''}" onclick="App.setOrdChannel('offline')">🧾 Offline</button>
+      </div>
       <div class="pill-toggle" style="margin-bottom:12px">
         <button class="${this.state._ordFilter===''?'active':''}" onclick="App.setOrdFilter('')">Semua (${orders.length})</button>
         <button class="${this.state._ordFilter==='pending'?'active':''}" onclick="App.setOrdFilter('pending')">Baru (${cnt.pending})</button>
@@ -2057,6 +2062,7 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
       </tr>`).join('')||`<tr><td colspan="6" class="em">Tidak ada pesanan</td></tr>`}</tbody></table></div>`;
   },
   setOrdFilter(s){ this.state._ordFilter=s; this.viewOnlineOrders(); },
+  setOrdChannel(c){ this.state._ordChannel=c; this.state._ordFilter=this.state._ordFilter??'pending'; this.viewOnlineOrders(); },
   async openOrder(id){
     const {order:o,items}=await DB.getOrder(id);
     const couriers=(await DB.listAllProfiles('').catch(()=>[])).filter(p=>p.role==='kurir');
@@ -2812,5 +2818,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#285FF4;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a25b5ba6c88afd30',t:'MTc4NTgyMzM5Ng=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a25b7d1b08d7aeb9',t:'MTc4NTgyNDc2Nw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
