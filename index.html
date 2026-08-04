@@ -187,6 +187,15 @@ h1,h2,h3,h4{margin:0;font-weight:800;letter-spacing:-.01em}
 .pos-searchlist .sli .em{font-size:24px;width:32px;text-align:center;flex:none}
 .pos-searchlist .sli .nm{font-size:14px}
 .pos-searchlist .sli .pr{font-weight:800;color:var(--navy);font-size:14px;flex:none;white-space:nowrap}
+/* dropdown search melayang (glass/transparan) di bawah kotak search */
+.pos-dropdown{position:absolute;top:calc(100% + 4px);left:0;right:0;background:rgba(255,255,255,.88);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-radius:14px;box-shadow:var(--shadow-lg);max-height:340px;overflow:auto;z-index:30;border:1px solid rgba(255,255,255,.6);padding:6px}
+.pos-dropdown .ddi{display:flex;align-items:center;gap:12px;padding:10px 12px;cursor:pointer;border-radius:10px;transition:.12s}
+.pos-dropdown .ddi:hover,.pos-dropdown .ddi:active{background:rgba(40,95,244,.14)}
+.pos-dropdown .ddi .em{font-size:24px;width:30px;text-align:center;flex:none}
+.pos-dropdown .ddi .col{flex:1;min-width:0}
+.pos-dropdown .ddi .nm{font-size:14px;font-weight:700;line-height:1.2}
+.pos-dropdown .ddi .sub{font-size:11px;color:var(--ink-3);margin-top:1px}
+.pos-dropdown .ddi .pr{font-weight:800;color:var(--navy);flex:none;white-space:nowrap}
 .cart-panel{background:#fff;border-radius:var(--r);box-shadow:var(--shadow);position:sticky;top:78px;display:flex;flex-direction:column;max-height:calc(100vh - 100px)}
 .cart-head{padding:14px 16px;border-bottom:1px solid var(--line)}
 .cart-items{flex:1;overflow:auto;padding:6px 16px;min-height:120px}
@@ -1678,8 +1687,9 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     const v=document.getElementById('view');
     v.innerHTML=`
       <div class="section-title"><h2>🧾 Kasir Offline</h2><button class="btn ghost sm" onclick="App.openScanner()">${IC.scan} Scan</button></div>
-      <div class="pos-search" style="margin-bottom:12px">
-        <div class="search-box">${IC.search}<input id="pos-search" placeholder="Cari / ketik barcode lalu Enter…" autofocus></div>
+      <div class="pos-search" style="position:relative;margin-bottom:12px">
+        <div class="search-box">${IC.search}<input id="pos-search" placeholder="Cari produk / ketik barcode…" autocomplete="off"></div>
+        <div id="pos-dropdown" class="pos-dropdown hide"></div>
       </div>
       <div class="cart-panel" style="position:static;max-height:none;margin-bottom:14px">
         <div class="cart-head"><div class="row between"><h3>🛒 Keranjang</h3><button class="btn xs ghost" onclick="App.posClear()">${IC.trash} Kosongkan</button></div>
@@ -1704,21 +1714,24 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
       <div class="section-title"><h3 style="font-size:15px">Pilih Produk</h3></div>
       <div class="pos-prods" id="pos-prods" style="max-height:none"></div>`;
     document.getElementById('pos-search').addEventListener('input',e=>this.posSearch(e.target.value));
-    document.getElementById('pos-search').addEventListener('keydown',e=>{ if(e.key==='Enter'){ const f=document.querySelector('#pos-prods .sli'); if(f){f.click();} else { this.posBarcode(e.target.value); e.target.value=''; } } });
+    document.getElementById('pos-search').addEventListener('keydown',e=>{ if(e.key==='Enter'){ const f=document.querySelector('#pos-dropdown .ddi'); if(f){f.click();} else { this.posBarcode(e.target.value); e.target.value=''; } } });
     this.posSearch('');
   },
   async posSearch(q){
     let r=this.state._prods; if(!r){ r=await DB.listProducts(); this.state._prods=r; }
     const s=(q||'').toLowerCase().trim();
-    const grid=document.getElementById('pos-prods'); if(!grid)return;
+    const dd=document.getElementById('pos-dropdown');
+    const grid=document.getElementById('pos-prods');
     if(!s){
-      grid.className='pos-prods';
-      grid.innerHTML=r.filter(x=>x.is_active).slice(0,24).map(p=>this.posCard(p)).join('')||'<div class="empty">Belum ada produk</div>';
+      if(dd){dd.classList.add('hide');dd.innerHTML='';}
+      if(grid){grid.className='pos-prods';grid.innerHTML=r.filter(x=>x.is_active).slice(0,24).map(p=>this.posCard(p)).join('')||'<div class="empty">Belum ada produk</div>';}
       return;
     }
-    const list=r.filter(x=>x.is_active&&(x.name+' '+(x.barcode||'')+' '+(x.brand||'')).toLowerCase().includes(s)).slice(0,30);
-    grid.className='pos-searchlist';
-    grid.innerHTML=list.length?list.map(p=>`<div class="sli" onclick="App.posAdd('${p.id}');App.posSearchDone()"><span class="em">${p.emoji||'📦'}</span><div class="col"><b class="nm">${p.name}</b><small class="muted">${p.brand||''}${p.brand&&p.barcode?' · ':''}${p.barcode||''} · stok ${p.stock}</small></div><b class="pr">${this.money(p.price)}</b></div>`).join(''):'<div class="empty">Tidak ditemukan untuk "'+s+'"</div>';
+    if(dd){
+      const list=r.filter(x=>x.is_active&&(x.name+' '+(x.barcode||'')+' '+(x.brand||'')).toLowerCase().includes(s)).slice(0,20);
+      dd.classList.remove('hide');
+      dd.innerHTML=list.length?list.map(p=>`<div class="ddi" onclick="App.posAdd('${p.id}');App.posSearchDone()"><span class="em">${p.emoji||'📦'}</span><div class="col"><div class="nm">${p.name}</div><div class="sub">${p.brand||''}${p.brand&&p.barcode?' · ':''}${p.barcode||''} · stok ${p.stock}</div></div><b class="pr">${this.money(p.price)}</b></div>`).join(''):'<div class="ddi" style="color:var(--ink-3);justify-content:center">Tidak ditemukan</div>';
+    }
   },
   posCard(p){ return `<div class="prod" onclick="App.posAdd('${p.id}')"><div class="ph"><div class="emoji">${p.emoji||'📦'}</div></div><div class="info"><div class="nm">${p.name}</div><div class="pr">${this.money(p.price)}</div><div class="muted small">stok ${p.stock}</div></div></div>`; },
   posSearchDone(){ const si=document.getElementById('pos-search'); if(si)si.value=''; this.posSearch(''); },
@@ -2753,5 +2766,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#285FF4;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a25a0e216e4fce69',t:'MTc4NTgwOTczNQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a25a254dafe0ff8d',t:'MTc4NTgxMDY4NQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
