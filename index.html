@@ -42,6 +42,19 @@ h1,h2,h3,h4{margin:0;font-weight:800;letter-spacing:-.01em}
 .skel{background:linear-gradient(90deg,#eef2f7 25%,#f7fafc 37%,#eef2f7 63%);background-size:400% 100%;animation:sk 1.4s infinite}
 @keyframes sk{0%{background-position:100% 0}100%{background-position:-100% 0}}
 
+/* ============================ SPLASH ============================ */
+.splash{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--navy,#285FF4),var(--blue,#5782F6));color:#fff;text-align:center;padding:24px;animation:spIn .4s ease}
+@keyframes spIn{from{opacity:0}to{opacity:1}}
+.splash .sp-logo{display:flex;align-items:center;justify-content:center;margin-bottom:22px}
+.splash .sp-logo img{width:auto;height:104px;max-width:76vw;object-fit:contain;filter:drop-shadow(0 0 14px rgba(255,255,255,.3)) drop-shadow(0 10px 24px rgba(0,0,0,.32))}
+.splash .sp-letter{width:104px;height:104px;border-radius:30px;background:rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;font-size:48px;font-weight:900;box-shadow:0 12px 32px rgba(0,0,0,.28);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.splash .sp-name{font-size:25px;font-weight:800;letter-spacing:-.01em;text-shadow:0 2px 8px rgba(0,0,0,.22);max-width:90%}
+.splash .sp-tag{font-size:13px;opacity:.92;margin-top:5px;max-width:84%}
+.splash .sp-bar{width:210px;max-width:62vw;height:5px;border-radius:99px;background:rgba(255,255,255,.28);overflow:hidden;margin-top:28px;position:relative}
+.splash .sp-bar>i{position:absolute;left:0;top:0;height:100%;width:38%;border-radius:99px;background:#fff;box-shadow:0 0 12px rgba(255,255,255,.7);animation:spbar 1.15s cubic-bezier(.45,0,.55,1) infinite}
+@keyframes spbar{0%{left:-40%}100%{left:100%}}
+.splash .sp-foot{position:absolute;bottom:22px;font-size:11px;opacity:.72;letter-spacing:.02em}
+
 /* ============================ BUTTONS ============================ */
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 16px;border-radius:12px;font-weight:700;
   background:var(--navy);color:#fff;transition:.15s;font-size:14.5px;white-space:nowrap}
@@ -424,7 +437,7 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:14px 0}
 <body>
 
 <!-- ============================ AUTH SCREEN ============================ -->
-<div id="auth-root"><div style="display:flex;align-items:center;justify-content:center;min-height:100vh;flex-direction:column;gap:14px"><div class="spin"></div><div style="color:#7C8CA0;font-size:14px;font-family:'Segoe UI',sans-serif">Memuat Toko Hana…</div></div></div>
+<div id="auth-root"><div class="splash"><div class="sp-logo"><div class="sp-letter">H</div></div><div class="sp-name">Toko Hana</div><div class="sp-tag">Grocery Warungnya Rakyat ID</div><div class="sp-bar"><i></i></div><div class="sp-foot">Powered by HanaPOS CMS</div></div></div>
 
 <!-- ============================ MAIN APP ============================ -->
 <div id="app-root" class="hide"></div>
@@ -897,13 +910,40 @@ const App = {
   isAdmin(){return this.state.user && ['admin','kasir'].includes(this.state.user.role)},
   money(n){ n=Number(n||0); return CONFIG.CURRENCY+' '+n.toLocaleString('id-ID') },
   async start(){
+    this.showSplash();
     await DB.init();
     await this.applyBranding();
-    document.getElementById('auth-root').innerHTML='';
+    this.updateSplash();
     this.state.user=await DB.me();
     window.addEventListener('hashchange',()=>this.route());
     if(location.hash) history.replaceState(null,'',location.pathname+location.search);
     if(this.state.user){ this.renderApp(); } else { this.renderPublicShell(); }
+  },
+  /* ===================== SPLASH ===================== */
+  _brandCache(){ try{return JSON.parse(localStorage.getItem('omnipos_brand_cache')||'null')}catch(e){return null} },
+  _saveBrandCache(c){ try{localStorage.setItem('omnipos_brand_cache',JSON.stringify(c))}catch(e){} },
+  _splashHtml(c){
+    const name=(c&&c.name)||'Toko Hana', tag=(c&&c.tagline)||'Grocery Warungnya Rakyat ID', logo=c&&c.logo;
+    const logoInner=(logo&&logo.indexOf&&logo.indexOf('data:')===0)?`<img src="${logo}" alt="${name.replace(/"/g,'&quot;')}">`:`<div class="sp-letter">${(name||'H')[0]||'H'}</div>`;
+    return `<div class="splash"><div class="sp-logo">${logoInner}</div><div class="sp-name">${String(name).replace(/</g,'&lt;')}</div><div class="sp-tag">${String(tag).replace(/</g,'&lt;')}</div><div class="sp-bar"><i></i></div><div class="sp-foot">Powered by HanaPOS CMS</div></div>`;
+  },
+  showSplash(){
+    const c=this._brandCache();
+    const ar=document.getElementById('auth-root'); if(ar) ar.innerHTML=this._splashHtml(c);
+    if(c&&c.navy){ try{this.applyThemeColor(c.navy)}catch(e){} }
+  },
+  updateSplash(){
+    const c={ logo:(LOGO&&LOGO.indexOf&&LOGO.indexOf('data:')===0)?LOGO:null,
+      name:this.state._storeName||'Toko Hana', tagline:this.state._storeTagline||'Grocery Warungnya Rakyat ID',
+      navy:this.state._themeColor||'#285FF4' };
+    this._saveBrandCache(c);
+    const ar=document.getElementById('auth-root'); if(ar) ar.innerHTML=this._splashHtml(c);
+  },
+  hideSplash(){
+    const ar=document.getElementById('auth-root'); if(!ar)return;
+    const sp=ar.querySelector('.splash');
+    if(sp){ sp.style.transition='opacity .32s ease'; sp.style.opacity='0'; setTimeout(()=>{ ar.classList.add('hide'); ar.innerHTML=''; },340); }
+    else { ar.classList.add('hide'); ar.innerHTML=''; }
   },
   toast(msg,type=''){
     const t=document.createElement('div'); t.className='toast '+(type||''); t.innerHTML=msg;
@@ -914,7 +954,6 @@ const App = {
   /* ===================== AUTH ===================== */
   /* ---- PUBLIC SHELL: langsung tampil katalog, tanpa wajib login ---- */
   renderPublicShell(){
-    document.getElementById('auth-root').classList.add('hide');
     const root=document.getElementById('app-root'); root.classList.remove('hide');
     root.innerHTML=`
       <div class="topbar"><div class="wrap">
@@ -924,6 +963,7 @@ const App = {
       </div></div>
       <main class="main" style="min-height:calc(100vh - var(--bar-h))"><div class="content" id="view"></div></main>`;
     this.route();
+    this.hideSplash();
   },
   /* ---- LOGIN jadi MENU (sheet) ---- */
   openLogin(msg){
@@ -997,13 +1037,13 @@ const App = {
 
   /* ===================== APP SHELL ===================== */
   renderApp(){
-    document.getElementById('auth-root').classList.add('hide');
     const root=document.getElementById('app-root'); root.classList.remove('hide');
     const r=this.state.user.role;
     if(r==='admin'||r==='kasir') this.renderStaffShell();
     else if(r==='kurir') this.renderCourierShell();
     else this.renderMemberShell();
     this.route();
+    this.hideSplash();
   },
   renderStaffShell(){
     const u=this.state.user;
@@ -1656,8 +1696,8 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
         <div class="stat"><div class="lbl"><span class="ic">${IC.box}</span> Produk</div><div class="val">${s.products||0}</div></div>
       </div>
       <div class="grid charts-grid" style="grid-template-columns:1.6fr 1fr;margin-top:16px">
-        <div class="card"><h3>Tren Penjualan (7 hari)</h3><canvas id="salesChart" height="120"></canvas></div>
-        <div class="card"><h3>Saluran</h3><canvas id="channelChart" height="160"></canvas>
+        <div class="card"><h3>Tren Penjualan (7 hari)</h3><div id="chart-sales-wrap"><canvas id="salesChart" height="120"></canvas></div></div>
+        <div class="card"><h3>Saluran</h3><div id="chart-channel-wrap"><canvas id="channelChart" height="160"></canvas></div>
           <div class="muted small center" style="margin-top:8px">Online vs Offline</div></div>
       </div>
       <div class="section-title"><h3>Aksi Cepat</h3></div>
@@ -1671,15 +1711,29 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     }catch(e){ v.innerHTML=`<div class="empty">${IC.chart}<h3>Gagal memuat dashboard</h3><p class="muted">${(e&&e.message)||e}</p><button class="btn" style="margin-top:12px" onclick="location.hash='dashboard'">Coba Lagi</button></div>`; console.error('dashboard',e); }
   },
   renderCharts(s){
-    const days=[];const vals=[];
-    for(let i=6;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); const k=d.toISOString().slice(0,10);
-      days.push(d.toLocaleDateString('id-ID',{weekday:'short'}));
-      vals.push((s.sales||[]).filter(o=>o.created_at.startsWith(k)).reduce((a,b)=>a+Number(b.total||0),0)); }
-    new Chart(document.getElementById('salesChart'),{type:'bar',data:{labels:days,datasets:[{data:vals,backgroundColor:'#0061B1',borderRadius:6}]},
-      options:{plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>'Rp'+(v/1000)+'k'}}}}});
-    new Chart(document.getElementById('channelChart'),{type:'doughnut',data:{labels:['Online','Offline'],
-      datasets:[{data:[s.online||0,s.offline||1],backgroundColor:['#0090E0','#285FF4'],borderWidth:0}]},
-      options:{plugins:{legend:{position:'bottom'}},cutout:'62%'}});
+    // Tahan banting: Chart.js (CDN async) kadang belum termuat saat dashboard render pertama kali.
+    // Kalau belum ada → placeholder "Memuat grafik", lalu auto-retry sampai siap. Gak pernah throw → dashboard tetap utuh.
+    const draw=()=>{
+      const days=[],vals=[];
+      for(let i=6;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); const k=d.toISOString().slice(0,10);
+        days.push(d.toLocaleDateString('id-ID',{weekday:'short'}));
+        vals.push((s.sales||[]).filter(o=>o.created_at.startsWith(k)).reduce((a,b)=>a+Number(b.total||0),0)); }
+      try{
+        if(document.getElementById('salesChart')) new Chart(document.getElementById('salesChart'),{type:'bar',data:{labels:days,datasets:[{data:vals,backgroundColor:'#0061B1',borderRadius:6}]},options:{plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>'Rp'+(v/1000)+'k'}}}}});
+        if(document.getElementById('channelChart')) new Chart(document.getElementById('channelChart'),{type:'doughnut',data:{labels:['Online','Offline'],datasets:[{data:[s.online||0,s.offline||1],backgroundColor:['#0090E0','#285FF4'],borderWidth:0}]},options:{plugins:{legend:{position:'bottom'}},cutout:'62%'}});
+      }catch(e){ console.warn('chart render',e); }
+    };
+    if(typeof Chart==='undefined'){
+      const ph=(id)=>{ const w=document.getElementById(id); if(w) w.innerHTML='<p class="muted small center" style="padding:40px 0">📊 Memuat grafik…</p>'; };
+      ph('chart-sales-wrap'); ph('chart-channel-wrap');
+      if(this._chartWait) clearInterval(this._chartWait);
+      this._chartWait=setInterval(()=>{ if(typeof Chart!=='undefined'){ clearInterval(this._chartWait); this._chartWait=null;
+        const w1=document.getElementById('chart-sales-wrap'); if(w1) w1.innerHTML='<canvas id="salesChart" height="120"></canvas>';
+        const w2=document.getElementById('chart-channel-wrap'); if(w2) w2.innerHTML='<canvas id="channelChart" height="160"></canvas>';
+        draw(); } },200);
+      return;
+    }
+    draw();
   },
   async updateOnlineBadge(){ try{const o=await DB.listOrders({channel:'online',status:'pending'});const el=document.getElementById('nb-online');if(el){if(o.length){el.classList.remove('hide');el.textContent=o.length;}else el.classList.add('hide');}}catch(e){} },
 
@@ -2663,7 +2717,7 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     if(s.banners&&Array.isArray(s.banners.items)) items=s.banners.items.map(x=>typeof x==='string'?{data:x}:x).filter(x=>x&&x.data);
     else if(s.banner&&s.banner.data) items=[{data:s.banner.data}];
     this.state._banners=items;
-    this.state._storeName=(s.store&&s.store.name)||'Toko Hana'; this.state._storePhone=(s.store&&s.store.phone)||'';
+    this.state._storeName=(s.store&&s.store.name)||'Toko Hana'; this.state._storePhone=(s.store&&s.store.phone)||''; this.state._storeTagline=(s.store&&s.store.tagline)||'Grocery Warungnya Rakyat ID';
     this.state._footer=s.footer||{};
     const tc=(s.theme&&s.theme.primary)||'#285FF4'; this.state._themeColor=tc; this.state._textColor=(s.theme&&s.theme.text)||'#10243B'; this.state._accentColor=(s.theme&&s.theme.accent)||null;
     this.state._pay=s.payment||{};
@@ -2865,5 +2919,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#285FF4;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a25bb58afbc0fce0',t:'MTc4NTgyNzA3OA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a25c12dddbdb6042',t:'MTc4NTgzMDkwMQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
