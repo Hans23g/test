@@ -55,6 +55,17 @@ h1,h2,h3,h4{margin:0;font-weight:800;letter-spacing:-.01em}
 .splash .sp-bar>i{position:absolute;left:0;top:0;height:100%;width:38%;border-radius:99px;background:#fff;box-shadow:0 0 12px rgba(255,255,255,.7);animation:spbar 1.15s cubic-bezier(.45,0,.55,1) infinite}
 @keyframes spbar{0%{left:-40%}100%{left:100%}}
 .splash .sp-foot{position:absolute;bottom:22px;font-size:11px;opacity:.72;letter-spacing:.02em}
+/* preview mini di editor splash */
+.sp-prev{position:relative;height:182px;border-radius:14px;overflow:hidden;box-shadow:var(--shadow);margin-bottom:14px}
+.sp-prev .splash{position:absolute;inset:0;animation:none}
+.sp-prev .sp-logo{margin-bottom:8px}
+.sp-prev .sp-logo::before{width:96px;height:84px}
+.sp-prev .sp-logo img{height:40px;max-width:52%}
+.sp-prev .sp-letter{width:40px;height:40px;font-size:20px;border-radius:13px}
+.sp-prev .sp-name{font-size:13px}
+.sp-prev .sp-tag{font-size:9px;margin-top:2px}
+.sp-prev .sp-bar{width:80px;height:3px;margin-top:10px}
+.sp-prev .sp-foot{font-size:8px;bottom:6px}
 
 /* ============================ BUTTONS ============================ */
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 16px;border-radius:12px;font-weight:700;
@@ -919,17 +930,25 @@ const App = {
     this.state.user=await DB.me();
     window.addEventListener('hashchange',()=>this.route());
     if(location.hash) history.replaceState(null,'',location.pathname+location.search);
-    // minimal tampil splash biar gak kedip (instant load) — minimal ~1.4 detik
-    const MIN_SHOW=1400; if(Date.now()-t0<MIN_SHOW) await new Promise(r=>setTimeout(r,MIN_SHOW-(Date.now()-t0)));
+    // minimal tampil splash biar gak kedip — pakai delay dari setingan (default 1.4 detik)
+    const sp=this.state._splash||{};
+    if(sp.on!==false){ const min=Number(sp.delay)||1400; if(Date.now()-t0<min) await new Promise(r=>setTimeout(r,min-(Date.now()-t0))); }
     if(this.state.user){ this.renderApp(); } else { this.renderPublicShell(); }
   },
   /* ===================== SPLASH ===================== */
   _brandCache(){ try{return JSON.parse(localStorage.getItem('omnipos_brand_cache')||'null')}catch(e){return null} },
   _saveBrandCache(c){ try{localStorage.setItem('omnipos_brand_cache',JSON.stringify(c))}catch(e){} },
+  _spDef(){ return {on:true,delay:1400,bg:'theme',color1:'#285FF4',color2:'#5782F6',showLogo:true,showName:true,showTagline:true,showBar:true}; },
   _splashHtml(c){
+    const sp=Object.assign(this._spDef(),(c&&c.splash)||{});
+    if(sp.on===false) return '<div style="display:flex;align-items:center;justify-content:center;min-height:100vh"><div class="spin"></div></div>';
     const name=(c&&c.name)||'Toko Hana', tag=(c&&c.tagline)||'Grocery Warungnya Rakyat ID', logo=c&&c.logo;
-    const logoInner=(logo&&logo.indexOf&&logo.indexOf('data:')===0)?`<img src="${logo}" alt="${name.replace(/"/g,'&quot;')}">`:`<div class="sp-letter">${(name||'H')[0]||'H'}</div>`;
-    return `<div class="splash"><div class="sp-logo">${logoInner}</div><div class="sp-name">${String(name).replace(/</g,'&lt;')}</div><div class="sp-tag">${String(tag).replace(/</g,'&lt;')}</div><div class="sp-bar"><i></i></div><div class="sp-foot">Powered by HanaPOS CMS</div></div>`;
+    const bg = sp.bg==='solid'?sp.color1 : sp.bg==='gradient'?`linear-gradient(135deg, ${sp.color1}, ${sp.color2})` : 'linear-gradient(135deg, var(--navy,#285FF4), var(--blue,#5782F6))';
+    const logoBlock = sp.showLogo!==false ? `<div class="sp-logo">${(logo&&logo.indexOf&&logo.indexOf('data:')===0)?`<img src="${logo}" alt="${name.replace(/"/g,'&quot;')}">`:`<div class="sp-letter">${(name||'H')[0]||'H'}</div>`}</div>` : '';
+    const nameBlock = sp.showName!==false ? `<div class="sp-name">${String(name).replace(/</g,'&lt;')}</div>` : '';
+    const tagBlock = sp.showTagline!==false ? `<div class="sp-tag">${String(tag).replace(/</g,'&lt;')}</div>` : '';
+    const barBlock = sp.showBar!==false ? `<div class="sp-bar"><i></i></div>` : '';
+    return `<div class="splash" style="background:${bg}">${logoBlock}${nameBlock}${tagBlock}${barBlock}<div class="sp-foot">Powered by HanaPOS CMS</div></div>`;
   },
   showSplash(){
     const c=this._brandCache();
@@ -939,9 +958,25 @@ const App = {
   updateSplash(){
     const c={ logo:(LOGO&&LOGO.indexOf&&LOGO.indexOf('data:')===0)?LOGO:null,
       name:this.state._storeName||'Toko Hana', tagline:this.state._storeTagline||'Grocery Warungnya Rakyat ID',
-      navy:this.state._themeColor||'#285FF4' };
+      navy:this.state._themeColor||'#285FF4', splash:this.state._splash||this._spDef() };
     this._saveBrandCache(c);
     const ar=document.getElementById('auth-root'); if(ar) ar.innerHTML=this._splashHtml(c);
+  },
+  /* ---- editor splash ---- */
+  toggleSpOpts(){ const on=document.getElementById('sp-on')?.checked; const o=document.getElementById('sp-opts'); if(o){ o.style.opacity=on?'1':'.45'; o.style.pointerEvents=on?'':'none'; } this.previewSplash(); },
+  setSpBg(b){ this._editSpBg=b; document.querySelectorAll('#sp-bg-pill button').forEach(x=>x.classList.toggle('active',x.dataset.bg===b)); this.previewSplash(); },
+  previewSplash(){
+    const g=id=>{const e=document.getElementById(id);return e?e.value:'';};
+    const chk=id=>{const e=document.getElementById(id);return e?e.checked:true;};
+    const sp={on:chk('sp-on'),delay:Number(g('sp-delay')||1400),bg:this._editSpBg||'theme',color1:g('sp-c1')||'#285FF4',color2:g('sp-c2')||'#5782F6',showLogo:chk('sp-showlogo'),showName:chk('sp-showname'),showTagline:chk('sp-showtag'),showBar:chk('sp-showbar')};
+    const p=document.getElementById('splash-preview'); if(!p)return;
+    if(!sp.on){ p.innerHTML='<div class="sp-prev" style="display:flex;align-items:center;justify-content:center;color:var(--ink-3);font-size:12px;text-align:center;padding:12px">⏭️ Splash dimatikan — app langsung terbuka tanpa layar pembuka</div>'; return; }
+    const c={name:this.state._storeName||'Toko Hana',tagline:this.state._storeTagline||'Grocery Warungnya Rakyat ID',logo:(LOGO&&LOGO.indexOf('data:')===0)?LOGO:null,navy:this.state._themeColor||'#285FF4',splash:sp};
+    p.innerHTML='<div class="sp-prev">'+this._splashHtml(c)+'</div>';
+  },
+  async saveSplash(){
+    const sp={on:document.getElementById('sp-on')?.checked!==false,delay:Number(document.getElementById('sp-delay')?.value||1400),bg:this._editSpBg||'theme',color1:document.getElementById('sp-c1')?.value||'#285FF4',color2:document.getElementById('sp-c2')?.value||'#5782F6',showLogo:document.getElementById('sp-showlogo')?.checked!==false,showName:document.getElementById('sp-showname')?.checked!==false,showTagline:document.getElementById('sp-showtag')?.checked!==false,showBar:document.getElementById('sp-showbar')?.checked!==false};
+    try{ await DB.saveSettings('splash',sp); this.state._splash=sp; const cache=this._brandCache()||{}; cache.splash=sp; this._saveBrandCache(cache); this.toast('Setingan splash disimpan ✓','ok'); }catch(e){ this.toast('Gagal: '+(e.message||e),'err'); }
   },
   hideSplash(){
     const ar=document.getElementById('auth-root'); if(!ar)return;
@@ -2532,6 +2567,7 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
           <button class="${this.state._setTab==='pay'?'active':''}" onclick="App.setSetTab('pay')">💳 Bayar</button>
           <button class="${this.state._setTab==='poin'?'active':''}" onclick="App.setSetTab('poin')">🪙 Poin</button>
           <button class="${this.state._setTab==='antar'?'active':''}" onclick="App.setSetTab('antar')">🛵 Antar</button>
+          <button class="${this.state._setTab==='splash'?'active':''}" onclick="App.setSetTab('splash')">🎬 Splash</button>
         </div>
         <div id="set-body"></div>`;
       this.renderSetTab(this.state._setTab, s);
@@ -2662,6 +2698,36 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
         <hr class="sep">
         <div class="field"><label>🎒 Ekspedisi luar daerah <span class="muted small">(info aja, pisah koma)</span></label><input id="dv-exp" value="${(dv.expedisi||'').replace(/"/g,'&quot;')}" placeholder="JNE, J&T, SiCepat, AnterAja"></div>
         <button class="btn green block" onclick="App.saveDelivery()">${IC.check} Simpan Pengantaran</button></div>`;
+    } else if(tab==='splash'){
+      const sp=Object.assign(this._spDef(), this.state._splash||{});
+      this._editSpBg=sp.bg;
+      body.innerHTML=`<div class="card">
+        <h3>🎬 Splash Screen</h3>
+        <p class="muted small">Layar pembuka app (logo + nama toko + loading bar). Atur gaya, delay, atau matikan totally.</p>
+        <div id="splash-preview"></div>
+        <label class="row between" style="gap:6px;font-size:13px;font-weight:700;cursor:pointer;margin:4px 0 12px"><input type="checkbox" id="sp-on" ${sp.on!==false?'checked':''} onchange="App.toggleSpOpts()"> Aktifkan splash screen</label>
+        <div id="sp-opts">
+          <div class="field"><label>Delay minimal tampil (ms)</label><input id="sp-delay" type="number" value="${sp.delay||1400}" min="0" step="100" oninput="App.previewSplash()"><div class="hint">1400 = 1.4 detik · 0 = sekilas (secepat load). Dipakai kalau load lebih cepat dari delay.</div></div>
+          <div class="field"><label>Background</label>
+            <div class="pill-toggle" id="sp-bg-pill">
+              <button class="${sp.bg==='theme'?'active':''}" data-bg="theme" onclick="App.setSpBg('theme')">🎨 Tema</button>
+              <button class="${sp.bg==='solid'?'active':''}" data-bg="solid" onclick="App.setSpBg('solid')">⬛ Solid</button>
+              <button class="${sp.bg==='gradient'?'active':''}" data-bg="gradient" onclick="App.setSpBg('gradient')">🌈 Gradient</button>
+            </div>
+            <div class="hint">Tema = ikut warna tema toko. Solid/Gradient = pakai warna custom di bawah.</div>
+          </div>
+          <div class="field row2"><div><label>Warna 1 <span class="muted small">(solid/gradient)</span></label><input type="color" id="sp-c1" value="${sp.color1||'#285FF4'}" oninput="App.previewSplash()"></div><div><label>Warna 2 <span class="muted small">(gradient)</span></label><input type="color" id="sp-c2" value="${sp.color2||'#5782F6'}" oninput="App.previewSplash()"></div></div>
+          <div class="small" style="font-weight:700;margin:6px 0 4px">Tampilkan di splash:</div>
+          <div class="row" style="flex-wrap:wrap;gap:12px;margin-bottom:14px">
+            <label class="row" style="gap:6px;font-size:13px;font-weight:600;cursor:pointer"><input type="checkbox" id="sp-showlogo" ${sp.showLogo!==false?'checked':''} onchange="App.previewSplash()"> 🖼️ Logo</label>
+            <label class="row" style="gap:6px;font-size:13px;font-weight:600;cursor:pointer"><input type="checkbox" id="sp-showname" ${sp.showName!==false?'checked':''} onchange="App.previewSplash()"> 🏪 Nama</label>
+            <label class="row" style="gap:6px;font-size:13px;font-weight:600;cursor:pointer"><input type="checkbox" id="sp-showtag" ${sp.showTagline!==false?'checked':''} onchange="App.previewSplash()"> 📝 Tagline</label>
+            <label class="row" style="gap:6px;font-size:13px;font-weight:600;cursor:pointer"><input type="checkbox" id="sp-showbar" ${sp.showBar!==false?'checked':''} onchange="App.previewSplash()"> 📊 Loading bar</label>
+          </div>
+        </div>
+        <button class="btn green block" onclick="App.saveSplash()">${IC.check} Simpan Splash</button>
+      </div>`;
+      this.toggleSpOpts();
     } else {
       body.innerHTML=`<div class="card"><form id="store-form">
         <h3>Profil Toko</h3>
@@ -2727,6 +2793,7 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     this.state._pay=s.payment||{};
     this.state._delivery=s.delivery||{on:true,zones:[{id:'dekat',nama:'Dekat',tarif:2000,keywords:''},{id:'sedang',nama:'Sedang',tarif:5000,keywords:''},{id:'jauh',nama:'Jauh',tarif:10000,keywords:''}],expedisi:'JNE, J&T, SiCepat, AnterAja'};
     this.state._receipt=s.receipt||{logo:'logo',showName:true};
+    this.state._splash=Object.assign({on:true,delay:1400,bg:'theme',color1:'#285FF4',color2:'#5782F6',showLogo:true,showName:true,showTagline:true,showBar:true}, s.splash||{});
     this.applyThemeColor(tc);
     this.state._darkMode=(function(){try{return localStorage.getItem('omnipos_dark')==='1'}catch(e){return false}})();
     this.applyThemeMode(this.state._darkMode?'dark':'light',tc);
@@ -2923,5 +2990,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#285FF4;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a25c23cefd567a23',t:'MTc4NTgzMTU5NQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a25cba16a9aff928',t:'MTc4NTgzNzc1MA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
