@@ -179,6 +179,14 @@ h1,h2,h3,h4{margin:0;font-weight:800;letter-spacing:-.01em}
 .pos-prods{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;max-height:calc(100vh - 250px);overflow:auto;padding-right:4px}
 .pos-prods .prod .ph .emoji{font-size:34px} .pos-prods .prod .nm{min-height:0;font-size:12.5px}
 .pos-prods .prod .info{padding:8px 9px 9px}
+/* hasil search = list (dropdown style) */
+.pos-searchlist{display:block!important;max-height:none;padding:0}
+.pos-searchlist .sli{display:flex;align-items:center;gap:12px;padding:11px 12px;cursor:pointer;background:#fff;border-radius:10px;margin-bottom:6px;box-shadow:var(--shadow);transition:.12s}
+.pos-searchlist .sli:hover{background:var(--blue-l)}
+.pos-searchlist .sli:active{transform:scale(.99)}
+.pos-searchlist .sli .em{font-size:24px;width:32px;text-align:center;flex:none}
+.pos-searchlist .sli .nm{font-size:14px}
+.pos-searchlist .sli .pr{font-weight:800;color:var(--navy);font-size:14px;flex:none;white-space:nowrap}
 .cart-panel{background:#fff;border-radius:var(--r);box-shadow:var(--shadow);position:sticky;top:78px;display:flex;flex-direction:column;max-height:calc(100vh - 100px)}
 .cart-head{padding:14px 16px;border-bottom:1px solid var(--line)}
 .cart-items{flex:1;overflow:auto;padding:6px 16px;min-height:120px}
@@ -1696,18 +1704,24 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
       <div class="section-title"><h3 style="font-size:15px">Pilih Produk</h3></div>
       <div class="pos-prods" id="pos-prods" style="max-height:none"></div>`;
     document.getElementById('pos-search').addEventListener('input',e=>this.posSearch(e.target.value));
-    document.getElementById('pos-search').addEventListener('keydown',e=>{ if(e.key==='Enter'){ this.posBarcode(e.target.value); e.target.value=''; } });
+    document.getElementById('pos-search').addEventListener('keydown',e=>{ if(e.key==='Enter'){ const f=document.querySelector('#pos-prods .sli'); if(f){f.click();} else { this.posBarcode(e.target.value); e.target.value=''; } } });
     this.posSearch('');
   },
   async posSearch(q){
     let r=this.state._prods; if(!r){ r=await DB.listProducts(); this.state._prods=r; }
-    const s=(q||'').toLowerCase();
-    let list=r.filter(x=>x.is_active&&(x.name+' '+(x.barcode||'')+' '+(x.brand||'')).toLowerCase().includes(s));
-    if(q)list=list.slice(0,24); else list=list.slice(0,24);
-    document.getElementById('pos-prods').innerHTML=list.map(p=>`<div class="prod" onclick="App.posAdd('${p.id}')">
-      <div class="ph"><div class="emoji">${p.emoji||'📦'}</div></div><div class="info"><div class="nm">${p.name}</div>
-      <div class="pr">${this.money(p.price)}</div><div class="muted small">stok ${p.stock}</div></div></div>`).join('')||`<div class="empty">Ketik untuk mencari</div>`;
+    const s=(q||'').toLowerCase().trim();
+    const grid=document.getElementById('pos-prods'); if(!grid)return;
+    if(!s){
+      grid.className='pos-prods';
+      grid.innerHTML=r.filter(x=>x.is_active).slice(0,24).map(p=>this.posCard(p)).join('')||'<div class="empty">Belum ada produk</div>';
+      return;
+    }
+    const list=r.filter(x=>x.is_active&&(x.name+' '+(x.barcode||'')+' '+(x.brand||'')).toLowerCase().includes(s)).slice(0,30);
+    grid.className='pos-searchlist';
+    grid.innerHTML=list.length?list.map(p=>`<div class="sli" onclick="App.posAdd('${p.id}');App.posSearchDone()"><span class="em">${p.emoji||'📦'}</span><div class="col"><b class="nm">${p.name}</b><small class="muted">${p.brand||''}${p.brand&&p.barcode?' · ':''}${p.barcode||''} · stok ${p.stock}</small></div><b class="pr">${this.money(p.price)}</b></div>`).join(''):'<div class="empty">Tidak ditemukan untuk "'+s+'"</div>';
   },
+  posCard(p){ return `<div class="prod" onclick="App.posAdd('${p.id}')"><div class="ph"><div class="emoji">${p.emoji||'📦'}</div></div><div class="info"><div class="nm">${p.name}</div><div class="pr">${this.money(p.price)}</div><div class="muted small">stok ${p.stock}</div></div></div>`; },
+  posSearchDone(){ const si=document.getElementById('pos-search'); if(si)si.value=''; this.posSearch(''); },
   async posBarcode(code){
     code=code.trim(); if(!code)return;
     let p=await DB.getProductByBarcode(code);
@@ -2739,5 +2753,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#285FF4;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a259fb21b8e3b841',t:'MTc4NTgwODk1Nw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a25a0e216e4fce69',t:'MTc4NTgwOTczNQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
