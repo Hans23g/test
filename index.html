@@ -45,9 +45,10 @@ h1,h2,h3,h4{margin:0;font-weight:800;letter-spacing:-.01em}
 /* ============================ SPLASH ============================ */
 .splash{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--navy,#285FF4),var(--blue,#5782F6));color:#fff;text-align:center;padding:24px;animation:spIn .4s ease}
 @keyframes spIn{from{opacity:0}to{opacity:1}}
-.splash .sp-logo{display:flex;align-items:center;justify-content:center;margin-bottom:22px}
-.splash .sp-logo img{width:auto;height:104px;max-width:76vw;object-fit:contain;filter:drop-shadow(0 0 14px rgba(255,255,255,.3)) drop-shadow(0 10px 24px rgba(0,0,0,.32))}
-.splash .sp-letter{width:104px;height:104px;border-radius:30px;background:rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;font-size:48px;font-weight:900;box-shadow:0 12px 32px rgba(0,0,0,.28);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.splash .sp-logo{position:relative;display:flex;align-items:center;justify-content:center;margin-bottom:22px}
+.splash .sp-logo::before{content:"";position:absolute;left:50%;top:50%;width:240px;height:210px;max-width:94vw;transform:translate(-50%,-50%);background:radial-gradient(ellipse at center,rgba(255,255,255,.5),rgba(255,255,255,.16) 42%,rgba(255,255,255,0) 70%);z-index:0;pointer-events:none}
+.splash .sp-logo img{position:relative;z-index:1;width:auto;height:104px;max-width:72vw;object-fit:contain}
+.splash .sp-letter{position:relative;z-index:1;width:104px;height:104px;border-radius:30px;background:rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;font-size:48px;font-weight:900;box-shadow:0 12px 32px rgba(0,0,0,.28);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
 .splash .sp-name{font-size:25px;font-weight:800;letter-spacing:-.01em;text-shadow:0 2px 8px rgba(0,0,0,.22);max-width:90%}
 .splash .sp-tag{font-size:13px;opacity:.92;margin-top:5px;max-width:84%}
 .splash .sp-bar{width:210px;max-width:62vw;height:5px;border-radius:99px;background:rgba(255,255,255,.28);overflow:hidden;margin-top:28px;position:relative}
@@ -911,12 +912,15 @@ const App = {
   money(n){ n=Number(n||0); return CONFIG.CURRENCY+' '+n.toLocaleString('id-ID') },
   async start(){
     this.showSplash();
+    const t0=Date.now();
     await DB.init();
     await this.applyBranding();
     this.updateSplash();
     this.state.user=await DB.me();
     window.addEventListener('hashchange',()=>this.route());
     if(location.hash) history.replaceState(null,'',location.pathname+location.search);
+    // minimal tampil splash biar gak kedip (instant load) — minimal ~1.4 detik
+    const MIN_SHOW=1400; if(Date.now()-t0<MIN_SHOW) await new Promise(r=>setTimeout(r,MIN_SHOW-(Date.now()-t0)));
     if(this.state.user){ this.renderApp(); } else { this.renderPublicShell(); }
   },
   /* ===================== SPLASH ===================== */
@@ -2919,5 +2923,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#285FF4;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a25c12dddbdb6042',t:'MTc4NTgzMDkwMQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a25c23cefd567a23',t:'MTc4NTgzMTU5NQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
