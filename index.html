@@ -263,13 +263,13 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:14px 0}
 #scan-region{width:100%;border-radius:14px;overflow:hidden;background:#000;min-height:260px}
 #scan-region video{border-radius:14px}
 /* modal scan barcode — TURUN DARI ATAS, compact (hanya yg perlu) */
-.scan-overlay{position:fixed;inset:0;background:rgba(8,20,35,.55);z-index:70;display:none;align-items:flex-start;justify-content:center;backdrop-filter:blur(2px)}
-.scan-box{background:var(--card);width:100%;max-width:420px;border-radius:0 0 18px 18px;box-shadow:var(--shadow-lg);animation:drop .3s cubic-bezier(.4,0,.2,1);overflow:hidden}
+.scan-overlay{position:fixed;inset:0;background:rgba(8,20,35,.4);z-index:70;display:none;align-items:flex-start;justify-content:center;backdrop-filter:blur(1px)}
+.scan-box{background:var(--card);width:100%;max-width:360px;border-radius:0 0 18px 18px;box-shadow:var(--shadow-lg);animation:drop .3s cubic-bezier(.4,0,.2,1);overflow:hidden}
 @keyframes drop{from{transform:translateY(-110%);opacity:.3}to{transform:translateY(0);opacity:1}}
 .scan-box .scan-head{padding:12px 16px;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:space-between}
 .scan-box .scan-head h3{font-size:15px;color:#fff;margin:0}
 .scan-box .scan-body{padding:14px}
-.scan-box #scan-region{min-height:200px;max-height:44vh;border-radius:12px}
+.scan-box #scan-region{min-height:150px;max-height:34vh;border-radius:12px}
 .scan-box #scan-region video{border-radius:12px}
 .scan-close-btn{background:rgba(255,255,255,.22);color:#fff;width:30px;height:30px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;border:none;flex:none}
 .scan-close-btn:hover{background:rgba(255,255,255,.35)}
@@ -1668,35 +1668,32 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     this.state.posCart=this.state.posCart||[]; this.state.posCustomer=null;
     const v=document.getElementById('view');
     v.innerHTML=`
-      <div class="section-title"><h2>🧾 Kasir Offline</h2><button class="btn ghost sm" onclick="App.openScanner()">${IC.scan} Scan Barcode</button></div>
-      <div class="pos-grid">
-        <div>
-          <div class="pos-search">
-            <div class="search-box">${IC.search}<input id="pos-search" placeholder="Cari / ketik barcode lalu Enter…" autofocus></div>
+      <div class="section-title"><h2>🧾 Kasir Offline</h2><button class="btn ghost sm" onclick="App.openScanner()">${IC.scan} Scan</button></div>
+      <div class="pos-search" style="margin-bottom:12px">
+        <div class="search-box">${IC.search}<input id="pos-search" placeholder="Cari / ketik barcode lalu Enter…" autofocus></div>
+      </div>
+      <div class="cart-panel" style="position:static;max-height:none;margin-bottom:14px">
+        <div class="cart-head"><div class="row between"><h3>🛒 Keranjang</h3><button class="btn xs ghost" onclick="App.posClear()">${IC.trash} Kosongkan</button></div>
+          <div class="row" style="margin-top:10px;gap:8px" id="cust-box">
+            <button class="btn xs block ghost" onclick="App.openCustomerLookup()">${IC.users} Pilih / Daftar Member</button>
           </div>
-          <div class="pos-prods" id="pos-prods"></div>
+          <div id="cust-info"></div>
         </div>
-        <div class="cart-panel">
-          <div class="cart-head"><div class="row between"><h3>Keranjang</h3><button class="btn xs ghost" onclick="App.posClear()">${IC.trash} Kosongkan</button></div>
-            <div class="row" style="margin-top:10px;gap:8px" id="cust-box">
-              <button class="btn xs block ghost" onclick="App.openCustomerLookup()">${IC.users} Pilih / Daftar Member</button>
-            </div>
-            <div id="cust-info"></div>
-          </div>
-          <div class="cart-items" id="pos-items"><div class="empty small">${IC.cart}<p>Keranjang kosong</p></div></div>
-          <div class="cart-foot">
-            <div class="field" id="pts-field" style="display:none"><label>Pakai poin member</label><input type="number" id="pos-pts" value="0" min="0" oninput="App.posTotals()"></div>
-            <div class="sum-line"><span>Subtotal</span><span id="pos-sub">Rp 0</span></div>
-            <div class="sum-line"><span>Diskon poin</span><span id="pos-disc">- Rp 0</span></div>
-            <div class="sum-line tot"><span>Total</span><span id="pos-total">Rp 0</span></div>
-            <div class="field"><label>Bayar (tunai)</label><input type="number" id="pos-paid" value="0" oninput="App.posTotals()" placeholder="0"></div>
-            <div class="sum-line"><span>Kembalian</span><span id="pos-change" class="green">Rp 0</span></div>
-            <div class="field"><label>Metode bayar</label><select id="pos-pay"><option>Tunai</option><option>QRIS</option><option>Debit</option><option>Transfer</option></select></div>
-            <div class="field"><label>📝 Catatan struk / No. Token</label><input id="pos-struk-note" placeholder="Mis. No. token listrik PLN"></div>
-            <button class="btn green block" onclick="App.posCheckout()">${IC.check} Bayar & Struk</button>
-          </div>
+        <div class="cart-items" id="pos-items" style="max-height:220px"><div class="empty small">${IC.cart}<p>Keranjang kosong</p></div></div>
+        <div class="cart-foot">
+          <div class="field" id="pts-field" style="display:none"><label>Pakai poin member</label><input type="number" id="pos-pts" value="0" min="0" oninput="App.posTotals()"></div>
+          <div class="sum-line"><span>Subtotal</span><span id="pos-sub">Rp 0</span></div>
+          <div class="sum-line"><span>Diskon poin</span><span id="pos-disc">- Rp 0</span></div>
+          <div class="sum-line tot"><span>Total</span><span id="pos-total">Rp 0</span></div>
+          <div class="field"><label>Bayar (tunai)</label><input type="number" id="pos-paid" value="0" oninput="App.posTotals()" placeholder="0"></div>
+          <div class="sum-line"><span>Kembalian</span><span id="pos-change" class="green">Rp 0</span></div>
+          <div class="field"><label>Metode bayar</label><select id="pos-pay"><option>Tunai</option><option>QRIS</option><option>Debit</option><option>Transfer</option></select></div>
+          <div class="field"><label>📝 Catatan struk / No. Token</label><input id="pos-struk-note" placeholder="Mis. No. token listrik PLN"></div>
+          <button class="btn green block" onclick="App.posCheckout()">${IC.check} Bayar & Struk</button>
         </div>
-      </div>`;
+      </div>
+      <div class="section-title"><h3 style="font-size:15px">Pilih Produk</h3></div>
+      <div class="pos-prods" id="pos-prods" style="max-height:none"></div>`;
     document.getElementById('pos-search').addEventListener('input',e=>this.posSearch(e.target.value));
     document.getElementById('pos-search').addEventListener('keydown',e=>{ if(e.key==='Enter'){ this.posBarcode(e.target.value); e.target.value=''; } });
     this.posSearch('');
@@ -2739,5 +2736,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#285FF4;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a25962b39e7e9b8d',t:'MTc4NTgwMjcxNA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a259c329396ffda7',t:'MTc4NTgwNjY2NQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
