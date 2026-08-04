@@ -584,7 +584,7 @@ const DB = (() => {
           sb=window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_KEY); isDemo=false;
           // cek koneksi: kalau gagal (mis. di iframe/workspace preview), fallback demo
           const {error}=await sb.from('categories').select('id').limit(1);
-          if(error && /fetch|network|connection/i.test(error.message||'')) throw new Error('network');
+          if(error && /fetch|network|connection|could not find|does not exist|schema|relation/i.test(error.message||'')) throw new Error('schema');
           return;
         }catch(e){ console.warn('Supabase tidak bisa diakses, fallback demo',e); }
       } else { console.warn('supabase-js belum termuat — pakai Mode Demo'); }
@@ -1980,6 +1980,7 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     this.openSheet(`<div class="sheet-head"><h3>⚡ Edit Cepat</h3><button class="iconbtn" onclick="App.closeSheet()">${IC.x}</button></div>
       <div class="sheet-body">
         <div class="row" style="gap:10px;margin-bottom:14px"><span style="font-size:30px">${p.emoji||'📦'}</span><div class="col"><b style="font-size:15px">${p.name}</b><div class="muted small">${p.brand||''} · ${p.unit||'pcs'}</div></div></div>
+        <div class="field"><label>Kategori</label><select id="qe-category">${(this.state._cats||[]).map(c=>`<option value="${c.id}" ${p.category_id===c.id?'selected':''}>${c.icon||'\U0001f4e6'} ${c.name}</option>`).join('')}</select></div>
         <div class="field row2">
           <div><label>Stok</label><input id="qe-stock" type="number" value="${p.stock||0}" style="font-size:18px;font-weight:800;color:var(--green)"></div>
           <div><label>Harga Jual (Rp)</label><input id="qe-price" type="number" value="${p.price||0}" style="font-size:18px;font-weight:800;color:var(--navy)"></div>
@@ -1994,7 +1995,7 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
   },
   async saveQuickEdit(id){
     const p=this.state._prods.find(x=>x.id===id); if(!p)return;
-    const patch={ stock:Number(document.getElementById('qe-stock')?.value||0), price:Number(document.getElementById('qe-price')?.value||0), barcode:document.getElementById('qe-barcode')?.value||'', compare_price:Number(document.getElementById('qe-compare')?.value||0), cost:Number(document.getElementById('qe-cost')?.value||0) };
+    const patch={ category_id:document.getElementById('qe-category')?.value||p.category_id, stock:Number(document.getElementById('qe-stock')?.value||0), price:Number(document.getElementById('qe-price')?.value||0), barcode:document.getElementById('qe-barcode')?.value||'', compare_price:Number(document.getElementById('qe-compare')?.value||0), cost:Number(document.getElementById('qe-cost')?.value||0) };
     try{ await DB.saveProduct({...p,...patch}); this.state._prods=this.state._prods.map(x=>x.id===id?{...x,...patch}:x); this.closeSheet(); this.toast('Produk diupdate ✓','ok'); this.viewProducts(); }catch(e){ this.toast('Gagal: '+(e.message||e),'err'); }
   },
 
@@ -2811,5 +2812,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#285FF4;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a25b29c718a1ce8b',t:'MTc4NTgyMTM1NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a25b4a540c18fd6b',t:'MTc4NTgyMjY4Nw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
