@@ -827,6 +827,29 @@ const DB = (() => {
     if(!isDemo){ const {data,error}=await sb.from('orders').update({status,...patch}).eq('id',id).select().single(); if(error)throw error; return data; }
     const d=load(); Object.assign(d.orders[id],{status,...patch,updated_at:now()}); save(d); return d.orders[id];
   }
+  /* LUNASIN BON/PIUTANG — live: RPC server-side (lewati RLS, atomic); demo: client FIFO.
+     return = sisa bon member. Lempar error khusus kalau RPC blm dibuat (fallback ke updateOrderStatus). */
+  async function settleBon(memberId, amount){
+    if(!isDemo){
+      const {data,error}=await sb.rpc('settle_bon',{ p_member_id:memberId, p_amount:Math.max(0,Math.round(amount)) });
+      if(error){
+        const m=(error.message||'')+'';
+        // RPC belum dibuat -> beri sinyal spesifik biar doPayBon fallback ke updateOrderStatus
+        if(/Could not find|function.*does not exist|settle_bon/i.test(m)) throw new Error('__NORPC__');
+        throw error;
+      }
+      return Number(data)||0;
+    }
+    // DEMO: FIFO client-side
+    const d=load(); let remaining=Math.max(0,Math.round(amount));
+    const ids=Object.values(d.orders)
+      .filter(o=>o.customer_id===memberId && Number(o.change_amount||0)<0 && !['pending','cancelled','rejected'].includes(o.status))
+      .sort((a,b)=>(a.created_at||'').localeCompare(b.created_at||''));
+    for(const o of ids){ if(remaining<=0)break; const bon=-Number(o.change_amount||0); if(bon<=0)continue;
+      const apply=Math.min(remaining,bon); o.change_amount=Number(o.change_amount)+apply; o.paid_amount=Number(o.paid_amount||0)+apply; o.updated_at=now(); remaining-=apply; }
+    save(d);
+    return Object.values(d.orders).filter(o=>o.customer_id===memberId&&Number(o.change_amount||0)<0&&!['pending','cancelled','rejected'].includes(o.status)).reduce((s,o)=>s+Math.abs(Number(o.change_amount||0)),0);
+  }
   /* batalkan order + kembalikan stok */
   async function cancelOrder(id){
     if(!isDemo){
@@ -911,7 +934,7 @@ const DB = (() => {
   }
 
   return {init,signIn,signUp,signOut,me,updateProfile,listProducts,getProductByBarcode,saveProduct,
-    deleteProduct,bulkUpsertProducts,listCategories,saveCategory,deleteCategory,createOrder,listOrders,getOrder,updateOrderStatus,cancelOrder,
+    deleteProduct,bulkUpsertProducts,listCategories,saveCategory,deleteCategory,createOrder,listOrders,getOrder,updateOrderStatus,settleBon,cancelOrder,
     listMembers,getMember,listAllProfiles,deleteAccount,listPoints,listReferrals,stats,getSettings,saveSettings,
     resetPassword,setPassword,changeOwnPassword,changeOwnEmail,setEmail,demo,setForceDemo,resetDemo};
 })();
@@ -2020,23 +2043,29 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     this.state._bonPaying=true;
     const btn=document.getElementById('bon-pay-btn'); const btnOld=btn?btn.innerHTML:'';
     if(btn){btn.disabled=true;btn.innerHTML='⏳ Melunasi…';}
-    const BON_STAT=['completed','paid'];
-    const calcBon=arr=>arr.filter(o=>Number(o.change_amount||0)<0&&BON_STAT.includes(o.status)).reduce((s,o)=>s+Math.abs(Number(o.change_amount||0)),0);
-    let remaining=pay, failed=0;
-    // terapkan pembayaran ke 1 order; throw kalau update ditolak/gagal (ditangkap pemanggil)
-    const settleOne=async(o)=>{ const bon=Math.abs(Number(o.change_amount||0)); if(bon<=0||remaining<=0||!BON_STAT.includes(o.status))return;
+    const DEBT_BAD=['pending','cancelled','rejected'];
+    const calcBon=arr=>arr.filter(o=>Number(o.change_amount||0)<0&&!DEBT_BAD.includes(o.status)).reduce((s,o)=>s+Math.abs(Number(o.change_amount||0)),0);
+    let remaining=pay, failed=0, usedRPC=true;
+    const settleOne=async(o)=>{ const bon=Math.abs(Number(o.change_amount||0)); if(bon<=0||remaining<=0||DEBT_BAD.includes(o.status))return;
       const apply=Math.min(remaining,bon);
       await DB.updateOrderStatus(o.id,o.status,{change_amount:Number(o.change_amount)+apply,paid_amount:Number(o.paid_amount||0)+apply});
       remaining-=apply; };
     try{
-      // ronde 1: FIFO lunasin bon terlama dulu
-      for(const o of (await DB.listOrders({customer_id:c.id})).reverse()){ try{await settleOne(o);}catch(e){failed++;console.warn('[payBon] order',o.id,e);} if(remaining<=0)break; }
-      // ronde 2: VERIFIKASI — baca ulang; order yg masih bon (gagal sesaat / RLS) dicoba sekali lagi
-      let fresh=await DB.listOrders({customer_id:c.id});
-      if(remaining>0||failed>0){ for(const o of fresh){ try{await settleOne(o);}catch(e){} if(remaining<=0)break; } fresh=await DB.listOrders({customer_id:c.id}); }
-      c._bon=calcBon(fresh);
+      // ===== PRIMER: RPC server-side settle_bon (lewati RLS, atomic FIFO) =====
+      try{
+        c._bon=await DB.settleBon(c.id, pay);
+      }catch(e){
+        if((e.message||'')!=='__NORPC__') throw e;     // error lain -> lempar
+        // RPC blm dibuat -> fallback ke updateOrderStatus per-order (robust)
+        usedRPC=false;
+        for(const o of (await DB.listOrders({customer_id:c.id})).reverse()){ try{await settleOne(o);}catch(err){failed++;console.warn('[payBon] order',o.id,err);} if(remaining<=0)break; }
+        let fr=await DB.listOrders({customer_id:c.id});
+        if(remaining>0||failed>0){ for(const o of fr){ try{await settleOne(o);}catch(err){} if(remaining<=0)break; } fr=await DB.listOrders({customer_id:c.id}); }
+        c._bon=calcBon(fr);
+      }
       // 🔍 DIAGNOSTIK: log presisi supaya kalau bon masih lengket kita tahu persis kenapa
-      console.log('[payBon] hasil: dibayar='+pay+' gagal='+failed+' sisa_uang='+remaining+' bon_skrg='+c._bon, fresh.map(o=>({id:String(o.id).slice(-6),change:o.change_amount,paid:o.paid_amount,status:o.status})));
+      const fresh=await DB.listOrders({customer_id:c.id});
+      console.log('[payBon] hasil: mode='+(usedRPC?'RPC':'fallback')+' dibayar='+pay+' gagal='+failed+' bon_skrg='+c._bon, fresh.map(o=>({id:String(o.id).slice(-6),change:o.change_amount,paid:o.paid_amount,status:o.status})));
       this.renderCustInfo(); this.closeSheet();
       this.toast(c._bon<=0?'✅ BON lunas! Terima kasih 🙏':(failed>0?('⚠️ '+failed+' order blm tersimpan — bon tersisa '+this.money(c._bon)):'BON tersisa '+this.money(c._bon)), c._bon<=0?'ok':(failed>0?'err':'ok'));
     }catch(e){ console.error('[payBon]',e); this.toast('Gagal: '+(e.message||e),'err'); }
@@ -3104,5 +3133,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#285FF4;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2618cba5eda6494',t:'MTc4NTg4ODMyMQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a261a4443e19fd68',t:'MTc4NTg4OTI4NQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
