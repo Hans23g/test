@@ -1900,6 +1900,7 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
           <div class="sum-line"><span>Subtotal</span><span id="pos-sub">Rp 0</span></div>
           <div class="sum-line"><span>Diskon poin</span><span id="pos-disc">- Rp 0</span></div>
           <div class="sum-line hide" id="pos-ship-line"><span>Ongkir antar</span><span id="pos-ship">Rp 0</span></div>
+          <label class="sum-line hide" id="pos-bon-row" style="cursor:pointer;align-items:center;gap:8px;background:var(--blue-ll);padding:8px 10px;border-radius:8px;margin:4px 0"><input type="checkbox" id="pos-bon-on" onchange="App.posTotals()" style="width:18px;height:18px"><span>+ Masukkan Piutang lama <b id="pos-bon-amt" style="color:#E11D48">Rp 0</b> ke total</span></label>
           <div class="sum-line tot"><span>Total</span><span id="pos-total">Rp 0</span></div>
           <label class="row between" style="gap:8px;cursor:pointer;margin:8px 0;padding:11px 13px;background:var(--bg);border-radius:11px;box-shadow:inset 0 0 0 1.5px var(--line)">
             <b class="small" style="display:flex;align-items:center;gap:6px">🛵 Antar ke pelanggan</b>
@@ -2025,7 +2026,13 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
   posTotals(){
     const sub=this.state.posCart.reduce((a,b)=>a+b.price*b.qty,0);
     const cust=this.state.posCustomer; const pts=cust?Math.min(Number(document.getElementById('pos-pts')?.value||0),cust.points,Math.floor(sub/CONFIG.REDEEM_VALUE)):0;
-    const disc=pts*CONFIG.REDEEM_VALUE; const ship=this.posShip(); const tot=sub-disc+ship;
+    const disc=pts*CONFIG.REDEEM_VALUE; const ship=this.posShip(); const baseTot=sub-disc+ship;
+    // piutang lama member (bisa diceklis utk masuk ke total)
+    const bon=(cust&&cust._bon>0)?Number(cust._bon):0;
+    const bonRow=document.getElementById('pos-bon-row');
+    if(bonRow){ bonRow.classList.toggle('hide',bon<=0); const amt=document.getElementById('pos-bon-amt'); if(amt) amt.textContent=this.money(bon); }
+    const bonAdd=(bon>0 && document.getElementById('pos-bon-on')?.checked)?bon:0;
+    const tot=baseTot+bonAdd;   // grand total (belanja + piutang)
     document.getElementById('pos-sub').textContent=this.money(sub);
     document.getElementById('pos-disc').textContent='- '+this.money(disc);
     const shEl=document.getElementById('pos-ship'); if(shEl) shEl.textContent=this.money(ship);
@@ -2035,7 +2042,7 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     const chEl=document.getElementById('pos-change');
     if(chEl){ if(change<0){chEl.textContent='⚠️ BON '+this.money(Math.abs(change));chEl.style.color='var(--rose)';chEl.style.fontWeight='800';}
       else{chEl.textContent=this.money(change);chEl.style.color='var(--green)';chEl.style.fontWeight='';} }
-    this.state._posTot={sub,disc,pts,ship,tot};
+    this.state._posTot={sub,disc,pts,ship,tot:baseTot,bonAdd};
   },
   renderCustInfo(){ const c=this.state.posCustomer; const el=document.getElementById('cust-info');
     if(c) el.innerHTML=`<div class="card" style="background:var(--blue-ll);padding:10px 12px;margin-top:8px"><div class="row between"><div class="row"><div style="width:36px;height:36px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800">${c.full_name[0]}</div><div><b style="font-size:13px">${c.full_name}</b><div class="muted small">${IC.coin} ${c.points} poin · ${c.referral_code||''}</div></div></div>${(c._bon||0)>0?`<div style="background:#FDE8EC;color:#E11D48;padding:8px 10px;border-radius:8px;margin-top:6px;font-size:12px;font-weight:700">⚠️ BON ${this.money(c._bon)} — belum lunas</div><button class="btn xs block" style="background:#E11D48;margin-top:6px" onclick="App.payBon()">💸 Bayar Bon</button>`:''}</div><button class="iconbtn" style="width:30px;height:30px" onclick="App.state.posCustomer=null;App.renderCustInfo();App.posTotals();document.getElementById('pts-field').style.display='none'">${IC.x}</button></div></div>`;
@@ -2132,9 +2139,9 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     if(this.state._posChecking) return;  // 🔒 cegah transaksi dobel (lag/proses lambat)
     const c=this.state.posCart; if(!c.length){this.toast('Keranjang kosong','err');return;}
     const t=this.state._posTot; const paid=Number(document.getElementById('pos-paid').value||0);
-    if(paid<t.tot){
-      if(!this.state.posCustomer){this.toast('Bayar kurang — pilih member dulu buat catat bon 🙂','err');return;}
-    }
+    const bonOn=document.getElementById('pos-bon-on')?.checked && this.state.posCustomer && this.state.posCustomer._bon>0;
+    const grandTot=t.tot+(bonOn?this.state.posCustomer._bon:0);
+    if(paid<grandTot && !this.state.posCustomer){this.toast('Bayar kurang — pilih member dulu buat catat bon 🙂','err');return;}
     // 🔒 lock tombol + flag
     this.state._posChecking=true;
     const btn=document.getElementById('pos-checkout-btn');
@@ -2143,9 +2150,12 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     try{
     const cust=this.state.posCustomer;
     const ptsEarn=Math.floor((t.sub-t.disc)/CONFIG.EARN_PER_RP);
+    // split pembayaran: lunasi piutang lama dulu, sisanya ke belanja ini
+    let toDebt=0, toNew=paid;
+    if(bonOn){ toDebt=Math.min(cust._bon,paid); toNew=paid-toDebt; }
     let order={ order_no:'POS'+Date.now().toString().slice(-8), customer_id:cust?cust.id:null, customer_name:cust?cust.full_name:'Tamu (Walk-in)',
       channel:'offline', status:'completed', subtotal:t.sub, discount:t.disc, points_used:t.pts, points_earned:cust?ptsEarn:0, shipping:t.ship||0,
-      total:t.tot, paid_amount:paid, change_amount:paid-t.tot, payment_method:document.getElementById('pos-pay').value,
+      total:t.tot, paid_amount:toNew, change_amount:toNew-t.tot, payment_method:document.getElementById('pos-pay').value,
       struk_note:document.getElementById('pos-struk-note')?.value?.trim()||'',
       cashier_id:this.state.user.id };
     let delivMsg='';
@@ -2167,13 +2177,19 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
       if(!cust&&rcvName) order.customer_name=rcvName;
       delivMsg=cid?(' — diantar oleh '+cname):' — masuk job antar kurir';
     }
-    const items=c.map(it=>({product_id:it.product_id,name:it.name,price:it.price,qty:it.qty,subtotal:it.price*it.qty}));
-      const o=await DB.createOrder(order,items);
+      const items=c.map(it=>({product_id:it.product_id,name:it.name,price:it.price,qty:it.qty,subtotal:it.price*it.qty}));
+      // 💸 lunasi piutang lama (stelah semua validasi lolos, sebelum buat order baru)
+      let bonMsg='';
+      if(bonOn && toDebt>0){
+        try{ await DB.settleBon(cust.id,toDebt); bonMsg=' · piutang '+this.money(toDebt)+' lunas'; }
+        catch(e){ console.warn('[posCheckout] settle bon gagal',e); toDebt=0; toNew=paid; order.paid_amount=paid; order.change_amount=paid-t.tot; this.toast('⚠️ Piutang blm dilunasi (transaksi tetap jalan)','err'); }
+      }
+        const o=await DB.createOrder(order,items);
       this.state.posCart=[]; this.state.posCustomer=null; const d=document.getElementById('pos-deliv-on'); if(d)d.checked=false; this.posToggleDeliv(false);
       this.posRender(); this.renderCustInfo(); this.updateOnlineBadge();
       this.printReceipt(o,items);
       const bonAmt=Number(o.change_amount||0)<0?Math.abs(Number(o.change_amount)):0;
-      this.toast(bonAmt>0?('✅ Transaksi — BON '+this.money(bonAmt)+' dicatat utk '+cust.full_name):('Transaksi sukses ✓ '+o.order_no+delivMsg),'ok');
+      this.toast(bonAmt>0?('✅ Transaksi — BON '+this.money(bonAmt)+' dicatat utk '+cust.full_name+bonMsg):('Transaksi sukses ✓ '+o.order_no+delivMsg+bonMsg),'ok');
     }catch(e){ this.toast('Gagal: '+e.message,'err'); }
     finally{
       this.state._posChecking=false;
@@ -3223,5 +3239,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#285FF4;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2626bdf7e20fd00',t:'MTc4NTg5NzQ2MQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</body>
 </html>
