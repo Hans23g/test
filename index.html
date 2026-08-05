@@ -1165,9 +1165,9 @@ const App = {
           <div class="nav-item" data-v="pos">${IC.scan} Kasir</div>
           <div class="nav-item" data-v="online-orders">${IC.bag} Order <span class="bn-badge hide" id="nb-online" style="position:relative;margin-left:auto"></span></div>
           <div class="nav-item" data-v="members">${IC.users} Member</div>
-          <div class="nav-item" data-v="piutang">💰 Piutang <span class="bn-badge hide" id="nb-piutang" style="position:relative;margin-left:auto"></span></div>
           <div class="nav-sec">Lainnya</div>
           <div class="nav-item" data-v="reports">${IC.chart} Laporan</div>
+          <div class="nav-item" data-v="piutang">💰 Piutang <span class="bn-badge hide" id="nb-piutang" style="position:relative;margin-left:auto"></span></div>
           ${u.role==='admin'?`<div class="nav-item" data-v="settings">${IC.settings} Pengaturan</div>`:''}
         </aside>
         <main class="main"><div class="content" id="view"></div></main>
@@ -1178,7 +1178,6 @@ const App = {
         <div class="bn-item" data-v="pos">${IC.scan}Kasir</div>
         <div class="bn-item" data-v="online-orders">${IC.bag}Order</div>
         <div class="bn-item" data-v="members">${IC.users}Member</div>
-        <div class="bn-item" data-v="piutang">💰Piutang</div>
       </nav>`;
     const go=v=>{location.hash=v};
     document.querySelectorAll('.nav-item,.bn-item').forEach(el=>el.onclick=()=>go(el.dataset.v));
@@ -3178,5 +3177,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#285FF4;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a261d67e3eadd4f1',t:'MTc4NTg5MTM0Mw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a261e56cc89ccbdd',t:'MTc4NTg5MTk1NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
