@@ -1557,6 +1557,7 @@ const App = {
           <div class="sum-line"><span>Ongkir</span><span id="ship-line">${this.money(0)}</span></div>
           <div class="sum-line"><span>Potongan poin</span><span id="pts-disc">- ${this.money(0)}</span></div>
           <div class="sum-line tot"><span>Total</span><span id="grand-tot">${this.money(sub)}</span></div>
+          <div id="est-pts" class="muted small" style="margin:6px 0"></div>
           <button class="btn green block" onclick="App.placeOrder()">${IC.check} Buat Pesanan</button>
           <button class="btn block" style="background:#25D366;margin-top:8px" onclick="App.orderViaWhatsApp()">💬 Pesan via WhatsApp</button>
           <p class="muted small center" style="margin-top:8px">+ ${pts} poin akan didapat dari pesanan ini</p>
@@ -1569,9 +1570,15 @@ const App = {
   cartRemove(i){ this.state.cart.splice(i,1); this.viewCart(); this.updateCartBadge(); },
   calcCart(){ const sub=this.state.cart.reduce((a,b)=>a+b.price*b.qty,0);
     const use=Math.min(Number(document.getElementById('use-pts').value||0),this.state.user.points||0,Math.floor(sub/CONFIG.REDEEM_VALUE));
-    const disc=use*CONFIG.REDEEM_VALUE; const ship=this.state._ship||0; const tot=sub-disc+ship;
+    const disc=use*CONFIG.REDEEM_VALUE; const ship=this.state._ship||0; let tot=sub-disc+ship;
+    const tr=this.tierOf(this.state.user.points||0);
+    const tierDisc=(tr.on&&tr.disc>0)?Math.round(tot*tr.disc/100):0;
+    const estPts=Math.max(0,Math.round(Math.floor((sub-disc)/CONFIG.EARN_PER_RP)*tr.mult));
+    tot-=tierDisc;
     const pd=document.getElementById('pts-disc'),gt=document.getElementById('grand-tot'),sl=document.getElementById('ship-line');
-    if(pd)pd.textContent='- '+this.money(disc); if(sl)sl.textContent=this.money(ship); if(gt)gt.textContent=this.money(tot);
+    if(pd)pd.textContent='- '+this.money(disc+tierDisc)+(tierDisc>0?` (poin+tier)`:'');
+    if(sl)sl.textContent=this.money(ship); if(gt)gt.textContent=this.money(tot);
+    const ep=document.getElementById('est-pts'); if(ep) ep.innerHTML=`<span class="tag green">🎁 +${estPts} poin${tr.mult>1?` (tier ${tr.lvl} x${tr.mult})`:''}</span> <span class="muted small">— poin masuk setelah transaksi <b>selesai/dibayar</b></span>`;
   },
   /* hitung ongkir berdasar metode pengiriman + deteksi zona dari alamat */
   calcShip(){
@@ -1604,18 +1611,21 @@ const App = {
     const disc=use*CONFIG.REDEEM_VALUE;
     const dm=this.state._shipMethod||'pickup'; const ship=this.state._ship||0;
     let dz=''; if(dm==='antar'){ dz=document.getElementById('ship-zone')?.value || this.detectZone((document.getElementById('addr')?.value||'').toLowerCase()).id; }
-    const tot=sub-disc+ship;
+    const tr=this.tierOf(this.state.user.points||0);
+    const tierDisc=(tr.on&&tr.disc>0)?Math.round((sub-disc+ship)*tr.disc/100):0;
+    const tot=sub-disc+ship-tierDisc;
     const addr=document.getElementById('addr').value.trim(); if(dm!=='pickup' && !addr){this.toast('Alamat wajib diisi untuk pengantaran','err');return;}
-    const ptsEarn=Math.floor(tot/CONFIG.EARN_PER_RP);
+    const ptsEarn=Math.max(0,Math.round(Math.floor((sub-disc)/CONFIG.EARN_PER_RP)*tr.mult));
     const order={ order_no:'ONL'+Date.now().toString().slice(-8), customer_id:this.state.user.id, customer_name:this.state.user.full_name,
-      channel:'online', status:'pending', subtotal:sub, discount:disc, points_used:use, points_earned:ptsEarn, shipping:ship,
+      channel:'online', status:'pending', subtotal:sub, discount:disc+tierDisc, points_used:use, points_earned:ptsEarn, shipping:ship,
       delivery_method:dm, delivery_zone:dz,
       total:tot, address:addr, note:document.getElementById('note').value, payment_method:document.getElementById('pay-method')?.value||'COD' };
     const items=this.state.cart.map(it=>({product_id:it.product_id,name:it.name,price:it.price,qty:it.qty,subtotal:it.price*it.qty}));
     this.state._ordering=true;
     try{
       const o=await DB.createOrder(order,items);
-      this.state.user.points=(this.state.user.points||0)+ptsEarn-use;
+      await DB.awardOrderPoints(o.id).catch(()=>{});   // poin defer: baru masuk pas selesai/dibayar
+      this.state.user.points=(this.state.user.points||0)-use;
       this.state.cart=[]; this.updateCartBadge();
       this.openSheet(`<div class="sheet-head"><span style="font-size:13px;font-weight:700;color:var(--ink-3)">Pesanan Berhasil</span><button class="iconbtn" onclick="App.closeSheet()">${IC.x}</button></div><div class="sheet-body center"><div style="font-size:54px">🎉</div><h2>Pesanan Dibuat!</h2>
         <p class="muted">No. pesanan <b class="kbd">${o.order_no}</b></p>
@@ -1638,22 +1648,25 @@ const App = {
     const disc=usePts*CONFIG.REDEEM_VALUE;
     const dm=this.state._shipMethod||'pickup'; const ship=this.state._ship||0;
     let dz=''; if(dm==='antar'){ dz=document.getElementById('ship-zone')?.value || this.detectZone((document.getElementById('addr')?.value||'').toLowerCase()).id; }
-    const tot=sub-disc+ship;
+    const tr=this.tierOf(this.state.user.points||0);
+    const tierDisc=(tr.on&&tr.disc>0)?Math.round((sub-disc+ship)*tr.disc/100):0;
+    const tot=sub-disc+ship-tierDisc;
     const addr=document.getElementById('addr')?.value?.trim(); if(dm!=='pickup' && !addr){this.toast('Alamat wajib diisi','err');return;}
     const note=(document.getElementById('note')?.value||'').trim();
     const payEl=document.getElementById('pay-method'); const pay=payEl?.value||'COD (Bayar di tempat)';
     const waNote=(document.getElementById('wa-note')?.value||'').trim();
-    const ptsEarn=Math.floor(tot/CONFIG.EARN_PER_RP);
+    const ptsEarn=Math.max(0,Math.round(Math.floor((sub-disc)/CONFIG.EARN_PER_RP)*tr.mult));
     // 1) buat order dulu (sama kayak placeOrder tapi dengan payment_method + note WA)
     const order={ order_no:'ONL'+Date.now().toString().slice(-8), customer_id:u.id, customer_name:u.full_name,
-      channel:'online', status:'pending', subtotal:sub, discount:disc, points_used:usePts, points_earned:ptsEarn, shipping:ship,
+      channel:'online', status:'pending', subtotal:sub, discount:disc+tierDisc, points_used:usePts, points_earned:ptsEarn, shipping:ship,
       delivery_method:dm, delivery_zone:dz,
       total:tot, address:addr, note:(note?note+'\n':'')+'[Order via WhatsApp'+(waNote?' — '+waNote:'')+']', payment_method:pay };
     const items=c.map(it=>({product_id:it.product_id,name:it.name,price:it.price,qty:it.qty,subtotal:it.price*it.qty}));
     this.state._ordering=true;
     try{
       const o=await DB.createOrder(order,items);
-      this.state.user.points=(this.state.user.points||0)+ptsEarn-usePts;
+      await DB.awardOrderPoints(o.id).catch(()=>{});
+      this.state.user.points=(this.state.user.points||0)-usePts;
       // 2) format WA
       const itemList=items.map((it,i)=>`${i+1}. ${it.name}\n    ${it.qty} ${it.unit||'pcs'} × ${this.money(it.price)} = ${this.money(it.subtotal)}`).join('\n');
       const msg=
@@ -1950,6 +1963,7 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
           </div>
           <div class="field"><label>Bayar (tunai)</label><input type="number" id="pos-paid" value="0" oninput="App.posTotals()" placeholder="0"></div>
           <div class="sum-line"><span>Kembalian</span><span id="pos-change" class="green">Rp 0</span></div>
+          <div id="pos-est-pts" class="muted small" style="margin:6px 0"></div>
           <div class="field"><label>Metode bayar</label><select id="pos-pay"><option>Tunai</option><option>QRIS</option><option>Debit</option><option>Transfer</option></select></div>
           <div class="field"><label>📝 Catatan struk / No. Token</label><input id="pos-struk-note" placeholder="Mis. No. token listrik PLN"></div>
           <button class="btn green block" id="pos-checkout-btn" onclick="App.posCheckout()">${IC.check} Bayar & Struk</button>
@@ -2081,6 +2095,7 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     if(chEl){ if(change<0){chEl.textContent='⚠️ BON '+this.money(Math.abs(change));chEl.style.color='var(--rose)';chEl.style.fontWeight='800';}
       else{chEl.textContent=this.money(change);chEl.style.color='var(--green)';chEl.style.fontWeight='';} }
     this.state._posTot={sub,disc,pts,ship,tot:baseTot-tierDisc,bonAdd,tierMult,tierDisc};
+    const ep=document.getElementById('pos-est-pts'); if(ep){ const basePts=Math.max(0,Math.floor((sub-disc)/CONFIG.EARN_PER_RP)); const estPts=Math.round(basePts*tierMult); ep.innerHTML=cust?`<span class="tag green">🎁 +${estPts} poin${tierMult>1?` (tier x${tierMult})`:''}</span> <span class="muted small">— masuk setelah transaksi <b>selesai/dibayar</b></span>`:''; }
   },
   renderCustInfo(){ const c=this.state.posCustomer; const el=document.getElementById('cust-info');
     if(c) el.innerHTML=`<div class="card" style="background:var(--blue-ll);padding:10px 12px;margin-top:8px"><div class="row between"><div class="row"><div style="width:36px;height:36px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800">${c.full_name[0]}</div><div><b style="font-size:13px">${c.full_name}</b><div class="muted small">${IC.coin} ${c.points} poin · ${c.referral_code||''}</div></div></div>${(c._bon||0)>0?`<div style="background:#FDE8EC;color:#E11D48;padding:8px 10px;border-radius:8px;margin-top:6px;font-size:12px;font-weight:700">⚠️ BON ${this.money(c._bon)} — belum lunas</div><button class="btn xs block" style="background:#E11D48;margin-top:6px" onclick="App.payBon()">💸 Bayar Bon</button>`:''}</div><button class="iconbtn" style="width:30px;height:30px" onclick="App.state.posCustomer=null;App.renderCustInfo();App.posTotals();document.getElementById('pts-field').style.display='none'">${IC.x}</button></div></div>`;
@@ -3303,5 +3318,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#285FF4;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2644b974870f8d6',t:'MTc4NTkxNzExMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2648ab54b2925fd',t:'MTc4NTkxOTY5Ng=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
