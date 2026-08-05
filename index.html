@@ -2494,13 +2494,41 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
       </div>`,true);
   },
   _rakCard(r,i,cats){
+    const defEm=r.emoji||(cats.find(c=>c.id===(r.catId||cats[0]?.id))?.icon)||'📦';
     return `<div class="card" style="margin-bottom:10px;padding:12px">
-      <b style="font-size:14px">${(r.name||'').replace(/</g,'&lt;')}</b> <span class="muted small">· stok ${r.stock||0}</span>
+      <div class="row between"><div><b style="font-size:14px">${(r.name||'').replace(/</g,'&lt;')}</b> <span class="muted small">· stok ${r.stock||0}</span></div><button type="button" id="rak-em-${i}" class="iconbtn" style="width:44px;height:44px;font-size:22px;flex:none" onclick="App.rakPickEmoji(${i})" title="Pilih ikon">${defEm}</button></div>
       <div class="field" style="margin-top:8px"><label>Barcode</label><div class="row" style="gap:8px"><input id="rak-bc-${i}" value="${(r.barcode||'').replace(/"/g,'&quot;')}" placeholder="Scan atau ketik 899…" style="flex:1;font-family:monospace"><button class="iconbtn" style="width:42px;height:42px;flex:none" onclick="App.openScanner('capture','rak-bc-${i}')" title="Scan barcode">${IC.scan}</button></div></div>
       <div class="field row2"><div><label>Harga Jual (Rp)</label><input id="rak-pr-${i}" type="number" value="${r.price||0}" placeholder="0"></div><div><label>Harga Modal (Rp)</label><input id="rak-co-${i}" type="number" value="${r.cost||0}" placeholder="0"></div></div>
-      <div class="field row2"><div><label>Kategori</label><select id="rak-ca-${i}">${cats.map(c=>`<option value="${c.id}">${(c.icon||'')} ${c.name}</option>`).join('')}</select></div><div><label>Harga Coret (opsional)</label><input id="rak-cp-${i}" type="number" value="${r.compare_price||0}" placeholder="0"></div></div>
+      <div class="field row2"><div><label>Kategori</label><select id="rak-ca-${i}" onchange="App.rakAutoEmoji(${i},this.value)">${cats.map(c=>`<option value="${c.id}">${(c.icon||'')} ${c.name}</option>`).join('')}</select></div><div><label>Harga Coret (opsional)</label><input id="rak-cp-${i}" type="number" value="${r.compare_price||0}" placeholder="0"></div></div>
       <div class="field"><label>Varian/Tier (opsional)</label><input id="rak-ti-${i}" value="${r.tiers_text||''}" placeholder="mis. 1/4kg,5000 | 1/2kg,9000 | 1kg,17000 (pisah |)"></div>
     </div>`;
+  },
+  rakPickEmoji(i){
+    const cats=this.state._cats||[];
+    const groups=[
+      ['🛒 Sembako','🍚🛢️🧂🥚🌾🥛🍜'],
+      ['🥤 Minuman & Snack','🥤🍪🍫🥔☕🍵🍬🍭🍩'],
+      ['🧂 Bumbu & Dapur','🧂🥫🌶️🧄🧅🍅'],
+      ['🧼 Perawatan & Rumah','🧼🧴🪥🧻🌸🧹'],
+      ['🍞 Roti & Kue','🍞🥐🧁🥖🍰'],
+      ['🚬 Rokok','🚬'],
+      ['📦 Lainnya','📦🧊🍖🐟🍗🧀🥛🍇🍎🍌🍊🥕🥔🌽'],
+    ];
+    let grid=groups.map(([g,emojis])=>`<div style="margin-bottom:6px"><div class="muted small" style="margin-bottom:3px">${g}</div><div style="display:flex;flex-wrap:wrap;gap:2px">${[...emojis].map(e=>`<button type="button" class="iconbtn" style="width:36px;height:36px;font-size:18px;border-radius:9px" onclick="App.rakSetEmoji(${i},'${e}')">${e}</button>`).join('')}</div></div>`).join('');
+    grid+=`<div class="field" style="margin-top:8px"><label>Atau ketik emoji sendiri</label><input id="rak-em-custom-${i}" maxlength="3" style="font-size:20px;text-align:center" placeholder="📦"></div>`;
+    this.openSheet(`<div class="sheet-head"><h3>🎨 Pilih Ikon Produk</h3><button class="iconbtn" onclick="App.closeSheet()">${IC.x}</button></div><div class="sheet-body">${grid}<button class="btn green block" style="margin-top:8px" onclick="App.rakSetEmoji(${i},document.getElementById('rak-em-custom-${i}').value||'📦')">${IC.check} Pakai</button></div>`,true);
+  },
+  rakSetEmoji(i,e){
+    this.state._rakRows[i].emoji=e;
+    this.closeSheet();
+    const btn=document.getElementById('rak-em-'+i); if(btn) btn.textContent=e;
+  },
+  rakAutoEmoji(i,catId){
+    // kalau emoji masih default (📦 atau ikut kategori lama), ikutin kategori baru
+    const cats=this.state._cats||[]; const cat=cats.find(c=>c.id===catId);
+    if(!cat)return; const cur=this.state._rakRows[i]?.emoji;
+    const catIcons=cats.map(c=>c.icon);
+    if(!cur||cur==='📦'||catIcons.includes(cur)){ this.state._rakRows[i].emoji=cat.icon||'📦'; const btn=document.getElementById('rak-em-'+i); if(btn) btn.textContent=cat.icon||'📦'; }
   },
   async rakPublish(){
     const rows=this.state._rakRows, cats=this.state._cats||[], objs=[];
@@ -2513,7 +2541,7 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
       const compare_price=Number(document.getElementById('rak-cp-'+i)?.value||0);
       const tiersText=(document.getElementById('rak-ti-'+i)?.value||'').trim();
       const tiers=tiersText?tiersText.split('|').map(s=>{const p=s.split(',').map(x=>(x||'').trim());return{label:p[0],price:Number(p[1])||0};}).filter(x=>x.label&&x.price>0):null;
-      objs.push({ name, barcode, sku:barcode, price, cost, compare_price, stock:Number(r.stock||0), unit:'pcs', emoji:'📦', category_id:catId, tiers, is_active:true, image_url:'', brand:'' });
+      objs.push({ name, barcode, sku:barcode, price, cost, compare_price, stock:Number(r.stock||0), unit:'pcs', emoji:r.emoji||'📦', category_id:catId, tiers, is_active:true, image_url:'', brand:'' });
     });
     if(!objs.length){ this.toast('Tidak ada produk valid','err'); return; }
     try{ const n=await DB.bulkUpsertProducts(objs); this.closeSheet(); this.state._rakRows=null; this.toast(n+' produk ditambahkan ke rak ✓ 🎉','ok'); this.viewProducts(); }catch(e){ this.toast('Gagal: '+(e.message||e),'err'); }
@@ -3502,5 +3530,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#285FF4;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2671cd94c25f908',t:'MTc4NTk0NjY1Mw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a26755aefafffcf6',t:'MTc4NTk0ODk4MQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
