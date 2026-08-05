@@ -463,7 +463,7 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:14px 0}
 <body>
 
 <!-- ============================ AUTH SCREEN ============================ -->
-<div id="auth-root"><div class="splash"><div class="sp-logo"><div class="sp-letter">H</div></div><div class="sp-name">Toko Hana</div><div class="sp-tag">Grocery Warungnya Rakyat ID</div><div class="sp-bar"><i></i></div><div class="sp-foot">Powered by HanaPOS CMS</div></div></div>
+<div id="auth-root"><div class="splash"><div class="sp-logo"><div class="sp-letter">H</div></div><div class="sp-name">Toko Hana</div><div class="sp-tag">Grocery Warungnya Rakyat ID</div><div class="sp-bar"><i></i></div><div class="sp-foot">Powered by HanaPOS CMS · v1.0 (Beta)</div></div></div>
 
 <!-- ============================ MAIN APP ============================ -->
 <div id="app-root" class="hide"></div>
@@ -487,8 +487,9 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:14px 0}
 
 /* ---------- CONFIG: isi dengan kredensial Supabase kamu ---------- */
 const CONFIG = {
-  SUPABASE_URL: "https://bbdddskcowcdnwyxppbi.supabase.co", // project Anda
-  SUPABASE_KEY: "sb_publishable_WK1TtlABGQy55XJan7Uphw_D_P_sKnV", // publishable/anon key
+  VERSION: "1.0 (Beta)", // versi USER-FACING (mula dari v1 — beta tester lihat ini)
+  SUPABASE_URL: "", // KOSONG (aman utk distribusi/white-label). Isi via menu: Pengaturan → Profil Toko → 🗄️ Konfigurasi Database → Jadikan Default
+  SUPABASE_KEY: "", // KOSONG. Setelah deploy, login admin (demo: admin@tokohana.id) → set DB Anda di Pengaturan.
   // jika kosong → aplikasi otomatis pakai MODE DEMO (data tersimpan di browser)
   CURRENCY: "Rp",
   EARN_PER_RP: 1000,       // 1 poin tiap Rp 1.000
@@ -612,7 +613,13 @@ const DB = (() => {
 
   async function init(){
     // override CONFIG database dari localStorage (menu Pengaturan → Konfigurasi Database)
-    try{ const cfg=JSON.parse(localStorage.getItem('omnipos_supabase_cfg')||'null'); if(cfg&&cfg.url&&cfg.key){ CONFIG.SUPABASE_URL=cfg.url; CONFIG.SUPABASE_KEY=cfg.key; } }catch(e){}
+    // prioritas: config aktif > DEFAULT saya > bawaan hardcoded
+    try{
+      const def=JSON.parse(localStorage.getItem('omnipos_supabase_default')||'null');
+      if(def&&def.url&&def.key){ CONFIG.SUPABASE_URL=def.url; CONFIG.SUPABASE_KEY=def.key; }
+      const cfg=JSON.parse(localStorage.getItem('omnipos_supabase_cfg')||'null');
+      if(cfg&&cfg.url&&cfg.key){ CONFIG.SUPABASE_URL=cfg.url; CONFIG.SUPABASE_KEY=cfg.key; }
+    }catch(e){}
     const forceDemo = (function(){ try{return localStorage.getItem('omnipos_force_demo')==='1'}catch(e){return false} })();
     const wantSupa = !forceDemo && CONFIG.SUPABASE_URL && CONFIG.SUPABASE_KEY;
     if(wantSupa){
@@ -1033,9 +1040,43 @@ const App = {
     // minimal tampil splash biar gak kedip — pakai delay dari setingan (default 1.4 detik)
     const sp=this.state._splash||{};
     if(sp.on!==false){ const min=Number(sp.delay)||1400; if(Date.now()-t0<min) await new Promise(r=>setTimeout(r,min-(Date.now()-t0))); }
+    // FIRST-RUN installer wizard: muncul kalau belum ada config DB & belum pernah skip
+    const _hasCfg=(function(){try{return localStorage.getItem('omnipos_supabase_cfg')||localStorage.getItem('omnipos_supabase_default')||CONFIG.SUPABASE_URL}catch(e){return null}})();
+    const _setupDone=(function(){try{return localStorage.getItem('omnipos_setup_done')==='1'}catch(e){return false}})();
+    if(!_hasCfg && !_setupDone && !this.state.user){ this.renderSetupWizard(); return; }
     if(this.state.user){ this.renderApp(); } else { this.renderPublicShell(); }
   },
   /* ===================== SPLASH ===================== */
+  /* ===================== INSTALLER WIZARD (first-run) ===================== */
+  renderSetupWizard(){
+    const c=this._brandCache(); const name=(c&&c.name)||'HanaPOS CMS';
+    document.getElementById('app-root').classList.remove('hide');
+    const ar=document.getElementById('auth-root'); if(ar) ar.innerHTML='';
+    document.getElementById('app-root').innerHTML=`<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:linear-gradient(160deg,var(--navy),var(--blue))">
+      <div style="background:#fff;border-radius:20px;max-width:480px;width:100%;padding:28px 24px;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+        <div style="text-align:center;margin-bottom:18px">
+          <div style="font-size:42px">🚀</div>
+          <h2 style="margin:6px 0 2px;color:var(--ink)">Selamat Datang!</h2>
+          <p style="color:var(--ink-3);font-size:13px;margin:0">Setup <b>${name}</b> — sekali doang, ±2 menit</p>
+          <p style="color:var(--ink-3);font-size:11px;margin:2px 0 0">HanaPOS CMS · v${CONFIG.VERSION}</p>
+        </div>
+        <div class="card" style="background:var(--blue-ll);padding:14px;margin-bottom:14px">
+          <b style="font-size:14px">🔌 Langkah 1 — Sambungkan Database</b>
+          <p class="muted small" style="margin:6px 0">Bikin project gratis di <b>supabase.com</b> &rarr; run <code>HanaPOS_setup.sql</code> di SQL Editor &rarr; buka <b>Project Settings &rarr; API</b> &rarr; copy URL &amp; anon key ke bawah.</p>
+          <div class="field" style="margin-top:8px"><label>Supabase URL</label><input id="supa-url" placeholder="https://xxxx.supabase.co"></div>
+          <div class="field"><label>Anon / Publishable Key</label><input id="supa-key" placeholder="sb_publishable_... atau eyJ..."></div>
+          <div class="row" style="gap:8px;margin-top:8px"><button class="btn sm" onclick="App.testSupaCfg()">🔌 Tes Koneksi</button><button class="btn green block sm" onclick="App.saveSupaCfg()" style="flex:1">${IC.check} Simpan & Lanjut</button></div>
+          <div id="supa-test-result" style="margin-top:8px"></div>
+        </div>
+        <div class="card" style="padding:12px;font-size:12.5px">
+          <b>👤 Langkah 2 (otomatis setelah connect):</b> daftar akun pertama Anda &rarr; <b>otomatis jadi Admin</b> (akun pertama di DB baru = admin). Lalu login &amp; mulai jualan!
+        </div>
+        <button class="btn ghost block" style="margin-top:14px" onclick="App.skipSetupWizard()">👀 Lewati — pakai Mode Demo dulu</button>
+        <p class="muted small center" style="margin-top:10px">Mode Demo = data cuma di browser ini. Buat coba-coba sebelum sambung DB asli.</p>
+      </div>
+    </div>`;
+  },
+  skipSetupWizard(){ try{ localStorage.setItem('omnipos_setup_done','1'); }catch(e){} location.reload(); },
   _brandCache(){ try{return JSON.parse(localStorage.getItem('omnipos_brand_cache')||'null')}catch(e){return null} },
   _saveBrandCache(c){ try{localStorage.setItem('omnipos_brand_cache',JSON.stringify(c))}catch(e){} },
   _spDef(){ return {on:true,delay:1400,bg:'theme',color1:'#285FF4',color2:'#5782F6',showLogo:true,showName:true,showTagline:true,showBar:true,barStyle:'slide'}; },
@@ -1057,7 +1098,7 @@ const App = {
     const nameBlock = sp.showName!==false ? `<div class="sp-name">${String(name).replace(/</g,'&lt;')}</div>` : '';
     const tagBlock = sp.showTagline!==false ? `<div class="sp-tag">${String(tag).replace(/</g,'&lt;')}</div>` : '';
     const barBlock = sp.showBar!==false ? this._splashLoader(sp.barStyle||'slide') : '';
-    return `<div class="splash" style="background:${bg}">${logoBlock}${nameBlock}${tagBlock}${barBlock}<div class="sp-foot">Powered by HanaPOS CMS</div></div>`;
+    return `<div class="splash" style="background:${bg}">${logoBlock}${nameBlock}${tagBlock}${barBlock}<div class="sp-foot">Powered by HanaPOS CMS · v${CONFIG.VERSION}</div></div>`;
   },
   showSplash(){
     const c=this._brandCache();
@@ -1441,7 +1482,7 @@ const App = {
       </div>
       ${ft.text?`<div style="font-size:12.5px;line-height:1.6;color:#9ba8bd;white-space:pre-wrap;text-align:center;margin-bottom:14px">${ft.text}</div>`:''}
       <div style="border-top:1px solid rgba(255,255,255,.08);padding-top:12px;text-align:center">
-        <p style="font-size:10px;color:#5a6a7e;margin:0">Powered by HanaPOS CMS · Belanja online + kasir offline</p>
+        <p style="font-size:10px;color:#5a6a7e;margin:0">Powered by HanaPOS CMS · v${CONFIG.VERSION} · Belanja online + kasir offline</p>
       </div>
     </footer>`;
   },
@@ -2255,8 +2296,9 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
   },
 
   /* ---- BARCODE SCANNER ---- */
-  openScanner(mode='product'){
+  openScanner(mode='product', target){
     this.state._scanMode=mode;
+    if(mode==='capture') this.state._scanTarget=target||'qe-barcode';  // barcode capture -> input target
     this.stopScan();
     let ov=document.getElementById('scan-overlay');
     if(!ov){ ov=document.createElement('div'); ov.id='scan-overlay'; ov.className='scan-overlay';
@@ -2296,7 +2338,7 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     if(this.state._lastScan && Date.now()-this.state._lastScan<1500)return;
     this.state._lastScan=Date.now();
     if(this.state._scanMode==='member'){ this.scanMember(code); return; }
-    if(this.state._scanMode==='capture'){ const inp=document.getElementById('qe-barcode'); if(inp){ inp.value=code; this.beep(true); } this.closeScanner(); this.toast('Barcode ter-scan: '+code,'ok'); return; }
+    if(this.state._scanMode==='capture'){ const inp=document.getElementById(this.state._scanTarget||'qe-barcode'); if(inp){ inp.value=code; this.beep(true); } this.closeScanner(); this.toast('Barcode ter-scan: '+code,'ok'); return; }
     this.posBarcode(code);
     this.toast('Scanned: '+code,'ok');
   },
@@ -2320,6 +2362,7 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     const [prods,cats]=await Promise.all([DB.listProducts(),DB.listCategories()]); this.state._prods=prods;
     v.innerHTML=`
       <div class="section-title"><h2>Kelola Produk</h2><div class="row">
+        <button class="btn green sm" onclick="App.rakStockModal()">🛒 Cepat Stok Rak</button>
         <button class="btn ghost sm" onclick="App.exportProducts()">${IC.download} Export CSV</button>
         <button class="btn ghost sm" onclick="App.importModal()">${IC.upload} Upload Massal</button>
         <button class="btn sm" onclick="App.editProduct()">${IC.plus} Tambah Produk</button>
@@ -2411,6 +2454,70 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
         <hr class="sep"><div class="center"><button class="btn ghost sm" onclick="App.downloadTemplate()">⬇ Unduh Template CSV</button></div>
         <p class="muted small center" style="margin-top:8px">Contoh baris: Indomie Goreng,8998866200010,Indomie,3500,2800,200,pcs,🍜,cat-6</p>
       </div>`); },
+  /* 🛒 CEPAT STOK RAK — input cepat di depan rak (nama+stok), preview lengkapi (scan barcode, harga, modal), publish */
+  rakStockModal(){
+    this.state._rakRows = (this.state._rakRows && this.state._rakRows.length) ? this.state._rakRows : [{name:'',stock:''}];
+    this._rakStep1();
+  },
+  _rakStep1(){
+    this.openSheet(`<div class="sheet-head"><h3>🛒 Cepat Stok Rak</h3><button class="iconbtn" onclick="App.closeSheet()">${IC.x}</button></div>
+      <div class="sheet-body">
+        <div class="card" style="background:var(--blue-ll);font-size:12.5px">
+          <b>📍 Cara hemat waktu:</b> berdiri depan rak → ketik <b>nama + stok</b> saja (banyak produk sekaligus). Nanti duduk di meja, lengkapi <b>scan barcode</b> (bawa contoh produk), <b>harga jual & modal</b> lewat Preview, baru Publish.
+        </div>
+        <div id="rak-rows" style="margin-top:12px"></div>
+        <button class="btn ghost block sm" style="margin-top:8px" onclick="App.rakAddRow()">${IC.plus} Tambah Baris Produk</button>
+        <button class="btn green block" style="margin-top:10px" onclick="App.rakPreview()">${IC.check} Lanjut: Preview & Lengkapi</button>
+      </div>`,true);
+    this._rakFillRows();
+  },
+  _rakFillRows(){
+    const box=document.getElementById('rak-rows'); if(!box)return;
+    box.innerHTML=this.state._rakRows.map((r,i)=>`<div class="row" style="gap:8px;margin-bottom:8px;align-items:flex-end">
+      <div class="field" style="margin:0;flex:1"><label>Produk ${i+1}</label><input value="${(r.name||'').replace(/"/g,'&quot;')}" placeholder="Nama produk di rak" oninput="App.state._rakRows[${i}].name=this.value"></div>
+      <div class="field" style="margin:0;width:110px"><label>Stok</label><input type="number" value="${r.stock??''}" placeholder="0" oninput="App.state._rakRows[${i}].stock=this.value"></div>
+      <button class="iconbtn" style="width:40px;height:40px;flex:none" onclick="App.rakDelRow(${i})" title="Hapus baris">${IC.trash}</button>
+    </div>`).join('');
+  },
+  rakAddRow(){ this.state._rakRows.push({name:'',stock:''}); this._rakFillRows(); },
+  rakDelRow(i){ this.state._rakRows.splice(i,1); if(!this.state._rakRows.length) this.state._rakRows.push({name:'',stock:''}); this._rakFillRows(); },
+  async rakPreview(){
+    this.state._rakRows=this.state._rakRows.filter(r=>(r.name||'').trim());
+    if(!this.state._rakRows.length){ this.toast('Isi minimal 1 nama produk','err'); return; }
+    const cats=this.state._cats||(this.state._cats=await DB.listCategories());
+    const rows=this.state._rakRows;
+    this.openSheet(`<div class="sheet-head"><h3>🔍 Preview & Lengkapi (${rows.length})</h3><button class="iconbtn" onclick="App._rakStep1()">${IC.x}</button></div>
+      <div class="sheet-body">
+        <p class="muted small">Lengkapi tiap produk. <b>📷 Scan barcode</b> (bawa contoh produk dari rak), isi <b>harga jual & modal</b> (lihat bon/faktur). Kosong boleh, isi pelan di meja.</p>
+        <div id="rak-prev">${rows.map((r,i)=>this._rakCard(r,i,cats)).join('')}</div>
+        <button class="btn green block" style="margin-top:12px" onclick="App.rakPublish()">${IC.upload} Publish ${rows.length} Produk</button>
+      </div>`,true);
+  },
+  _rakCard(r,i,cats){
+    return `<div class="card" style="margin-bottom:10px;padding:12px">
+      <b style="font-size:14px">${(r.name||'').replace(/</g,'&lt;')}</b> <span class="muted small">· stok ${r.stock||0}</span>
+      <div class="field" style="margin-top:8px"><label>Barcode</label><div class="row" style="gap:8px"><input id="rak-bc-${i}" value="${(r.barcode||'').replace(/"/g,'&quot;')}" placeholder="Scan atau ketik 899…" style="flex:1;font-family:monospace"><button class="iconbtn" style="width:42px;height:42px;flex:none" onclick="App.openScanner('capture','rak-bc-${i}')" title="Scan barcode">${IC.scan}</button></div></div>
+      <div class="field row2"><div><label>Harga Jual (Rp)</label><input id="rak-pr-${i}" type="number" value="${r.price||0}" placeholder="0"></div><div><label>Harga Modal (Rp)</label><input id="rak-co-${i}" type="number" value="${r.cost||0}" placeholder="0"></div></div>
+      <div class="field row2"><div><label>Kategori</label><select id="rak-ca-${i}">${cats.map(c=>`<option value="${c.id}">${(c.icon||'')} ${c.name}</option>`).join('')}</select></div><div><label>Harga Coret (opsional)</label><input id="rak-cp-${i}" type="number" value="${r.compare_price||0}" placeholder="0"></div></div>
+      <div class="field"><label>Varian/Tier (opsional)</label><input id="rak-ti-${i}" value="${r.tiers_text||''}" placeholder="mis. 1/4kg,5000 | 1/2kg,9000 | 1kg,17000 (pisah |)"></div>
+    </div>`;
+  },
+  async rakPublish(){
+    const rows=this.state._rakRows, cats=this.state._cats||[], objs=[];
+    rows.forEach((r,i)=>{
+      const name=(r.name||'').trim(); if(!name)return;
+      const barcode=(document.getElementById('rak-bc-'+i)?.value||'').trim();
+      const price=Number(document.getElementById('rak-pr-'+i)?.value||0);
+      const cost=Number(document.getElementById('rak-co-'+i)?.value||0);
+      const catId=document.getElementById('rak-ca-'+i)?.value||cats[0]?.id;
+      const compare_price=Number(document.getElementById('rak-cp-'+i)?.value||0);
+      const tiersText=(document.getElementById('rak-ti-'+i)?.value||'').trim();
+      const tiers=tiersText?tiersText.split('|').map(s=>{const p=s.split(',').map(x=>(x||'').trim());return{label:p[0],price:Number(p[1])||0};}).filter(x=>x.label&&x.price>0):null;
+      objs.push({ name, barcode, sku:barcode, price, cost, compare_price, stock:Number(r.stock||0), unit:'pcs', emoji:'📦', category_id:catId, tiers, is_active:true, image_url:'', brand:'' });
+    });
+    if(!objs.length){ this.toast('Tidak ada produk valid','err'); return; }
+    try{ const n=await DB.bulkUpsertProducts(objs); this.closeSheet(); this.state._rakRows=null; this.toast(n+' produk ditambahkan ke rak ✓ 🎉','ok'); this.viewProducts(); }catch(e){ this.toast('Gagal: '+(e.message||e),'err'); }
+  },
   downloadTemplate(){ const csv='name,barcode,brand,price,cost,stock,unit,emoji,category_id\nIndomie Goreng,8998866200010,Indomie,3500,2800,200,pcs,🍜,cat-6\nAqua 600ml,8992753111014,Aqua,4000,3000,120,btl,💧,cat-2\n'; this.download('template_produk_toko_hana.csv',csv); },
   async doImport(){ const f=document.getElementById('csv-file').files[0]; if(!f){this.toast('Pilih file dulu','err');return;}
     const txt=await f.text(); const rows=this.parseCSV(txt); if(rows.length<2){this.toast('CSV kosong/tidak valid','err');return;}
@@ -3111,12 +3218,14 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
         <p class="muted small" style="margin:8px 0">DB bermasalah / mau pindah project? Isi URL + key baru → Simpan → app auto nyambung ke DB baru (tanpa utak-atik kode). Pakai <b>anon/publishable key</b> (bukan secret).</p>
         <div class="field"><label>Supabase URL</label><input id="supa-url" value="${CONFIG.SUPABASE_URL}" placeholder="https://xxxx.supabase.co"></div>
         <div class="field"><label>Anon / Publishable Key</label><input id="supa-key" value="${CONFIG.SUPABASE_KEY}" placeholder="sb_publishable_..."></div>
-        <div class="row" style="gap:8px;margin-top:8px"><button class="btn sm" onclick="App.testSupaCfg()">🔌 Tes Koneksi</button><button class="btn green sm" onclick="App.saveSupaCfg()">${IC.check} Simpan & Sambungkan</button><button class="btn ghost sm" onclick="App.resetSupaCfg()">↩ Reset Default</button></div>
-        <div id="supa-test-result" style="margin-top:8px"></div>
+        <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:8px"><button class="btn sm" onclick="App.testSupaCfg()">🔌 Tes Koneksi</button><button class="btn green sm" onclick="App.saveSupaCfg()">${IC.check} Simpan & Sambungkan</button><button class="btn sm" style="background:var(--ac2);color:#fff" onclick="App.setSupaDefault()">💾 Jadikan Default</button><button class="btn ghost sm" onclick="App.resetSupaCfg()">↩ Reset Default</button></div>
+        <div id="supa-default-info" style="margin-top:6px"></div>
+        <div id="supa-test-result" style="margin-top:6px"></div>
         <p class="muted small" style="margin-top:8px">⚠️ Pindah ke DB baru = data lama tidak ikut (data tiap project terpisah). Pastikan DB baru udah di-setup (run <code>HanaPOS_setup.sql</code>).</p>
       </details>
       </div>`;
       document.getElementById('store-form').onsubmit=async e=>{ e.preventDefault(); const f=new FormData(e.target);
+        this.renderSupaDefaultInfo();
         await DB.saveSettings('store',{name:f.get('name'),tagline:f.get('tagline'),phone:f.get('phone'),address:f.get('address')});
         this.state._storeName=f.get('name'); this.state._storePhone=f.get('phone');
         this.toast('Profil toko disimpan ✓','ok'); };
@@ -3249,9 +3358,28 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     out('tag green','✅ Terhubung & skema OK! DB siap dipakai.'); this.toast('Koneksi OK ✓','ok');
   },
   resetSupaCfg(){
-    if(!confirm('Reset konfigurasi DB ke bawaan (URL/key default)?')) return;
-    try{ localStorage.removeItem('omnipos_supabase_cfg'); }catch(e){}
+    const def=(function(){try{return JSON.parse(localStorage.getItem('omnipos_supabase_default')||'null')}catch(e){return null}})();
+    if(def&&def.url){
+      if(!confirm('Reset config AKTIF ke DEFAULT Anda ('+def.url+')?')) return;
+      localStorage.setItem('omnipos_supabase_cfg',JSON.stringify(def));
+    }else{
+      if(!confirm('Belum ada DEFAULT sendiri. Reset akan pakai bawaan index.html (atau Mode Demo). Set default lewat "Jadikan Default" biar aman. Lanjut?')) return;
+      localStorage.removeItem('omnipos_supabase_cfg');
+    }
     if(confirm('Direset. Muat ulang app?')) location.reload();
+  },
+  setSupaDefault(){
+    const url=(document.getElementById('supa-url')?.value||'').trim();
+    const key=(document.getElementById('supa-key')?.value||'').trim();
+    if(!url||!key){ this.toast('Isi URL & key dulu','err'); return; }
+    if(!confirm('Jadikan ini DEFAULT DB? (Tombol "Reset Default" nanti balik ke sini — bukan ke bawaan)')) return;
+    try{ localStorage.setItem('omnipos_supabase_default',JSON.stringify({url,key})); }catch(e){ this.toast('Gagal: '+e.message,'err'); return; }
+    this.renderSupaDefaultInfo(); this.toast('✅ Default DB disimpan','ok');
+  },
+  renderSupaDefaultInfo(){
+    const def=(function(){try{return JSON.parse(localStorage.getItem('omnipos_supabase_default')||'null')}catch(e){return null}})();
+    const el=document.getElementById('supa-default-info');
+    if(el) el.innerHTML=def?('<span class="muted small">🔒 Default Anda: <b>'+def.url+'</b></span>'):'<span class="muted small">⚠️ Default belum diset — reset balik ke bawaan index.html. Set default sendiri biar aman utk white-label.</span>';
   },
   async saveFooterLogo(reset){
     if(reset){
@@ -3374,5 +3502,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#285FF4;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2666464ceebfd91',t:'MTc4NTkzOTA5OA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2671cd94c25f908',t:'MTc4NTk0NjY1Mw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
