@@ -797,14 +797,31 @@ const DB = (() => {
     const d=load(); const id=uid(); d.seq.order=(d.seq.order||1000)+1;
     const o={...order,id,order_no:order.order_no||('INV'+d.seq.order),created_at:now(),updated_at:now()};
     d.orders[id]=o; items.forEach(it=>{ const iid=uid(); d.items[iid]={...it,id:iid,order_id:id,created_at:now()}; });
-    if(o.customer_id){ const m=d.profiles[o.customer_id]; if(m){ m.points = (m.points||0) + (o.points_earned||0) - (o.points_used||0);
-      if(o.points_earned>0) d.points[uid()]={id:uid(),member_id:m.id,order_id:id,type:'earn',points:o.points_earned,note:'Belanja '+o.order_no,created_at:now()};
+    o.points_awarded=false;
+    if(o.customer_id){ const m=d.profiles[o.customer_id]; if(m){ m.points = (m.points||0) - (o.points_used||0);
       if(o.points_used>0) d.points[uid()]={id:uid(),member_id:m.id,order_id:id,type:'redeem',points:-o.points_used,note:'Tukar poin '+o.order_no,created_at:now()}; } }
+    // points_earned DI-DEFER — baru dikredit pas order lunas (awardOrderPoints)
     // kurangi stok
     items.forEach(it=>{ const pr=Object.values(d.products).find(p=>p.id===it.product_id); if(pr){pr.stock=Math.max(0,(pr.stock||0)-Number(it.qty)); pr.sold=(pr.sold||0)+Number(it.qty||0);} });
     save(d); return o;
   }
   async function recordPoints(o,items){ /* hook supabase */ }
+  /* KREDIT poin earn HANYA saat order lunas (change>=0, status ok) & belum pernah dikredit.
+     live: RPC award_order_points (idempoten); demo: client-side. */
+  async function awardOrderPoints(id){
+    if(!isDemo){
+      const {error}=await sb.rpc('award_order_points',{ p_order_id:id });
+      if(error && !/Could not find|does not exist|award_order_points/i.test(error.message||'')) throw error;
+      return;
+    }
+    const d=load(); const o=d.orders[id]; if(!o) return;
+    if(o.points_awarded) return;
+    if(['pending','cancelled','rejected'].includes(o.status)) return;   // belum bayar / batal
+    if(Number(o.change_amount||0)<0) return;                            // masih bon -> defer
+    if(o.points_earned>0 && o.customer_id){ const m=d.profiles[o.customer_id]; if(m){ m.points=(m.points||0)+o.points_earned;
+      d.points[uid()]={id:uid(),member_id:m.id,order_id:id,type:'earn',points:o.points_earned,note:'Belanja '+o.order_no,created_at:now()}; } }
+    o.points_awarded=true; save(d);
+  }
   async function listOrders(filter={}){
     if(!isDemo){ let q=sb.from('orders').select('*,customer:profiles!orders_customer_id_fkey(full_name,phone,referral_code),cashier:profiles!orders_cashier_id_fkey(full_name)').order('created_at',{ascending:false});
       if(filter.channel)q=q.eq('channel',filter.channel); if(filter.status)q=q.eq('status',filter.status);
@@ -847,6 +864,8 @@ const DB = (() => {
       .sort((a,b)=>(a.created_at||'').localeCompare(b.created_at||''));
     for(const o of ids){ if(remaining<=0)break; const bon=-Number(o.change_amount||0); if(bon<=0)continue;
       const apply=Math.min(remaining,bon); o.change_amount=Number(o.change_amount)+apply; o.paid_amount=Number(o.paid_amount||0)+apply; o.updated_at=now(); remaining-=apply; }
+    // award poin earn untuk order yg baru jadi lunas (bon hilang)
+    Object.values(d.orders).filter(o=>o.customer_id===memberId&&!o.points_awarded&&!['pending','cancelled','rejected'].includes(o.status)&&Number(o.change_amount||0)>=0&&o.points_earned>0).forEach(o=>{ const m=d.profiles[o.customer_id]; if(m){ m.points=(m.points||0)+o.points_earned; d.points[uid()]={id:uid(),member_id:m.id,order_id:o.id,type:'earn',points:o.points_earned,note:'Lunas BON '+o.order_no,created_at:now()}; o.points_awarded=true; } });
     save(d);
     return Object.values(d.orders).filter(o=>o.customer_id===memberId&&Number(o.change_amount||0)<0&&!['pending','cancelled','rejected'].includes(o.status)).reduce((s,o)=>s+Math.abs(Number(o.change_amount||0)),0);
   }
@@ -966,7 +985,7 @@ const DB = (() => {
 
   return {init,signIn,signUp,signOut,me,updateProfile,listProducts,getProductByBarcode,saveProduct,
     deleteProduct,bulkUpsertProducts,listCategories,saveCategory,deleteCategory,createOrder,listOrders,getOrder,updateOrderStatus,settleBon,listDebtors,cancelOrder,
-    listMembers,getMember,listAllProfiles,deleteAccount,setRole,listPoints,listReferrals,stats,getSettings,saveSettings,
+    listMembers,getMember,listAllProfiles,deleteAccount,setRole,awardOrderPoints,listPoints,listReferrals,stats,getSettings,saveSettings,
     resetPassword,setPassword,changeOwnPassword,changeOwnEmail,setEmail,demo,setForceDemo,resetDemo};
 })();
 
@@ -988,6 +1007,17 @@ const BIZ_PRESETS = {
 const App = {
   state:{ user:null, view:'store', cart:[], search:'', category:'all', modal:null, scanner:null },
   isAdmin(){return this.state.user && ['admin','kasir'].includes(this.state.user.role)},
+  /* tier member dari jumlah poin (ambang & benefit dari Pengaturan). default MATI */
+  tierOf(pts){
+    const t=this.state._tiers||{}; const p=Number(pts||0);
+    const lvl=p>=(t.platinum||5000)?'PLATINUM':p>=(t.gold||1500)?'GOLD':'SILVER';
+    let mult=1, disc=0;
+    if(t.on!==false){
+      if(lvl==='GOLD'){ mult=t.scheme==='diskon'?1:(t.goldMult||1.5); disc=t.scheme==='multiplier'?0:(t.goldDisc||3); }
+      else if(lvl==='PLATINUM'){ mult=t.scheme==='diskon'?1:(t.platMult||2); disc=t.scheme==='multiplier'?0:(t.platDisc||5); }
+    }
+    return {lvl, mult, disc, on:t.on!==false};
+  },
   money(n){ n=Number(n||0); return CONFIG.CURRENCY+' '+n.toLocaleString('id-ID') },
   async start(){
     this.showSplash();
@@ -1706,6 +1736,11 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
   async viewMemberCard(){
     const v=document.getElementById('view'); const u=this.state.user;
     const lvl=u.points>=5000?'PLATINUM':u.points>=1500?'GOLD':'SILVER';
+    const tr=this.tierOf(u.points||0);
+    const benefitTxt = !tr.on ? 'Belum ada benefit aktif (tier label gengsi)' :
+      tr.scheme==='diskon' ? (tr.disc>0?`Diskon ${tr.disc}% tiap transaksi`:'Diskon khusus') :
+      tr.scheme==='multiplier' ? (tr.mult>1?`Poin x${tr.mult} tiap belanja`:'Poin normal') :
+      (tr.mult>1||tr.disc>0?`Poin x${tr.mult}${tr.disc>0?(' + diskon '+tr.disc+'%'):''}`:'Benefit khusus');
     v.innerHTML=`<div class="section-title"><h2>Kartu Member</h2></div>
       <div class="membercard">
         <span class="lvl">${lvl}</span>
@@ -1721,7 +1756,7 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
         <div id="mc-qr" style="display:flex;justify-content:center;margin-top:10px"></div>
       </div>
       <div class="card" style="margin-top:14px;text-align:center">
-        <p class="muted small">Keuntungan member ${lvl}</p>
+        <p class="muted small">Keuntungan member ${lvl} — <b style="color:var(--navy)">${benefitTxt}</b></p>
         <div class="row" style="justify-content:center;gap:18px;margin-top:8px">
           <div><div style="font-size:20px">🎁</div><b style="font-size:12px">Poin tiap belanja</b></div>
           <div><div style="font-size:20px">💵</div><b style="font-size:12px">Tukar poin diskon</b></div>
@@ -2027,14 +2062,17 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     const sub=this.state.posCart.reduce((a,b)=>a+b.price*b.qty,0);
     const cust=this.state.posCustomer; const pts=cust?Math.min(Number(document.getElementById('pos-pts')?.value||0),cust.points,Math.floor(sub/CONFIG.REDEEM_VALUE)):0;
     const disc=pts*CONFIG.REDEEM_VALUE; const ship=this.posShip(); const baseTot=sub-disc+ship;
+    // tier benefit member (diskon ke total + pengali poin) — default MATI di Pengaturan
+    let tierMult=1, tierDisc=0;
+    if(cust){ const tr=this.tierOf(cust.points); tierMult=tr.mult; tierDisc=(tr.on&&tr.disc>0)?Math.round(baseTot*tr.disc/100):0; }
     // piutang lama member (bisa diceklis utk masuk ke total)
     const bon=(cust&&cust._bon>0)?Number(cust._bon):0;
     const bonRow=document.getElementById('pos-bon-row');
     if(bonRow){ bonRow.classList.toggle('hide',bon<=0); const amt=document.getElementById('pos-bon-amt'); if(amt) amt.textContent=this.money(bon); }
     const bonAdd=(bon>0 && document.getElementById('pos-bon-on')?.checked)?bon:0;
-    const tot=baseTot+bonAdd;   // grand total (belanja + piutang)
+    const tot=baseTot+bonAdd-tierDisc;   // grand total (belanja + piutang - diskon tier)
     document.getElementById('pos-sub').textContent=this.money(sub);
-    document.getElementById('pos-disc').textContent='- '+this.money(disc);
+    document.getElementById('pos-disc').textContent='- '+this.money(disc+tierDisc)+(tierDisc>0?` (poin ${this.money(disc)} + tier ${this.money(tierDisc)})`:'');
     const shEl=document.getElementById('pos-ship'); if(shEl) shEl.textContent=this.money(ship);
     document.getElementById('pos-total').textContent=this.money(tot);
     const paid=Number(document.getElementById('pos-paid').value||0);
@@ -2042,7 +2080,7 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     const chEl=document.getElementById('pos-change');
     if(chEl){ if(change<0){chEl.textContent='⚠️ BON '+this.money(Math.abs(change));chEl.style.color='var(--rose)';chEl.style.fontWeight='800';}
       else{chEl.textContent=this.money(change);chEl.style.color='var(--green)';chEl.style.fontWeight='';} }
-    this.state._posTot={sub,disc,pts,ship,tot:baseTot,bonAdd};
+    this.state._posTot={sub,disc,pts,ship,tot:baseTot-tierDisc,bonAdd,tierMult,tierDisc};
   },
   renderCustInfo(){ const c=this.state.posCustomer; const el=document.getElementById('cust-info');
     if(c) el.innerHTML=`<div class="card" style="background:var(--blue-ll);padding:10px 12px;margin-top:8px"><div class="row between"><div class="row"><div style="width:36px;height:36px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800">${c.full_name[0]}</div><div><b style="font-size:13px">${c.full_name}</b><div class="muted small">${IC.coin} ${c.points} poin · ${c.referral_code||''}</div></div></div>${(c._bon||0)>0?`<div style="background:#FDE8EC;color:#E11D48;padding:8px 10px;border-radius:8px;margin-top:6px;font-size:12px;font-weight:700">⚠️ BON ${this.money(c._bon)} — belum lunas</div><button class="btn xs block" style="background:#E11D48;margin-top:6px" onclick="App.payBon()">💸 Bayar Bon</button>`:''}</div><button class="iconbtn" style="width:30px;height:30px" onclick="App.state.posCustomer=null;App.renderCustInfo();App.posTotals();document.getElementById('pts-field').style.display='none'">${IC.x}</button></div></div>`;
@@ -2149,12 +2187,12 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     if(btn){btn.disabled=true;btn.innerHTML='⏳ Memproses…';}
     try{
     const cust=this.state.posCustomer;
-    const ptsEarn=Math.floor((t.sub-t.disc)/CONFIG.EARN_PER_RP);
+    const ptsEarn=Math.round(Math.floor((t.sub-t.disc)/CONFIG.EARN_PER_RP)*(t.tierMult||1));
     // split pembayaran: lunasi piutang lama dulu, sisanya ke belanja ini
     let toDebt=0, toNew=paid;
     if(bonOn){ toDebt=Math.min(cust._bon,paid); toNew=paid-toDebt; }
     let order={ order_no:'POS'+Date.now().toString().slice(-8), customer_id:cust?cust.id:null, customer_name:cust?cust.full_name:'Tamu (Walk-in)',
-      channel:'offline', status:'completed', subtotal:t.sub, discount:t.disc, points_used:t.pts, points_earned:cust?ptsEarn:0, shipping:t.ship||0,
+      channel:'offline', status:'completed', subtotal:t.sub, discount:t.disc+(t.tierDisc||0), points_used:t.pts, points_earned:cust?ptsEarn:0, shipping:t.ship||0,
       total:t.tot, paid_amount:toNew, change_amount:toNew-t.tot, payment_method:document.getElementById('pos-pay').value,
       struk_note:document.getElementById('pos-struk-note')?.value?.trim()||'',
       cashier_id:this.state.user.id };
@@ -2185,6 +2223,7 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
         catch(e){ console.warn('[posCheckout] settle bon gagal',e); toDebt=0; toNew=paid; order.paid_amount=paid; order.change_amount=paid-t.tot; this.toast('⚠️ Piutang blm dilunasi (transaksi tetap jalan)','err'); }
       }
         const o=await DB.createOrder(order,items);
+      await DB.awardOrderPoints(o.id).catch(()=>{});   // kredit poin kalau lunas penuh (bon -> defer)
       this.state.posCart=[]; this.state.posCustomer=null; const d=document.getElementById('pos-deliv-on'); if(d)d.checked=false; this.posToggleDeliv(false);
       this.posRender(); this.renderCustInfo(); this.updateOnlineBadge();
       const _opts=bonOn?{bonIn:true,oldDebt:cust._bon,grandTotal:o.total+cust._bon,cashPaid:paid,bayarBon:toDebt,sisaBon:(cust._bon-toDebt)+(Number(o.change_amount)<0?Math.abs(Number(o.change_amount)):0)}:null;
@@ -2446,7 +2485,7 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
       </div>`);
     window.__ord=o; window.__items=items;
   },
-  async ordAction(id,status,label){ try{ await DB.updateOrderStatus(id,status,{cashier_id:this.state.user.id}); this.closeSheet(); this.toast('Pesanan → '+label,'ok'); this.updateOnlineBadge(); this.viewOnlineOrders(); }catch(e){this.toast('Gagal','err');} },
+  async ordAction(id,status,label){ try{ await DB.updateOrderStatus(id,status,{cashier_id:this.state.user.id}); await DB.awardOrderPoints(id).catch(()=>{}); this.closeSheet(); this.toast('Pesanan → '+label,'ok'); this.updateOnlineBadge(); this.viewOnlineOrders(); }catch(e){this.toast('Gagal','err');} },
   async cancelOrder(id){
     if(!confirm('Batalkan pesanan ini? Stok dikembalikan & pesanan jadi BATAL.'))return;
     try{ await DB.cancelOrder(id); this.closeSheet(); this.toast('Pesanan dibatalkan ✓','ok'); this.updateOnlineBadge(); this.viewOnlineOrders(); }
@@ -2484,11 +2523,11 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
   },
   async memberConfirmReceived(id){
     if(!confirm('Konfirmasi pesanan DITERIMA?'))return;
-    try{ await DB.updateOrderStatus(id,'completed',{}); this.toast('Pesanan diterima ✓ terima kasih!','ok'); this.viewMemberOrders(); }catch(e){this.toast('Gagal: '+(e.message||e),'err');}
+    try{ await DB.updateOrderStatus(id,'completed',{}); await DB.awardOrderPoints(id).catch(()=>{}); this.toast('Pesanan diterima ✓ terima kasih!','ok'); this.viewMemberOrders(); }catch(e){this.toast('Gagal: '+(e.message||e),'err');}
   },
   async memberConfirmPaid(id){
     if(!confirm('Konfirmasi SUDAH BAYAR untuk pesanan ini?'))return;
-    try{ await DB.updateOrderStatus(id,'paid',{}); this.toast('Status: Dibayar. Yuk kirim bukti 📤','ok'); this.viewMemberOrders(); this.showPayProofGuide(id); }catch(e){this.toast('Gagal: '+(e.message||e),'err');}
+    try{ await DB.updateOrderStatus(id,'paid',{}); await DB.awardOrderPoints(id).catch(()=>{}); this.toast('Status: Dibayar. Yuk kirim bukti 📤','ok'); this.viewMemberOrders(); this.showPayProofGuide(id); }catch(e){this.toast('Gagal: '+(e.message||e),'err');}
   },
   /* panduan kirim bukti pembayaran (SS) ke WA admin */
   async showPayProofGuide(id){
@@ -2927,12 +2966,30 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
         <div class="field row2"><div><label>Poin per Rp belanja</label><input name="earn_per_rp" type="number" value="${CONFIG.EARN_PER_RP}"></div><div><label>Nilai 1 poin (Rp)</label><input name="redeem_value" type="number" value="${CONFIG.REDEEM_VALUE}"></div></div>
         <div class="field row2"><div><label>Bonus Referral</label><input name="referral_bonus" type="number" value="${CONFIG.REFERRAL_BONUS}"></div><div><label>Bonus Daftar</label><input name="signup_bonus" type="number" value="${CONFIG.SIGNUP_BONUS}"></div></div>
         <button class="btn green" type="submit">${IC.check} Simpan</button>
+      </form></div>
+      <div class="card"><form id="tier-form">
+        <h3>🏆 Tier Member (Silver / Gold / Platinum)</h3>
+        <p class="muted small">Manfaat buat member setia. Bisa dimatikan / di-upgrade kapan saja. Tier dihitung dari jumlah poin member.</p>
+        <div class="row between" style="margin:10px 0"><b class="small">Aktifkan manfaat tier</b><label class="row" style="gap:6px;font-size:13px;font-weight:700;cursor:pointer"><input type="checkbox" name="on" ${(this.state._tiers&&this.state._tiers.on)?'checked':''}> Aktif</label></div>
+        <div class="field"><label>Skema manfaat</label><select name="scheme">
+          <option value="multiplier" ${(this.state._tiers?.scheme==='multiplier')?'selected':''}>Pengali poin (tier atas dapet poin lebih banyak)</option>
+          <option value="diskon" ${(this.state._tiers?.scheme==='diskon')?'selected':''}>Diskon transaksi (tier atas dapet diskon %)</option>
+        </select></div>
+        <div class="field row2"><div><label>Ambang GOLD (poin)</label><input name="gold" type="number" value="${this.state._tiers?.gold||1500}"></div><div><label>Ambang PLATINUM (poin)</label><input name="platinum" type="number" value="${this.state._tiers?.platinum||5000}"></div></div>
+        <div class="field row2"><div><label>GOLD — pengali poin (mis. 1.5)</label><input name="goldMult" type="number" step="0.1" value="${this.state._tiers?.goldMult||1.5}"></div><div><label>GOLD — diskon %</label><input name="goldDisc" type="number" value="${this.state._tiers?.goldDisc||3}"></div></div>
+        <div class="field row2"><div><label>PLATINUM — pengali poin</label><input name="platMult" type="number" step="0.1" value="${this.state._tiers?.platMult||2}"></div><div><label>PLATINUM — diskon %</label><input name="platDisc" type="number" value="${this.state._tiers?.platDisc||5}"></div></div>
+        <button class="btn green" type="submit">${IC.check} Simpan Tier</button>
       </form></div>`;
       document.getElementById('poin-form').onsubmit=async e=>{ e.preventDefault(); const f=new FormData(e.target);
         CONFIG.EARN_PER_RP=Number(f.get('earn_per_rp')); CONFIG.REDEEM_VALUE=Number(f.get('redeem_value'));
         CONFIG.REFERRAL_BONUS=Number(f.get('referral_bonus')); CONFIG.SIGNUP_BONUS=Number(f.get('signup_bonus'));
         await DB.saveSettings('points',{earn_per_rp:CONFIG.EARN_PER_RP,redeem_value:CONFIG.REDEEM_VALUE,referral_bonus:CONFIG.REFERRAL_BONUS,signup_bonus:CONFIG.SIGNUP_BONUS});
         this.toast('Pengaturan poin disimpan ✓','ok'); };
+      document.getElementById('tier-form').onsubmit=async e=>{ e.preventDefault(); const f=new FormData(e.target);
+        const t={on:!!f.get('on'),scheme:f.get('scheme'),silver:0,gold:Number(f.get('gold'))||1500,platinum:Number(f.get('platinum'))||5000,
+          goldMult:Number(f.get('goldMult'))||1.5,platMult:Number(f.get('platMult'))||2,goldDisc:Number(f.get('goldDisc'))||3,platDisc:Number(f.get('platDisc'))||5};
+        this.state._tiers=t; await DB.saveSettings('tiers',t);
+        this.toast('Pengaturan tier disimpan ✓','ok'); };
     } else if(tab==='antar'){
       const dv=this.state._delivery||{on:true,zones:[],expedisi:''};
       body.innerHTML=`<div class="card"><h3>🛵 Pengantaran & Zona</h3>
@@ -3048,6 +3105,7 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     this.state._pay=s.payment||{};
     this.state._delivery=s.delivery||{on:true,zones:[{id:'dekat',nama:'Dekat',tarif:2000,keywords:''},{id:'sedang',nama:'Sedang',tarif:5000,keywords:''},{id:'jauh',nama:'Jauh',tarif:10000,keywords:''}],expedisi:'JNE, J&T, SiCepat, AnterAja'};
     this.state._receipt=s.receipt||{logo:'logo',showName:true};
+    this.state._tiers=Object.assign({on:false,scheme:'multiplier',silver:0,gold:1500,platinum:5000,goldMult:1.5,platMult:2,goldDisc:3,platDisc:5}, s.tiers||{});
     this.state._splash=Object.assign({on:true,delay:1400,bg:'theme',color1:'#285FF4',color2:'#5782F6',showLogo:true,showName:true,showTagline:true,showBar:true}, s.splash||{});
     this.applyThemeColor(tc);
     this.state._darkMode=(function(){try{return localStorage.getItem('omnipos_dark')==='1'}catch(e){return false}})();
@@ -3245,5 +3303,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#285FF4;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a262eddf69093f4d',t:'MTc4NTkwMjc4Ng=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2644b974870f8d6',t:'MTc4NTkxNzExMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
