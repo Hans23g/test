@@ -611,6 +611,8 @@ const DB = (() => {
   const now=()=>new Date().toISOString();
 
   async function init(){
+    // override CONFIG database dari localStorage (menu Pengaturan → Konfigurasi Database)
+    try{ const cfg=JSON.parse(localStorage.getItem('omnipos_supabase_cfg')||'null'); if(cfg&&cfg.url&&cfg.key){ CONFIG.SUPABASE_URL=cfg.url; CONFIG.SUPABASE_KEY=cfg.key; } }catch(e){}
     const forceDemo = (function(){ try{return localStorage.getItem('omnipos_force_demo')==='1'}catch(e){return false} })();
     const wantSupa = !forceDemo && CONFIG.SUPABASE_URL && CONFIG.SUPABASE_KEY;
     if(wantSupa){
@@ -3103,7 +3105,17 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
       <div class="card" style="background:var(--blue-ll)">
         <b>📊 Status Koneksi</b>
         <div class="row" style="margin-top:6px"><span class="dot ${DB.demo()?'off':'on'}"></span> ${DB.demo()?'Mode Demo (data di browser)':'Terhubung Supabase'}</div>
-      </div></div>`;
+      </div>
+      <details class="card" style="margin-top:10px">
+        <summary style="font-weight:700;cursor:pointer">🗄️ Konfigurasi Database Supabase <span class="muted small">(ganti / pindah DB)</span></summary>
+        <p class="muted small" style="margin:8px 0">DB bermasalah / mau pindah project? Isi URL + key baru → Simpan → app auto nyambung ke DB baru (tanpa utak-atik kode). Pakai <b>anon/publishable key</b> (bukan secret).</p>
+        <div class="field"><label>Supabase URL</label><input id="supa-url" value="${CONFIG.SUPABASE_URL}" placeholder="https://xxxx.supabase.co"></div>
+        <div class="field"><label>Anon / Publishable Key</label><input id="supa-key" value="${CONFIG.SUPABASE_KEY}" placeholder="sb_publishable_..."></div>
+        <div class="row" style="gap:8px;margin-top:8px"><button class="btn sm" onclick="App.testSupaCfg()">🔌 Tes Koneksi</button><button class="btn green sm" onclick="App.saveSupaCfg()">${IC.check} Simpan & Sambungkan</button><button class="btn ghost sm" onclick="App.resetSupaCfg()">↩ Reset Default</button></div>
+        <div id="supa-test-result" style="margin-top:8px"></div>
+        <p class="muted small" style="margin-top:8px">⚠️ Pindah ke DB baru = data lama tidak ikut (data tiap project terpisah). Pastikan DB baru udah di-setup (run <code>HanaPOS_setup.sql</code>).</p>
+      </details>
+      </div>`;
       document.getElementById('store-form').onsubmit=async e=>{ e.preventDefault(); const f=new FormData(e.target);
         await DB.saveSettings('store',{name:f.get('name'),tagline:f.get('tagline'),phone:f.get('phone'),address:f.get('address')});
         this.state._storeName=f.get('name'); this.state._storePhone=f.get('phone');
@@ -3199,6 +3211,47 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
   async saveReceipt(){
     const rc={logo:document.getElementById('rc-logo')?.value||'logo', showName:document.getElementById('rc-name')?.checked!==false};
     try{ await DB.saveSettings('receipt',rc); this.state._receipt=rc; this.toast('Setingan struk disimpan ✓','ok'); }catch(e){this.toast('Gagal','err');}
+  },
+  /* konfigurasi database Supabase (pindah/ganti DB dari UI) */
+  saveSupaCfg(){
+    const url=(document.getElementById('supa-url')?.value||'').trim();
+    const key=(document.getElementById('supa-key')?.value||'').trim();
+    if(!url||!key){ this.toast('URL & key wajib diisi','err'); return; }
+    if(!/^https:\/\/[a-z0-9.-]+\.supabase\.co/i.test(url)){ if(!confirm('URL tidak mirip project Supabase (https://xxxx.supabase.co). Simpan tetap?')) return; }
+    try{ localStorage.setItem('omnipos_supabase_cfg',JSON.stringify({url,key})); }catch(e){ this.toast('Gagal simpan: '+e.message,'err'); return; }
+    if(confirm('✅ Konfigurasi DB disimpan. App akan dimuat ulang buat nyambung ke DB baru. Lanjut?')) location.reload();
+  },
+  async testSupaCfg(){
+    const url=(document.getElementById('supa-url')?.value||'').trim();
+    const key=(document.getElementById('supa-key')?.value||'').trim();
+    const res=document.getElementById('supa-test-result');
+    if(!url||!key){ this.toast('Isi URL & key dulu','err'); return; }
+    if(res) res.innerHTML='<span class="muted small">⏳ Menguji koneksi ke DB...</span>';
+    const out=(cls,txt)=>{ if(res) res.innerHTML='<span class="'+cls+'">'+txt+'</span>'; };
+    let error=null;
+    try{
+      if(!window.supabase||typeof window.supabase.createClient!=='function') throw new Error('Library Supabase belum termuat (cek internet).');
+      const tmp=window.supabase.createClient(url,key);
+      const probe=new Promise(function(resolve){ tmp.from('categories').select('id').limit(1).then(function(r){resolve(r);}).catch(function(e){resolve({error:e});}); });
+      const to=new Promise(function(resolve){ setTimeout(function(){resolve({__to:true});},8000); });
+      const got=await Promise.race([probe,to]);
+      if(got.__to) throw new Error('Timeout (8 dtk) — DB tidak merespon');
+      error=got.error||null;
+    }catch(e){ error=e; }
+    const m=(error&&error.message)||(''+error);
+    if(error && /timeout|fetch|network|Failed to fetch|ERR|belum termuat|merespon/i.test(m)){
+      out('tag','❌ Gagal: '+m); this.toast('Koneksi gagal','err'); return;
+    }
+    if(error && /could not find|does not exist|relation|schema|categories/i.test(m)){
+      out('tag amber','⚠️ Terhubung, tapi skema belum lengkap — run <b>HanaPOS_setup.sql</b>'); this.toast('Terhubung, skema blm siap','err'); return;
+    }
+    if(error){ out('tag','❌ Gagal: '+m); this.toast('Koneksi gagal','err'); return; }
+    out('tag green','✅ Terhubung & skema OK! DB siap dipakai.'); this.toast('Koneksi OK ✓','ok');
+  },
+  resetSupaCfg(){
+    if(!confirm('Reset konfigurasi DB ke bawaan (URL/key default)?')) return;
+    try{ localStorage.removeItem('omnipos_supabase_cfg'); }catch(e){}
+    if(confirm('Direset. Muat ulang app?')) location.reload();
   },
   async saveFooterLogo(reset){
     if(reset){
@@ -3321,5 +3374,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#285FF4;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a265a8575e3dff89',t:'MTc4NTkzMTM5NQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2666464ceebfd91',t:'MTc4NTkzOTA5OA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
