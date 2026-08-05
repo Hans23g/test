@@ -654,10 +654,10 @@ const DB = (() => {
     if(!p.is_active) throw new Error('Akun dinonaktifkan');
     d.session=p.id; save(d); return p;
   }
-  async function signUp({email,password,full_name,phone,role='member',referral_code}){
+  async function signUp({email,password,full_name,phone,address,role='member',referral_code}){
     if(!isDemo){
       const {data,error}=await sb.auth.signUp({email,password,
-        options:{data:{full_name,phone,role,referral_code}}});
+        options:{data:{full_name,phone,address,role,referral_code}}});
       if(error) throw error;
       return await me();
     }
@@ -666,7 +666,7 @@ const DB = (() => {
     const id=uid();
     const ref=(referral_code||'').trim().toUpperCase();
     const inviter=ref?Object.values(d.profiles).find(x=>x.referral_code===ref):null;
-    const p={id,full_name,email,password_plain:password,role,phone,points:inviter?CONFIG.SIGNUP_BONUS:0,
+    const p={id,full_name,email,password_plain:password,role,phone,address:address||'',points:inviter?CONFIG.SIGNUP_BONUS:0,
       referral_code:('M'+id.slice(-6)).toUpperCase(),referred_by:inviter?inviter.referral_code:null,is_active:true,created_at:now()};
     d.profiles[id]=p;
     if(inviter){ inviter.points+=CONFIG.REFERRAL_BONUS;
@@ -1878,7 +1878,7 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     this.state.posCart=this.state.posCart||[]; this.state.posCustomer=null; this.state.posDelivery={on:false};
     if(!this.state._couriers) this.state._couriers=(await DB.listAllProfiles('').catch(()=>[])).filter(p=>p.role==='kurir');
     const dv=this.state._delivery||{};
-    const zoneOpts=(dv.zones||[]).length?(dv.zones||[]).map((z,i)=>`<option value="${i}">${z.nama||('Zona '+(i+1))} — ${this.money(z.tarif||0)}</option>`).join(''):'<option value="">Belum ada zona (atur di Pengaturan→Antar)</option>';
+    const zoneOpts=(dv.zones||[]).map((z,i)=>`<option value="${i}">${z.nama||('Zona '+(i+1))} — ${this.money(z.tarif||0)}</option>`).join('')+'<option value="lainnya">Lainnya (isi tarif sendiri)</option>';
     const curOpts='<option value="">Antrian (kurir ambil sendiri)</option>'+(this.state._couriers||[]).map(c=>`<option value="${c.id}|${(c.full_name||'').replace(/\|/g,'')}|${(c.phone||'').replace(/\|/g,'')}">${c.full_name}${c.courier_status==='off'?' (nonaktif)':' (aktif)'}</option>`).join('');
     const v=document.getElementById('view');
     v.innerHTML=`
@@ -1906,7 +1906,8 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
             <input type="checkbox" id="pos-deliv-on" onchange="App.posToggleDeliv(this.checked)" style="width:20px;height:20px">
           </label>
           <div id="pos-deliv-box" class="hide">
-            <div class="field" style="margin-bottom:8px"><label>Zona antar (auto tarif)</label><select id="pos-deliv-zone" onchange="App.posTotals()">${zoneOpts}</select></div>
+            <div class="field" style="margin-bottom:8px"><label>Zona antar (auto tarif)</label><select id="pos-deliv-zone" onchange="App.onDelivZone()">${zoneOpts}</select></div>
+            <div class="field hide" id="pos-deliv-custom-wrap" style="margin-bottom:8px"><label>💰 Tarif Lainnya (Rp)</label><input type="number" id="pos-deliv-custom" value="0" min="0" oninput="App.posTotals()" placeholder="0"></div>
             <div class="field" style="margin-bottom:8px"><label>📍 Alamat antar</label><textarea id="pos-deliv-addr" rows="2" placeholder="Jl. Melati No.5 RT01/RW02 …"></textarea></div>
             <div class="field row2" style="margin-bottom:8px"><div><label>👤 Nama penerima</label><input id="pos-deliv-name" placeholder="Nama pelanggan"></div><div><label>📱 HP penerima</label><input id="pos-deliv-phone" placeholder="08xxx"></div></div>
             <div class="field" style="margin-bottom:10px"><label>🛵 Tugasi kurir <span class="muted small">(kosongkan = masuk antrian job)</span></label><select id="pos-deliv-courier">${curOpts}</select></div>
@@ -1998,14 +1999,27 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
   posClear(){ this.state.posCart=[]; this.state.posCustomer=null; const d=document.getElementById('pos-deliv-on'); if(d)d.checked=false; this.posToggleDeliv(false); this.posRender(); this.renderCustInfo(); },
   posShip(){
     const on=document.getElementById('pos-deliv-on')?.checked; if(!on) return 0;
-    const zi=Number(document.getElementById('pos-deliv-zone')?.value);
+    const zVal=document.getElementById('pos-deliv-zone')?.value;
+    if(zVal==='lainnya') return Number(document.getElementById('pos-deliv-custom')?.value||0);
+    const zi=Number(zVal);
     return Number(this.state._delivery?.zones?.[zi]?.tarif||0);
+  },
+  onDelivZone(){
+    const zVal=document.getElementById('pos-deliv-zone')?.value;
+    const w=document.getElementById('pos-deliv-custom-wrap'); if(w) w.classList.toggle('hide',zVal!=='lainnya');
+    this.posTotals();
+  },
+  fillDelivFromCust(){
+    const c=this.state.posCustomer; if(!c)return;
+    const n=document.getElementById('pos-deliv-name'),p=document.getElementById('pos-deliv-phone'),a=document.getElementById('pos-deliv-addr');
+    if(n&&!n.value.trim()) n.value=c.full_name||'';
+    if(p&&!p.value.trim()) p.value=c.phone||'';
+    if(a&&!a.value.trim()) a.value=c.address||'';   // alamat default member (bisa diedit)
   },
   posToggleDeliv(on){
     const box=document.getElementById('pos-deliv-box'); if(box) box.classList.toggle('hide',!on);
     const sl=document.getElementById('pos-ship-line'); if(sl) sl.classList.toggle('hide',!on);
-    if(on){ const c=this.state.posCustomer; const n=document.getElementById('pos-deliv-name'),p=document.getElementById('pos-deliv-phone');
-      if(c&&n&&!n.value) n.value=c.full_name||''; if(c&&p&&!p.value) p.value=c.phone||''; }
+    if(on) this.fillDelivFromCust();
     this.posTotals();
   },
   posTotals(){
@@ -2054,7 +2068,9 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     el.innerHTML=list.slice(0,30).map(m=>`<div class="card nav-item" style="margin-bottom:6px" onclick="App.pickCust('${m.id}')"><div style="width:36px;height:36px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center">${m.full_name[0]}</div><div class="col"><b style="font-size:13px">${m.full_name}</b><div class="muted small">${m.phone} · ${IC.coin} ${m.points}</div></div><span class="tag">Pilih</span></div>`).join('')||`<div class="empty small">Tidak ada member</div>`; },
   async pickCust(id){ const m=await DB.getMember(id);
     try{const ords=await DB.listOrders({customer_id:id}); m._bon=ords.filter(o=>Number(o.change_amount||0)<0&&['completed','paid'].includes(o.status)).reduce((s,o)=>s+Math.abs(Number(o.change_amount||0)),0);}catch(e){m._bon=0;}
-    this.state.posCustomer=m; this.renderCustInfo(); this.posTotals(); this.closeSheet();
+    this.state.posCustomer=m; this.renderCustInfo(); this.posTotals();
+    if(document.getElementById('pos-deliv-on')?.checked) this.fillDelivFromCust();
+    this.closeSheet();
     this.toast(m._bon>0?('Member: '+m.full_name+' — ⚠️ BON '+this.money(m._bon)):'Member: '+m.full_name,'ok');
   },
   payBon(member){
@@ -2135,15 +2151,17 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     let delivMsg='';
     const delivOn=document.getElementById('pos-deliv-on')?.checked;
     if(delivOn){
-      const zi=Number(document.getElementById('pos-deliv-zone')?.value); const zone=this.state._delivery?.zones?.[zi];
+      const zVal=document.getElementById('pos-deliv-zone')?.value;
+      let zoneNama;
+      if(zVal==='lainnya'){ zoneNama='Lainnya'; }
+      else{ const zi=Number(zVal); const zone=this.state._delivery?.zones?.[zi]; if(!zone){this.toast('Pilih zona antar dulu 🙂','err');return;} zoneNama=zone.nama||('Zona '+(zi+1)); }
       const addr=(document.getElementById('pos-deliv-addr')?.value||'').trim();
       if(!addr){this.toast('Isi alamat antar dulu 🙂','err');return;}
-      if(!zone){this.toast('Pilih zona antar dulu 🙂','err');return;}
       const cv=document.getElementById('pos-deliv-courier')?.value||''; let cid=null,cname=null,cphone=null;
       if(cv){const p=cv.split('|');cid=p[0]||null;cname=p[1]||'';cphone=p[2]||'';}
       const rcvName=(document.getElementById('pos-deliv-name')?.value||'').trim();
       const rcvPhone=(document.getElementById('pos-deliv-phone')?.value||'').trim();
-      order={...order, delivery_method:'antar', delivery_zone:zone.nama||('Zona '+(zi+1)), address:addr,
+      order={...order, delivery_method:'antar', delivery_zone:zoneNama, address:addr,
         status:cid?'pickup':'processing', courier_id:cid, courier_name:cname, courier_phone:cphone,
         delivery_note:rcvPhone?('Penerima: '+(rcvName||order.customer_name)+' · ☎ '+rcvPhone):''};
       if(!cust&&rcvName) order.customer_name=rcvName;
@@ -3205,5 +3223,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#285FF4;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2624aa99972ff85',t:'MTc4NTg5NjEwMQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2626bdf7e20fd00',t:'MTc4NTg5NzQ2MQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
