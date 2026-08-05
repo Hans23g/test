@@ -878,6 +878,16 @@ const DB = (() => {
     if(!isDemo){ const {data,error}=await sb.from('profiles').select('*').eq('id',id).single(); if(error)throw error; return data; }
     return ensureSeed().profiles[id];
   }
+  /* daftar member yg punya BON/PIUTANG (change_amount<0, status bukan pending/cancelled/rejected) */
+  async function listDebtors(){
+    const bad=['pending','cancelled','rejected'];
+    const ords=await listOrders({});
+    const debts={};
+    for(const o of ords){ const ch=Number(o.change_amount||0); if(ch<0&&!bad.includes(o.status)&&o.customer_id){ debts[o.customer_id]=(debts[o.customer_id]||0)+Math.abs(ch); } }
+    const profiles=await listAllProfiles('');
+    const map={}; profiles.forEach(p=>map[p.id]=p);
+    return Object.keys(debts).filter(id=>map[id]).map(id=>({...map[id],_bon:debts[id]})).sort((a,b)=>b._bon-a._bon);
+  }
   async function listAllProfiles(search=''){
     if(!isDemo){ let q=sb.from('profiles').select('*').order('created_at',{ascending:false});
       if(search)q=q.or(`full_name.ilike.%${search}%,phone.ilike.%${search}%,email.ilike.%${search}%`);
@@ -934,7 +944,7 @@ const DB = (() => {
   }
 
   return {init,signIn,signUp,signOut,me,updateProfile,listProducts,getProductByBarcode,saveProduct,
-    deleteProduct,bulkUpsertProducts,listCategories,saveCategory,deleteCategory,createOrder,listOrders,getOrder,updateOrderStatus,settleBon,cancelOrder,
+    deleteProduct,bulkUpsertProducts,listCategories,saveCategory,deleteCategory,createOrder,listOrders,getOrder,updateOrderStatus,settleBon,listDebtors,cancelOrder,
     listMembers,getMember,listAllProfiles,deleteAccount,listPoints,listReferrals,stats,getSettings,saveSettings,
     resetPassword,setPassword,changeOwnPassword,changeOwnEmail,setEmail,demo,setForceDemo,resetDemo};
 })();
@@ -1155,6 +1165,7 @@ const App = {
           <div class="nav-item" data-v="pos">${IC.scan} Kasir</div>
           <div class="nav-item" data-v="online-orders">${IC.bag} Order <span class="bn-badge hide" id="nb-online" style="position:relative;margin-left:auto"></span></div>
           <div class="nav-item" data-v="members">${IC.users} Member</div>
+          <div class="nav-item" data-v="piutang">💰 Piutang <span class="bn-badge hide" id="nb-piutang" style="position:relative;margin-left:auto"></span></div>
           <div class="nav-sec">Lainnya</div>
           <div class="nav-item" data-v="reports">${IC.chart} Laporan</div>
           ${u.role==='admin'?`<div class="nav-item" data-v="settings">${IC.settings} Pengaturan</div>`:''}
@@ -1167,10 +1178,12 @@ const App = {
         <div class="bn-item" data-v="pos">${IC.scan}Kasir</div>
         <div class="bn-item" data-v="online-orders">${IC.bag}Order</div>
         <div class="bn-item" data-v="members">${IC.users}Member</div>
+        <div class="bn-item" data-v="piutang">💰Piutang</div>
       </nav>`;
     const go=v=>{location.hash=v};
     document.querySelectorAll('.nav-item,.bn-item').forEach(el=>el.onclick=()=>go(el.dataset.v));
     this.updateOnlineBadge();
+    this.updatePiutangBadge();
   },
   renderMemberShell(){
     const u=this.state.user;
@@ -1285,6 +1298,7 @@ const App = {
       const fb=isBoss?()=>this.viewDashboard():()=>this.viewPOS();
       ({dashboard:()=>this.viewDashboard(),pos:()=>this.viewPOS(),products:()=>this.viewProducts(),
         'online-orders':()=>this.viewOnlineOrders(),members:()=>this.viewMembers(),
+        piutang:()=>this.viewPiutang(),
         staff:()=>{ this.state._memMode='all'; this.viewMembers(); },
         reports:()=>this.viewReports(),
         settings:()=>this.viewSettings(),storeview:()=>this.viewStore(true)
@@ -2020,8 +2034,9 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     this.state.posCustomer=m; this.renderCustInfo(); this.posTotals(); this.closeSheet();
     this.toast(m._bon>0?('Member: '+m.full_name+' — ⚠️ BON '+this.money(m._bon)):'Member: '+m.full_name,'ok');
   },
-  payBon(){
-    const c=this.state.posCustomer; if(!c||!(c._bon>0))return;
+  payBon(member){
+    const c=member||this.state.posCustomer; if(!c||!(c._bon>0))return;
+    this.state._bonTarget=c;
     this.openSheet(`<div class="sheet-head"><h3>💸 Bayar BON</h3><button class="iconbtn" onclick="App.closeSheet()">${IC.x}</button></div>
       <div class="sheet-body">
         <div class="card" style="background:#FDE8EC;color:#E11D48;text-align:center;margin-bottom:14px">
@@ -2035,7 +2050,7 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
   },
   async doPayBon(){
     if(this.state._bonPaying)return;
-    const c=this.state.posCustomer; if(!c)return;
+    const c=this.state._bonTarget||this.state.posCustomer; if(!c)return;
     const pay=Number(document.getElementById('bon-pay')?.value||0);
     if(pay<=0){this.toast('Masukkan nominal','err');return;}
     if(pay>c._bon){this.toast('Kelebihan! Bon cuma '+this.money(c._bon),'err');return;}
@@ -2068,6 +2083,9 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
       console.log('[payBon] hasil: mode='+(usedRPC?'RPC':'fallback')+' dibayar='+pay+' gagal='+failed+' bon_skrg='+c._bon, fresh.map(o=>({id:String(o.id).slice(-6),change:o.change_amount,paid:o.paid_amount,status:o.status})));
       this.renderCustInfo(); this.closeSheet();
       this.toast(c._bon<=0?'✅ BON lunas! Terima kasih 🙏':(failed>0?('⚠️ '+failed+' order blm tersimpan — bon tersisa '+this.money(c._bon)):'BON tersisa '+this.money(c._bon)), c._bon<=0?'ok':(failed>0?'err':'ok'));
+      // refresh view aktif biar bon hilang dari layar (Piutang/Member/Kasir)
+      if(['piutang','members','staff'].includes(this.state.view)) setTimeout(()=>{ try{ this.route(); }catch(e){} },250);
+      if(this.state.posCustomer&&this.state.posCustomer.id===c.id) this.state.posCustomer._bon=c._bon;
     }catch(e){ console.error('[payBon]',e); this.toast('Gagal: '+(e.message||e),'err'); }
     finally{ this.state._bonPaying=false; if(btn){btn.disabled=false;btn.innerHTML=btnOld;} }
   },
@@ -2355,7 +2373,7 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
         <div class="sum-line"><span>Diskon poin</span><span>- ${this.money(o.discount)}</span></div>
         ${o.shipping?`<div class="sum-line"><span>Ongkir</span><span>${this.money(o.shipping)}</span></div>`:''}
         <div class="sum-line tot"><span>Total</span><span>${this.money(o.total)}</span></div>
-        ${o.paid_amount?`<div class="sum-line"><span>Dibayar</span><span>${this.money(o.paid_amount)}</span></div><div class="sum-line"><span>Kembalian</span><span>${this.money(o.change_amount)}</span></div>`:''}
+        ${o.paid_amount!=null?`<div class="sum-line"><span>Dibayar</span><span>${this.money(o.paid_amount)}</span></div>${Number(o.change_amount||0)<0?`<div class="sum-line" style="background:#FDE8EC;margin:6px -6px;padding:6px;border-radius:8px"><span style="color:#E11D48;font-weight:700">⚠️ BON (Kurang Bayar)</span><span style="color:#E11D48;font-weight:800">${this.money(Math.abs(Number(o.change_amount)))}</span></div>`:`<div class="sum-line"><span>Kembalian</span><span style="color:#0c6b3f">${this.money(o.change_amount)}</span></div>`}`:''}
         ${this.isAdmin()?`<div style="margin-top:14px">
           ${o.channel==='offline'&&o.delivery_method!=='antar'?`<div class="card" style="background:var(--blue-ll);padding:10px;font-size:12.5px;margin-bottom:8px">🧾 <b>Transaksi Offline (Kasir)</b><br>Bayar & kembalian sudah beres di tempat — gak perlu alur kirim/antar.</div>${!['completed','cancelled','rejected'].includes(o.status)?`<button class="btn green block" onclick="App.ordAction('${id}','completed','Selesai')">${IC.check} Tandai Selesai</button><button class="btn ghost block sm" style="margin-top:6px" onclick="App.printReceipt(window.__ord,window.__items)">${IC.print} Cetak Struk</button><button class="btn rose block sm" style="margin-top:6px" onclick="App.cancelOrder('${id}')">${IC.trash} Batalkan</button>`:`<button class="btn ghost block" onclick="App.printReceipt(window.__ord,window.__items)">${IC.print} Cetak Struk</button><div class="card" style="background:var(--green-l);padding:10px;font-size:12.5px;color:#0c6b3f;margin-top:8px;text-align:center">${IC.check} Transaksi selesai · pembayaran tunai diterima di kasir</div>`}`:`
           ${(o.status==='pending'||o.status==='paid')?`<div class="grid" style="grid-template-columns:1fr 1fr;gap:8px"><button class="btn green" onclick="App.ordAction('${id}','processing','Diproses')">${IC.check} Proses</button><button class="btn rose" onclick="App.ordAction('${id}','rejected','Ditolak')">${IC.trash} Tolak</button></div>`:''}
@@ -2495,12 +2513,38 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
   },
 
   /* ---- MEMBERS ---- */
+  /* ===================== PIUTANG / BON ===================== */
+  async updatePiutangBadge(){ try{ const d=await DB.listDebtors(); const el=document.getElementById('nb-piutang'); if(el){ if(d.length){el.classList.remove('hide');el.textContent=d.length;}else el.classList.add('hide'); } }catch(e){} },
+  async viewPiutang(){
+    const v=document.getElementById('view'); v.innerHTML=`<div class="spin"></div>`;
+    try{
+      const debtors=await DB.listDebtors();
+      this.state._debtors=debtors;
+      const total=debtors.reduce((s,d)=>s+(d._bon||0),0);
+      v.innerHTML=`<div class="section-title"><h2>💰 Piutang / BON</h2></div>
+        <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+          <div class="card" style="background:#FDE8EC;padding:14px"><div class="muted small" style="color:#E11D48">Total Piutang</div><div style="font-size:21px;font-weight:800;color:#E11D48;margin-top:2px">${this.money(total)}</div></div>
+          <div class="card" style="background:var(--blue-ll);padding:14px"><div class="muted small">Member Utang</div><div style="font-size:21px;font-weight:800;color:var(--navy);margin-top:2px">${debtors.length} orang</div></div>
+        </div>
+        ${debtors.length?debtors.map((d,i)=>`<div class="card" style="margin-bottom:10px"><div class="row between">
+          <div class="row"><div style="width:42px;height:42px;border-radius:50%;background:#E11D48;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px">${(d.full_name||'?')[0]}</div>
+          <div><b style="font-size:14px">${d.full_name}</b><div class="muted small">${d.phone||'-'}${d.referral_code?(' · '+d.referral_code):''}</div></div></div>
+          <div style="text-align:right"><div style="color:#E11D48;font-weight:800;font-size:15px">${this.money(d._bon)}</div>
+          <button class="btn xs green" style="margin-top:4px" onclick="App.payDebtor(${i})">💸 Lunasi</button></div>
+        </div></div>`).join(''):`<div class="empty">${IC.check}<h3>Bersih! 🎉</h3><p class="muted">Nggak ada piutang tertunggak. Mantap!</p></div>`}`;
+      this.updatePiutangBadge();
+    }catch(e){ v.innerHTML=`<div class="empty">💰<h3>Gagal memuat piutang</h3><p class="muted">${e.message||e}</p></div>`; }
+  },
+  payDebtor(i){ const d=(this.state._debtors||[])[i]; if(d) this.payBon(d); },
+
   async viewMembers(){
     const v=document.getElementById('view'); v.innerHTML=`<div class="spin"></div>`;
     try{
       this.state._memMode = this.state._memMode || 'member';
       const all = this.state._memMode==='all';
       const list = all ? await DB.listAllProfiles('') : await DB.listMembers('');
+      // ambil peta piutang buat badge BON per member
+      try{ this.state._bonMap={}; (await DB.listDebtors()).forEach(d=>this.state._bonMap[d.id]=d._bon); }catch(e){ this.state._bonMap={}; }
       v.innerHTML=`<div class="section-title"><h2>${all?'Kelola Akun':'Member'}</h2>
         <button class="btn sm" onclick="App.registerCustModal()">${IC.plus} Daftar</button></div>
         <div class="pill-toggle" style="margin-bottom:12px">
@@ -2516,12 +2560,13 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
   setMemMode(m){ this.state._memMode=m; this.viewMembers(); },
   roleBadge(r){ const m={admin:['👑 Admin','green'],kasir:['🧾 Kasir','amber'],kurir:['🛵 Kurir','amber'],member:['🛒 Member','']}; const [t,c]=m[r]||[r,'gray']; return `<span class="tag ${c}">${t}</span>`; },
   renderMembers(m){ const body=document.getElementById('m-body');
-    body.innerHTML=m.length?m.map(x=>`<tr>
-      <td><div class="row"><div style="width:34px;height:34px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800">${(x.full_name||'?')[0]}</div><div><b style="font-size:13px">${x.full_name||'-'}</b><div class="muted small">${x.email}</div></div></div></td>
+    body.innerHTML=m.length?m.map(x=>{const bon=this.state._bonMap&&this.state._bonMap[x.id]||0;return `<tr>
+      <td><div class="row"><div style="width:34px;height:34px;border-radius:50%;background:${bon>0?'#E11D48':'var(--navy)'};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800">${(x.full_name||'?')[0]}</div><div><b style="font-size:13px">${x.full_name||'-'}</b><div class="muted small">${x.email}</div>${bon>0?`<div style="color:#E11D48;font-weight:700;font-size:11px;margin-top:2px">⚠️ BON ${this.money(bon)}</div>`:''}</div></div></td>
       <td>${this.roleBadge(x.role)}</td>
       <td class="small">${x.phone||'-'}${x.points?` · ${IC.coin}${x.points}`:''}</td>
-      <td><button class="btn xs" onclick="App.openStaffManage('${x.id}')">${IC.edit} Kelola</button></td>
-    </tr>`).join(''):`<tr><td colspan="4" class="em">Belum ada akun</td></tr>`; },
+      <td><div class="col" style="gap:4px">${bon>0?`<button class="btn xs" style="background:#E11D48;color:#fff" onclick="App.payMemberBon('${x.id}')">💸 Lunasi</button>`:''}<button class="btn xs" onclick="App.openStaffManage('${x.id}')">${IC.edit} Kelola</button></div></td>
+    </tr>`;}).join(''):`<tr><td colspan="4" class="em">Belum ada akun</td></tr>`; },
+  async payMemberBon(id){ const m=await DB.getMember(id); try{const ords=await DB.listOrders({customer_id:id}); m._bon=ords.filter(o=>Number(o.change_amount||0)<0&&!['pending','cancelled','rejected'].includes(o.status)).reduce((s,o)=>s+Math.abs(Number(o.change_amount||0)),0);}catch(e){m._bon=0;} if(!(m._bon>0)){this.toast('Bersih, gak ada bon 🙂','ok');return;} this.payBon(m); },
   searchMembers(){ const s=(document.getElementById('m-search')?.value||'').toLowerCase(); this.renderMembers((this.state._members||[]).filter(x=>((x.full_name||'')+' '+(x.phone||'')+' '+(x.email||'')+' '+(x.referral_code||'')).toLowerCase().includes(s))); },
   async openStaffManage(id){
     const m=await DB.getMember(id);
@@ -3133,5 +3178,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#285FF4;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a261a4443e19fd68',t:'MTc4NTg4OTI4NQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a261d67e3eadd4f1',t:'MTc4NTg5MTM0Mw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
