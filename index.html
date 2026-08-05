@@ -2187,7 +2187,8 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
         const o=await DB.createOrder(order,items);
       this.state.posCart=[]; this.state.posCustomer=null; const d=document.getElementById('pos-deliv-on'); if(d)d.checked=false; this.posToggleDeliv(false);
       this.posRender(); this.renderCustInfo(); this.updateOnlineBadge();
-      this.printReceipt(o,items);
+      const _opts=bonOn?{bonIn:true,oldDebt:cust._bon,grandTotal:o.total+cust._bon,cashPaid:paid,bayarBon:toDebt,sisaBon:(cust._bon-toDebt)+(Number(o.change_amount)<0?Math.abs(Number(o.change_amount)):0)}:null;
+      this.printReceipt(o,items,_opts);
       const bonAmt=Number(o.change_amount||0)<0?Math.abs(Number(o.change_amount)):0;
       this.toast(bonAmt>0?('✅ Transaksi — BON '+this.money(bonAmt)+' dicatat utk '+cust.full_name+bonMsg):('Transaksi sukses ✓ '+o.order_no+delivMsg+bonMsg),'ok');
     }catch(e){ this.toast('Gagal: '+e.message,'err'); }
@@ -2509,7 +2510,7 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
   },
 
   /* ---- RECEIPT ---- */
-  async printReceipt(o,items){
+  async printReceipt(o,items,opts){
     if(!items){ const d=await DB.getOrder(o.id); o=d.order; items=d.items; }
     const settings=await DB.getSettings(); const st=settings.store||{};
     const paid=o.paid_amount||o.total;
@@ -2537,8 +2538,13 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
       ${o.discount?`<div class="l"><span>Diskon</span><span>- ${this.money(o.discount)}</span></div>`:''}
       ${o.shipping?`<div class="l"><span>Ongkir</span><span>${this.money(o.shipping)}</span></div>`:''}
       <div class="l b"><span>TOTAL</span><span>${this.money(o.total)}</span></div>
+      ${opts&&opts.bonIn?`<div class="l" style="color:#c00"><span>+ Piutang lama</span><span>${this.money(opts.oldDebt)}</span></div>
+      <div class="l b"><span>TOTAL BAYAR</span><span>${this.money(opts.grandTotal)}</span></div>
+      <div class="l"><span>Bayar (${o.payment_method||''})</span><span>${this.money(opts.cashPaid)}</span></div>
+      <div class="l"><span>↳ Bayar Bon</span><span>${this.money(opts.bayarBon)}</span></div>
+      <div class="l b">${opts.sisaBon>0?'<span style="color:#c00">Sisa BON (Belum Lunas)</span><span style="color:#c00">'+this.money(opts.sisaBon)+'</span>':'<span style="color:#0c6b3f">✓ Piutang lunas semua</span><span></span>'}</div>`:`
       <div class="l"><span>Bayar (${o.payment_method||''})</span><span>${this.money(paid)}</span></div>
-      <div class="l b">${(Number(o.change_amount||0)<0)?'<span style="color:#c00">BON (Belum Lunas)</span><span style="color:#c00">'+this.money(Math.abs(Number(o.change_amount||0)))+'</span>':'<span>Kembali</span><span>'+this.money(o.change_amount||0)+'</span>'}</div>
+      <div class="l b">${(Number(o.change_amount||0)<0)?'<span style="color:#c00">BON (Belum Lunas)</span><span style="color:#c00">'+this.money(Math.abs(Number(o.change_amount||0)))+'</span>':'<span>Kembali</span><span>'+this.money(o.change_amount||0)+'</span>'}</div>`}
       ${o.points_earned?`<div class="l"><span>Poin +</span><span>${o.points_earned}</span></div>`:''}
       <div id="rcpt-note-line">${o.struk_note?`<hr><div class="b" style="text-align:center;border:1.5px dashed #000;padding:6px;margin:4px 0;font-size:13px">${(o.struk_note||'').replace(/</g,'&lt;')}</div>`:''}</div>
       <hr>
@@ -3239,5 +3245,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#285FF4;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-</body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a262eddf69093f4d',t:'MTc4NTkwMjc4Ng=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
