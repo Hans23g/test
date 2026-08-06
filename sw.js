@@ -1,5 +1,5 @@
 // Service Worker — HanaPOS CMS (PWA, offline cache)
-const CACHE = 'omnipos-hana-v2';
+const CACHE = 'omnipos-hana-v3';
 const ASSETS = [
   './',
   './index.html',
@@ -15,11 +15,13 @@ self.addEventListener('install', (e) => {
 
 self.addEventListener('activate', (e) => {
   e.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
-    )
+    Promise.all([
+      caches.keys().then((keys) =>
+        Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
+      ),
+      self.clients.claim()
+    ])
   );
-  self.clients.claim();
 });
 
 self.addEventListener('fetch', (e) => {
@@ -31,7 +33,7 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // Network-first untuk HTML (selalu ambil versi terbaru)
+  // Network-first untuk HTML
   if (req.mode === 'navigate' || req.destination === 'document') {
     e.respondWith(
       fetch(req).then((res) => {
@@ -43,7 +45,7 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // Cache-first untuk aset lokal (JS, CSS, gambar)
+  // Cache-first untuk aset lokal
   e.respondWith(
     caches.match(req).then((cached) =>
       cached || fetch(req).then((res) => {
