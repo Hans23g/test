@@ -1530,7 +1530,7 @@ const App = {
           <div class="unit">${p.brand||''}${p.brand&&p.unit?' · ':''}${p.unit||''}</div>
           ${hasDisc?`<div class="old"><span style="display:inline-block;background:var(--rose);color:#fff;font-size:8.5px;font-weight:600;padding:1px 5px;border-radius:4px;margin-right:4px;vertical-align:middle">HEMAT</span>${this.money(p.compare_price)}</div>`:''}
           <div class="pr">${hasTiers?'<span style="font-size:9px;font-weight:600;opacity:.7">mulai </span>':''}${this.money(showPrice)}</div>
-          <div class="unit" style="margin-top:1px">${(p.sold||0)>0?`${p.sold} terjual · `:''}stok ${p.stock!=null?p.stock:'-'}${p.base_unit?' '+p.base_unit:''}</div>
+          <div class="unit" style="margin-top:1px">${(p.sold||0)>0?`${p.sold} terjual · `:''}${App.fmtStock(p)}</div>
         </div>
         <button class="add-fab ${guest?'guest':''}" ${out?'disabled':''} onclick="event.stopPropagation();${act}" aria-label="Tambah">${out?'✕':IC.cart}</button></div>`;
     }).join('');
@@ -2040,10 +2040,10 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     if(dd){
       const list=r.filter(x=>x.is_active&&(x.name+' '+(x.barcode||'')+' '+(x.brand||'')).toLowerCase().includes(s)).slice(0,20);
       dd.classList.remove('hide');
-      dd.innerHTML=list.length?list.map(p=>`<div class="ddi" onclick="App.posAdd('${p.id}');App.posSearchDone()"><span class="em">${p.emoji||'📦'}</span><div class="col"><div class="nm">${p.name}</div><div class="sub">${p.brand||''}${p.brand&&p.barcode?' · ':''}${p.barcode||''} · stok ${p.stock}${p.base_unit?' '+p.base_unit:''}</div></div><b class="pr">${this.money(p.price)}</b></div>`).join(''):'<div class="ddi" style="color:var(--ink-3);justify-content:center">Tidak ditemukan</div>';
+      dd.innerHTML=list.length?list.map(p=>`<div class="ddi" onclick="App.posAdd('${p.id}');App.posSearchDone()"><span class="em">${p.emoji||'📦'}</span><div class="col"><div class="nm">${p.name}</div><div class="sub">${p.brand||''}${p.brand&&p.barcode?' · ':''}${p.barcode||''} · stok ${App.fmtStock(p)}</div></div><b class="pr">${this.money(p.price)}</b></div>`).join(''):'<div class="ddi" style="color:var(--ink-3);justify-content:center">Tidak ditemukan</div>';
     }
   },
-  posCard(p){ return `<div class="prod" onclick="App.posAdd('${p.id}')"><div class="ph"><div class="emoji">${p.emoji||'📦'}</div></div><div class="info"><div class="nm">${p.name}</div><div class="pr">${this.money(p.price)}</div><div class="muted small">stok ${p.stock}${p.base_unit?' '+p.base_unit:''}</div></div></div>`; },
+  posCard(p){ return `<div class="prod" onclick="App.posAdd('${p.id}')"><div class="ph"><div class="emoji">${p.emoji||'📦'}</div></div><div class="info"><div class="nm">${p.name}</div><div class="pr">${this.money(p.price)}</div><div class="muted small">stok ${App.fmtStock(p)}</div></div></div>`; },
   posSearchDone(){ const si=document.getElementById('pos-search'); if(si)si.value=''; this.posSearch(''); },
   async posBarcode(code){
     code=code.trim(); if(!code)return;
@@ -2433,9 +2433,21 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
         <div class="field row2"><div><label>Harga Modal (Rp)</label><input name="cost" type="number" value="${p.cost||0}"></div><div><label>Stok <span class="muted small">(dlm satuan dasar)</span></label><input name="stock" type="number" step="0.01" value="${p.stock||0}"></div></div>
         <div class="field row2"><div><label>Satuan</label><select name="unit" id="prod-unit" onchange="if(this.value==='_custom'){document.getElementById('prod-unit-custom-wrap').classList.remove('hide');}else{document.getElementById('prod-unit-custom-wrap').classList.add('hide');}"><option value="pcs" ${p.unit==='pcs'?'selected':''}>pcs — Pieces</option><option value="bks" ${p.unit==='bks'?'selected':''}>bks — Bungkus</option><option value="btg" ${p.unit==='btg'?'selected':''}>btg — Batang</option><option value="btl" ${p.unit==='btl'?'selected':''}>btl — Botol</option><option value="lbr" ${p.unit==='lbr'?'selected':''}>lbr — Lembar</option><option value="rcg" ${p.unit==='rcg'?'selected':''}>rcg — Renceng</option><option value="pack" ${p.unit==='pack'?'selected':''}>pack — Pack</option><option value="kg" ${p.unit==='kg'?'selected':''}>kg — Kilogram</option><option value="gr" ${p.unit==='gr'?'selected':''}>gr — Gram</option><option value="liter" ${p.unit==='liter'?'selected':''}>liter — Liter</option><option value="lusin" ${p.unit==='lusin'?'selected':''}>lusin — Lusin (12)</option><option value="ikat" ${p.unit==='ikat'?'selected':''}>ikat — Ikat</option><option value="kotak" ${p.unit==='kotak'?'selected':''}>kotak — Kotak</option><option value="sak" ${p.unit==='sak'?'selected':''}>sak — Sak/Karung</option><option value="bal" ${p.unit==='bal'?'selected':''}>bal — Bal</option><option value="peti" ${p.unit==='peti'?'selected':''}>peti — Peti</option><option value="mtr" ${p.unit==='mtr'?'selected':''}>mtr — Meter</option><option value="_custom" ${(p.unit&&!['pcs','bks','btg','btl','lbr','rcg','pack','kg','gr','liter','lusin','ikat','kotak','sak','bal','peti','mtr'].includes(p.unit))?'selected':''}>Lainnya…</option></select></div><div><label>Brand</label><input name="brand" value="${p.brand||''}"></div></div>
         <div class="field hide" id="prod-unit-custom-wrap"><label>Satuan Kustom</label><input id="prod-unit-custom" value="${p.unit||'pcs'}" placeholder="Ketik satuan sendiri"></div>
-        <div class="field"><label>Varian/Tier Harga <span class="muted small">(utk curah: beras, telur, dll)</span></label><textarea name="tiers_text" rows="4" id="tiers-input" oninput="App.autoConvPreview()" placeholder="Format: label,harga per baris&#10;1/4 kg,5000&#10;1/2 kg,9000&#10;1 kg,17000&#10;1 karung,850000">${(p.tiers||[]).map(t=>t.label+','+t.price).join('\n')}</textarea><div class="hint">Cukup <b>label + harga</b>. Konversi stok otomatis dari label (1/4=0.25, 1/2=0.5, dll).</div></div>
-        <div class="field row2"><div><label>Satuan Dasar Stok <span class="muted small">(utk hitung sisa)</span></label><input name="base_unit" id="base-unit-input" value="${p.base_unit||''}" placeholder="kg, liter, butir" oninput="App.autoConvPreview()"></div><div id="conv-map-wrap"></div></div>
-        <div id="conv-preview" class="muted small" style="margin-top:-6px;margin-bottom:10px"></div>
+        <div class="card" style="background:var(--blue-ll);padding:12px;margin-bottom:12px">
+          <h4 style="margin:0 0 8px">📦 Stok & Konversi</h4>
+          <div class="row" style="gap:6px;align-items:flex-end;flex-wrap:wrap">
+            <div class="field" style="margin:0;width:70px"><label>Jml</label><input name="stock_count" id="sc-count" type="number" step="0.01" value="${p.stock_count||1}" oninput="App.calcStockTotal()"></div>
+            <div class="field" style="margin:0;flex:1;min-width:90px"><label>Satuan Beli</label><input name="stock_unit" id="sc-unit" value="${p.stock_unit||''}" placeholder="peti, sak, bks" oninput="App.calcStockTotal()"></div>
+            <div style="font-size:18px;padding:0 4px">×</div>
+            <div class="field" style="margin:0;width:70px"><label>Isi</label><input name="unit_ratio" id="sc-ratio" type="number" step="0.01" value="${p.unit_ratio||1}" oninput="App.calcStockTotal()"></div>
+            <div class="field" style="margin:0;flex:1;min-width:70px"><label>Satuan Dasar</label><input name="base_unit" id="sc-base" value="${p.base_unit||'pcs'}" placeholder="kg, btg, bks" oninput="App.calcStockTotal()"></div>
+          </div>
+          <div class="row between" style="margin-top:6px"><b class="small" id="stock-total-display">Total: ${p.stock||0} ${p.base_unit||'pcs'}</b><div class="field" style="margin:0;width:120px"><label>Tampil Sisa</label><input name="display_unit" id="sc-display" value="${p.display_unit||p.base_unit||'pcs'}" placeholder="kg, sak, bks"></div></div>
+          <input type="hidden" name="stock" id="stock-hidden" value="${p.stock||0}">
+        </div>
+        <div class="field"><label>Varian/Tier Harga <span class="muted small">(cuma label + harga)</span></label><textarea name="tiers_text" rows="4" id="tiers-input" oninput="App.autoConvPreview()" placeholder="1butir,2000&#10;1/4kg,7000&#10;1/2kg,14000&#10;1kg,27000&#10;1pt,380000">${(p.tiers||[]).map(t=>t.label+','+t.price).join('\n')}</textarea><div class="hint">Konversi otomatis. <b>1/4</b>=0.25, <b>1/2</b>=0.5, dll. Untuk satuan beda (butir, pt, sak) muncul input konversi otomatis.</div></div>
+        <div id="conv-map-wrap"></div>
+        <div id="conv-preview" class="muted small" style="margin-bottom:10px"></div>
         <div class="field"><label>📷 Foto Produk (galeri atau URL)</label><div class="row" style="gap:10px;align-items:center"><div id="prod-img-preview" style="width:60px;height:60px;border-radius:10px;background:var(--blue-ll);display:flex;align-items:center;justify-content:center;font-size:28px;flex:none;overflow:hidden;border:1.5px solid var(--line)">${p.image_url?`<img src="${p.image_url}" style="width:100%;height:100%;object-fit:cover">`:(p.emoji||'\U0001f4e6')}</div><div class="col"><input type="file" id="prod-img-file" accept="image/*" style="font-size:12px;margin-bottom:6px" onchange="App.previewProdImg(this)"><input name="image_url" value="${p.image_url||''}" placeholder="Atau URL https://…" style="font-size:12px;padding:9px"></div></div></div><div class="field"><label>Status</label><select name="is_active"><option value="1" ${p.is_active!==false?'selected':''}>Aktif</option><option value="0" ${p.is_active===false?'selected':''}>Nonaktif</option></select></div>
         <button class="btn green block" type="submit">${IC.check} Simpan</button>
       </form></div>`);
@@ -2444,8 +2456,9 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
         category_id:f.get('category_id'), price:Number(f.get('price')), compare_price:Number(f.get('compare_price'))||0,
         cost:Number(f.get('cost')), stock:Number(f.get('stock')),
         unit:(f.get('unit')==='_custom'?document.getElementById('prod-unit-custom')?.value||'pcs':f.get('unit'))||'pcs', brand:f.get('brand'), description:f.get('brand'), emoji:f.get('emoji')||'📦', image_url:f.get('image_url'),
+        stock_count:Number(f.get('stock_count'))||1, stock_unit:f.get('stock_unit')||'', unit_ratio:Number(f.get('unit_ratio'))||1, display_unit:f.get('display_unit')||f.get('base_unit')||'pcs',
         is_active:f.get('is_active')==='1',
-        tiers:(function(){const t=(f.get('tiers_text')||'').trim();if(!t)return null;const bu=(f.get('base_unit')||'').trim();const cm={};document.querySelectorAll('.conv-map-input').forEach(el=>{if(el.value)cm[el.dataset.unit]=Number(el.value);});return t.split('\n').map(l=>{const pts=l.split(',').map(s=>s.trim());const lbl=pts[0]||'';const pr=Number(pts[1])||0;const conv=App.calcAutoConv(lbl,bu,cm);return{label:lbl,price:pr,conv}}).filter(x=>x.label&&x.price>0);})(), base_unit:f.get('base_unit')||'' };
+        tiers:(function(){const t=(f.get('tiers_text')||'').trim();if(!t)return null;const bu=(f.get('base_unit')||'').trim().toLowerCase();const su=(f.get('stock_unit')||'').trim().toLowerCase();const ratio=Number(f.get('unit_ratio'))||1;const cm={};if(su&&ratio){cm[su]=ratio;cm[su.slice(0,2)]=ratio;}document.querySelectorAll('.conv-map-input').forEach(el=>{if(el.value)cm[el.dataset.unit.toLowerCase()]=Number(el.value);});return t.split('\n').map(l=>{const pts=l.split(',').map(s=>s.trim());const lbl=pts[0]||'';const pr=Number(pts[1])||0;const conv=App.calcAutoConv(lbl,bu,cm);return{label:lbl,price:pr,conv}}).filter(x=>x.label&&x.price>0);})() };
       const imgFile=document.getElementById('prod-img-file')?.files[0];
       if(imgFile){ try{ obj.image_url=await this.readImageJpeg(imgFile,400); }catch(imgErr){ this.toast('Gambar tidak valid','err'); return; } }
       try{ await DB.saveProduct(obj); this.closeSheet(); this.toast('Produk disimpan ✓','ok'); this.viewProducts(); }catch(err){this.toast('Gagal: '+err.message,'err');} };
@@ -2477,6 +2490,25 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
   },
 
   /* === AUTO KONVERSI SATUAN === */
+  fmtStock(p){
+    const s=Number(p.stock||0);
+    const du=(p.display_unit||p.base_unit||'pcs').trim();
+    const bu=(p.base_unit||'').trim();
+    const su=(p.stock_unit||'').trim();
+    const ratio=Number(p.unit_ratio)||1;
+    if(!du||du===bu) return (s%1===0?s:s.toFixed(2))+' '+du;
+    if(du===su&&ratio>0){const v=s/ratio;return(v%1===0?v:v.toFixed(1))+' '+du;}
+    return(s%1===0?s:s.toFixed(2))+' '+(bu||'pcs');
+  },
+  calcStockTotal(){
+    const count=Number(document.getElementById('sc-count')?.value||0);
+    const ratio=Number(document.getElementById('sc-ratio')?.value||1);
+    const base=(document.getElementById('sc-base')?.value||'pcs').trim();
+    const total=count*ratio;
+    const hidden=document.getElementById('stock-hidden'); if(hidden)hidden.value=total;
+    const disp=document.getElementById('stock-total-display'); if(disp)disp.textContent='Total: '+total+' '+base;
+    this.autoConvPreview();
+  },
   parseTierLabel(label){
     label=(label||'').trim();
     const m=label.match(/^(\d+(?:\/\d+)?)\s*(.*)$/);
@@ -3625,5 +3657,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#285FF4;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a267e37effbfca4b',t:'MTc4NTk1NDc5MA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a26e67654edace0e',t:'MTc4NjAyMzEwNw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a267e37effbfca4b',t:'MTc4NTk1NDc5MA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a26fa7ada94b45da',t:'MTc4NjAzNjIyNg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
