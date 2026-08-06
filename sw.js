@@ -25,6 +25,12 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET') return;
+
+  // 🔑 JANGAN cache API Supabase — selalu fresh!
+  if (req.url.includes('/rest/') || req.url.includes('/auth/') || req.url.includes('/functions/')) {
+    return;
+  }
+
   // Network-first untuk HTML (selalu ambil versi terbaru)
   if (req.mode === 'navigate' || req.destination === 'document') {
     e.respondWith(
@@ -36,7 +42,8 @@ self.addEventListener('fetch', (e) => {
     );
     return;
   }
-  // Cache-first untuk aset lain (CDN, gambar, dll)
+
+  // Cache-first untuk aset lokal (JS, CSS, gambar)
   e.respondWith(
     caches.match(req).then((cached) =>
       cached || fetch(req).then((res) => {
