@@ -474,7 +474,7 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:14px 0}
 
 <!-- ============================ LIBRARIES ============================ -->
 <script async src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script async src="html5-qrcode.min.js"></script>
+<script async src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script async src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 <script async src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 <script async src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -488,8 +488,8 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:14px 0}
 /* ---------- CONFIG: isi dengan kredensial Supabase kamu ---------- */
 const CONFIG = {
   VERSION: "1.0 (Beta)", // versi USER-FACING (mula dari v1 — beta tester lihat ini)
-  SUPABASE_URL: "https://bbdddskcowcdnwyxppbi.supabase.co", // DB Toko Hana (GitHub Pages deploy)
-  SUPABASE_KEY: "sb_publishable_WK1TtlABGQy55XJan7Uphw_D_P_sKnV", // anon key
+  SUPABASE_URL: "", // KOSONG (aman utk distribusi/white-label). Isi via menu: Pengaturan → Profil Toko → 🗄️ Konfigurasi Database → Jadikan Default
+  SUPABASE_KEY: "", // KOSONG. Setelah deploy, login admin (demo: admin@tokohana.id) → set DB Anda di Pengaturan.
   // jika kosong → aplikasi otomatis pakai MODE DEMO (data tersimpan di browser)
   CURRENCY: "Rp",
   EARN_PER_RP: 1000,       // 1 poin tiap Rp 1.000
@@ -2296,9 +2296,8 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
   },
 
   /* ---- BARCODE SCANNER ---- */
-  openScanner(mode='product', target){
+  openScanner(mode='product'){
     this.state._scanMode=mode;
-    if(mode==='capture') this.state._scanTarget=target||'qe-barcode';  // barcode capture -> input target
     this.stopScan();
     let ov=document.getElementById('scan-overlay');
     if(!ov){ ov=document.createElement('div'); ov.id='scan-overlay'; ov.className='scan-overlay';
@@ -2326,19 +2325,11 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     if(!window.Html5Qrcode){ this.toast('Library scanner belum termuat','err'); return; }
     this.stopScan();
     const id='scan-region';
-    this.state.scanner=new Html5Qrcode(id,{verbose:false,
-      formatsToSupport:[
-        Html5QrcodeSupportedFormats.EAN_13,Html5QrcodeSupportedFormats.EAN_8,
-        Html5QrcodeSupportedFormats.UPC_A,Html5QrcodeSupportedFormats.UPC_E,
-        Html5QrcodeSupportedFormats.CODE_128,Html5QrcodeSupportedFormats.CODE_39,
-        Html5QrcodeSupportedFormats.CODE_93,Html5QrcodeSupportedFormats.ITF,
-        Html5QrcodeSupportedFormats.CODABAR,
-      ],
-      useBarCodeDetectorIfSupported:true,
-    });
-    const cfg={fps:15,
-      qrbox:function(vw,vh){ const w=Math.floor(vw*0.82), h=Math.floor(vh*0.45); return {width:w,height:h}; },
-      experimentalFeatures:{useBarCodeDetectorIfSupported:true}};
+    this.state.scanner=new Html5Qrcode(id,{verbose:false});
+    const cfg={fps:10,qrbox:{width:260,height:140},formatsToSupport:[
+      Html5QrcodeSupportedFormats.EAN_13,Html5QrcodeSupportedFormats.EAN_8,
+      Html5QrcodeSupportedFormats.UPC_A,Html5QrcodeSupportedFormats.UPC_E,
+      Html5QrcodeSupportedFormats.CODE_128,Html5QrcodeSupportedFormats.CODE_39]};
     this.state.scanner.start({facingMode:'environment'},cfg,(code)=>this.onScan(code))
       .catch(e=>{ this.toast('Tidak bisa akses kamera: '+e,'err'); });
   },
@@ -2346,7 +2337,7 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     if(this.state._lastScan && Date.now()-this.state._lastScan<1500)return;
     this.state._lastScan=Date.now();
     if(this.state._scanMode==='member'){ this.scanMember(code); return; }
-    if(this.state._scanMode==='capture'){ const inp=document.getElementById(this.state._scanTarget||'qe-barcode'); if(inp){ inp.value=code; this.beep(true); } this.closeScanner(); this.toast('Barcode ter-scan: '+code,'ok'); return; }
+    if(this.state._scanMode==='capture'){ const inp=document.getElementById('qe-barcode'); if(inp){ inp.value=code; this.beep(true); } this.closeScanner(); this.toast('Barcode ter-scan: '+code,'ok'); return; }
     this.posBarcode(code);
     this.toast('Scanned: '+code,'ok');
   },
@@ -2370,7 +2361,6 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     const [prods,cats]=await Promise.all([DB.listProducts(),DB.listCategories()]); this.state._prods=prods;
     v.innerHTML=`
       <div class="section-title"><h2>Kelola Produk</h2><div class="row">
-        <button class="btn green sm" onclick="App.rakStockModal()">🛒 Cepat Stok Rak</button>
         <button class="btn ghost sm" onclick="App.exportProducts()">${IC.download} Export CSV</button>
         <button class="btn ghost sm" onclick="App.importModal()">${IC.upload} Upload Massal</button>
         <button class="btn sm" onclick="App.editProduct()">${IC.plus} Tambah Produk</button>
@@ -2462,98 +2452,6 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
         <hr class="sep"><div class="center"><button class="btn ghost sm" onclick="App.downloadTemplate()">⬇ Unduh Template CSV</button></div>
         <p class="muted small center" style="margin-top:8px">Contoh baris: Indomie Goreng,8998866200010,Indomie,3500,2800,200,pcs,🍜,cat-6</p>
       </div>`); },
-  /* 🛒 CEPAT STOK RAK — input cepat di depan rak (nama+stok), preview lengkapi (scan barcode, harga, modal), publish */
-  rakStockModal(){
-    this.state._rakRows = (this.state._rakRows && this.state._rakRows.length) ? this.state._rakRows : [{name:'',stock:''}];
-    this._rakStep1();
-  },
-  _rakStep1(){
-    this.openSheet(`<div class="sheet-head"><h3>🛒 Cepat Stok Rak</h3><button class="iconbtn" onclick="App.closeSheet()">${IC.x}</button></div>
-      <div class="sheet-body">
-        <div class="card" style="background:var(--blue-ll);font-size:12.5px">
-          <b>📍 Cara hemat waktu:</b> berdiri depan rak → ketik <b>nama + stok</b> saja (banyak produk sekaligus). Nanti duduk di meja, lengkapi <b>scan barcode</b> (bawa contoh produk), <b>harga jual & modal</b> lewat Preview, baru Publish.
-        </div>
-        <div id="rak-rows" style="margin-top:12px"></div>
-        <button class="btn ghost block sm" style="margin-top:8px" onclick="App.rakAddRow()">${IC.plus} Tambah Baris Produk</button>
-        <button class="btn green block" style="margin-top:10px" onclick="App.rakPreview()">${IC.check} Lanjut: Preview & Lengkapi</button>
-      </div>`,true);
-    this._rakFillRows();
-  },
-  _rakFillRows(){
-    const box=document.getElementById('rak-rows'); if(!box)return;
-    box.innerHTML=this.state._rakRows.map((r,i)=>`<div class="row" style="gap:8px;margin-bottom:8px;align-items:flex-end">
-      <div class="field" style="margin:0;flex:1"><label>Produk ${i+1}</label><input value="${(r.name||'').replace(/"/g,'&quot;')}" placeholder="Nama produk di rak" oninput="App.state._rakRows[${i}].name=this.value"></div>
-      <div class="field" style="margin:0;width:110px"><label>Stok</label><input type="number" value="${r.stock??''}" placeholder="0" oninput="App.state._rakRows[${i}].stock=this.value"></div>
-      <button class="iconbtn" style="width:40px;height:40px;flex:none" onclick="App.rakDelRow(${i})" title="Hapus baris">${IC.trash}</button>
-    </div>`).join('');
-  },
-  rakAddRow(){ this.state._rakRows.push({name:'',stock:''}); this._rakFillRows(); },
-  rakDelRow(i){ this.state._rakRows.splice(i,1); if(!this.state._rakRows.length) this.state._rakRows.push({name:'',stock:''}); this._rakFillRows(); },
-  async rakPreview(){
-    this.state._rakRows=this.state._rakRows.filter(r=>(r.name||'').trim());
-    if(!this.state._rakRows.length){ this.toast('Isi minimal 1 nama produk','err'); return; }
-    const cats=this.state._cats||(this.state._cats=await DB.listCategories());
-    const rows=this.state._rakRows;
-    this.openSheet(`<div class="sheet-head"><h3>🔍 Preview & Lengkapi (${rows.length})</h3><button class="iconbtn" onclick="App._rakStep1()">${IC.x}</button></div>
-      <div class="sheet-body">
-        <p class="muted small">Lengkapi tiap produk. <b>📷 Scan barcode</b> (bawa contoh produk dari rak), isi <b>harga jual & modal</b> (lihat bon/faktur). Kosong boleh, isi pelan di meja.</p>
-        <div id="rak-prev">${rows.map((r,i)=>this._rakCard(r,i,cats)).join('')}</div>
-        <button class="btn green block" style="margin-top:12px" onclick="App.rakPublish()">${IC.upload} Publish ${rows.length} Produk</button>
-      </div>`,true);
-  },
-  _rakCard(r,i,cats){
-    const defEm=r.emoji||(cats.find(c=>c.id===(r.catId||cats[0]?.id))?.icon)||'📦';
-    return `<div class="card" style="margin-bottom:10px;padding:12px">
-      <div class="row between"><div><b style="font-size:14px">${(r.name||'').replace(/</g,'&lt;')}</b> <span class="muted small">· stok ${r.stock||0}</span></div><button type="button" id="rak-em-${i}" class="iconbtn" style="width:44px;height:44px;font-size:22px;flex:none" onclick="App.rakPickEmoji(${i})" title="Pilih ikon">${defEm}</button></div>
-      <div class="field" style="margin-top:8px"><label>Barcode</label><div class="row" style="gap:8px"><input id="rak-bc-${i}" value="${(r.barcode||'').replace(/"/g,'&quot;')}" placeholder="Scan atau ketik 899…" style="flex:1;font-family:monospace"><button class="iconbtn" style="width:42px;height:42px;flex:none" onclick="App.openScanner('capture','rak-bc-${i}')" title="Scan barcode">${IC.scan}</button></div></div>
-      <div class="field row2"><div><label>Harga Jual (Rp)</label><input id="rak-pr-${i}" type="number" value="${r.price||0}" placeholder="0"></div><div><label>Harga Modal (Rp)</label><input id="rak-co-${i}" type="number" value="${r.cost||0}" placeholder="0"></div></div>
-      <div class="field row2"><div><label>Kategori</label><select id="rak-ca-${i}" onchange="App.rakAutoEmoji(${i},this.value)">${cats.map(c=>`<option value="${c.id}">${(c.icon||'')} ${c.name}</option>`).join('')}</select></div><div><label>Harga Coret (opsional)</label><input id="rak-cp-${i}" type="number" value="${r.compare_price||0}" placeholder="0"></div></div>
-      <div class="field"><label>Varian/Tier (opsional)</label><input id="rak-ti-${i}" value="${r.tiers_text||''}" placeholder="mis. 1/4kg,5000 | 1/2kg,9000 | 1kg,17000 (pisah |)"></div>
-    </div>`;
-  },
-  rakPickEmoji(i){
-    const cats=this.state._cats||[];
-    const groups=[
-      ['🛒 Sembako','🍚🛢️🧂🥚🌾🥛🍜'],
-      ['🥤 Minuman & Snack','🥤🍪🍫🥔☕🍵🍬🍭🍩'],
-      ['🧂 Bumbu & Dapur','🧂🥫🌶️🧄🧅🍅'],
-      ['🧼 Perawatan & Rumah','🧼🧴🪥🧻🌸🧹'],
-      ['🍞 Roti & Kue','🍞🥐🧁🥖🍰'],
-      ['🚬 Rokok','🚬'],
-      ['📦 Lainnya','📦🧊🍖🐟🍗🧀🥛🍇🍎🍌🍊🥕🥔🌽'],
-    ];
-    let grid=groups.map(([g,emojis])=>`<div style="margin-bottom:6px"><div class="muted small" style="margin-bottom:3px">${g}</div><div style="display:flex;flex-wrap:wrap;gap:2px">${[...emojis].map(e=>`<button type="button" class="iconbtn" style="width:36px;height:36px;font-size:18px;border-radius:9px" onclick="App.rakSetEmoji(${i},'${e}')">${e}</button>`).join('')}</div></div>`).join('');
-    grid+=`<div class="field" style="margin-top:8px"><label>Atau ketik emoji sendiri</label><input id="rak-em-custom-${i}" maxlength="3" style="font-size:20px;text-align:center" placeholder="📦"></div>`;
-    this.openSheet(`<div class="sheet-head"><h3>🎨 Pilih Ikon Produk</h3><button class="iconbtn" onclick="App.closeSheet()">${IC.x}</button></div><div class="sheet-body">${grid}<button class="btn green block" style="margin-top:8px" onclick="App.rakSetEmoji(${i},document.getElementById('rak-em-custom-${i}').value||'📦')">${IC.check} Pakai</button></div>`,true);
-  },
-  rakSetEmoji(i,e){
-    this.state._rakRows[i].emoji=e;
-    this.closeSheet();
-    const btn=document.getElementById('rak-em-'+i); if(btn) btn.textContent=e;
-  },
-  rakAutoEmoji(i,catId){
-    // kalau emoji masih default (📦 atau ikut kategori lama), ikutin kategori baru
-    const cats=this.state._cats||[]; const cat=cats.find(c=>c.id===catId);
-    if(!cat)return; const cur=this.state._rakRows[i]?.emoji;
-    const catIcons=cats.map(c=>c.icon);
-    if(!cur||cur==='📦'||catIcons.includes(cur)){ this.state._rakRows[i].emoji=cat.icon||'📦'; const btn=document.getElementById('rak-em-'+i); if(btn) btn.textContent=cat.icon||'📦'; }
-  },
-  async rakPublish(){
-    const rows=this.state._rakRows, cats=this.state._cats||[], objs=[];
-    rows.forEach((r,i)=>{
-      const name=(r.name||'').trim(); if(!name)return;
-      const barcode=(document.getElementById('rak-bc-'+i)?.value||'').trim();
-      const price=Number(document.getElementById('rak-pr-'+i)?.value||0);
-      const cost=Number(document.getElementById('rak-co-'+i)?.value||0);
-      const catId=document.getElementById('rak-ca-'+i)?.value||cats[0]?.id;
-      const compare_price=Number(document.getElementById('rak-cp-'+i)?.value||0);
-      const tiersText=(document.getElementById('rak-ti-'+i)?.value||'').trim();
-      const tiers=tiersText?tiersText.split('|').map(s=>{const p=s.split(',').map(x=>(x||'').trim());return{label:p[0],price:Number(p[1])||0};}).filter(x=>x.label&&x.price>0):null;
-      objs.push({ name, barcode, sku:barcode, price, cost, compare_price, stock:Number(r.stock||0), unit:'pcs', emoji:r.emoji||'📦', category_id:catId, tiers, is_active:true, image_url:'', brand:'' });
-    });
-    if(!objs.length){ this.toast('Tidak ada produk valid','err'); return; }
-    try{ const n=await DB.bulkUpsertProducts(objs); this.closeSheet(); this.state._rakRows=null; this.toast(n+' produk ditambahkan ke rak ✓ 🎉','ok'); this.viewProducts(); }catch(e){ this.toast('Gagal: '+(e.message||e),'err'); }
-  },
   downloadTemplate(){ const csv='name,barcode,brand,price,cost,stock,unit,emoji,category_id\nIndomie Goreng,8998866200010,Indomie,3500,2800,200,pcs,🍜,cat-6\nAqua 600ml,8992753111014,Aqua,4000,3000,120,btl,💧,cat-2\n'; this.download('template_produk_toko_hana.csv',csv); },
   async doImport(){ const f=document.getElementById('csv-file').files[0]; if(!f){this.toast('Pilih file dulu','err');return;}
     const txt=await f.text(); const rows=this.parseCSV(txt); if(rows.length<2){this.toast('CSV kosong/tidak valid','err');return;}
@@ -3538,5 +3436,6 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#285FF4;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a267e37effbfca4b',t:'MTc4NTk1NDc5MA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a26a74dbef346490',t:'MTc4NTk4MTcxNQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"1954b47c125f43f8b4338b3c4f804e4f"}' crossorigin="anonymous"></script>
+</body>
 </html>
