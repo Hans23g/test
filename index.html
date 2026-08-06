@@ -2411,8 +2411,8 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
       <div class="sheet-body"><form id="pform">
         <div class="field"><label>Nama Produk</label><input name="name" value="${p.name||''}" required></div>
         <div class="field row2"><div><label>Barcode</label><input name="barcode" value="${p.barcode||''}" placeholder="899…"></div><div><label>SKU</label><input name="sku" value="${p.sku||''}"></div></div>
-        <div class="field row2"><div><label>Kategori</label><select name="category_id">${cats.map(c=>`<option value="${c.id}" ${p.category_id===c.id?'selected':''}>${c.icon} ${c.name}</option>`).join('')}</select></div>
-          <div><label>Emoji / Ikon</label><input name="emoji" value="${p.emoji||'📦'}" maxlength="3"></div></div>
+        <div class="field row2"><div><label>Kategori</label><select name="category_id" onchange="App.editProdAutoEmoji(this.value)">${cats.map(c=>`<option value="${c.id}" ${p.category_id===c.id?'selected':''}>${c.icon} ${c.name}</option>`).join('')}</select></div>
+          <div><label>Ikon Produk</label><div class="row" style="gap:8px"><button type="button" id="edit-emoji-btn" class="iconbtn" style="width:48px;height:48px;font-size:24px" onclick="App.editProdPickEmoji()">${p.emoji||'📦'}</button><input name="emoji" id="edit-emoji-input" value="${p.emoji||'📦'}" maxlength="3" style="flex:1;font-size:16px;text-align:center"></div></div></div>
         <div class="field row2"><div><label>Harga Jual (Rp)</label><input name="price" type="number" value="${p.price||0}" required></div><div><label>Harga Coret (Rp)</label><input name="compare_price" type="number" value="${p.compare_price||0}" placeholder="0 = tidak ada"></div></div>
         <div class="field row2"><div><label>Harga Modal (Rp)</label><input name="cost" type="number" value="${p.cost||0}"></div><div><label>Stok</label><input name="stock" type="number" value="${p.stock||0}"></div></div>
         <div class="field row2"><div><label>Satuan</label><input name="unit" value="${p.unit||'pcs'}"></div><div><label>Brand</label><input name="brand" value="${p.brand||''}"></div></div>
@@ -2460,6 +2460,31 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     const p=this.state._prods.find(x=>x.id===id); if(!p)return;
     const patch={ category_id:document.getElementById('qe-category')?.value||p.category_id, stock:Number(document.getElementById('qe-stock')?.value||0), price:Number(document.getElementById('qe-price')?.value||0), barcode:document.getElementById('qe-barcode')?.value||'', compare_price:Number(document.getElementById('qe-compare')?.value||0), cost:Number(document.getElementById('qe-cost')?.value||0) };
     try{ const {categories,...cleanP}=p; await DB.saveProduct({...cleanP,...patch}); this.state._prods=this.state._prods.map(x=>x.id===id?{...x,...patch}:x); this.closeSheet(); this.toast('Produk diupdate ✓','ok'); this.viewProducts(); }catch(e){ this.toast('Gagal: '+(e.message||e),'err'); }
+  },
+  /* picker emoji utk form edit produk lengkap */
+  editProdPickEmoji(){
+    const groups=[
+      ['🛒 Sembako','🍚🛢️🧂🥚🌾🥛🍜'],
+      ['🥤 Minuman & Snack','🥤🍪🍫🥔☕🍵🍬🍭🍩'],
+      ['🧂 Bumbu & Dapur','🧂🥫🌶️🧄🧅🍅'],
+      ['🧼 Perawatan & Rumah','🧼🧴🪥🧻🌸🧹'],
+      ['🍞 Roti & Kue','🍞🥐🧁🥖🍰'],
+      ['🚬 Rokok','🚬'],
+      ['📦 Lainnya','📦🧊🍖🐟🍗🧀🍇🍎🍌🍊🥕🥔🌽'],
+    ];
+    let grid=groups.map(([g,emojis])=>`<div style="margin-bottom:6px"><div class="muted small" style="margin-bottom:3px">${g}</div><div style="display:flex;flex-wrap:wrap;gap:2px">${[...emojis].map(e=>`<button type="button" class="iconbtn" style="width:36px;height:36px;font-size:18px;border-radius:9px" onclick="App.editProdSetEmoji('${e}')">${e}</button>`).join('')}</div></div>`).join('');
+    grid+=`<div class="field" style="margin-top:8px"><label>Atau ketik emoji sendiri</label><input id="edit-emoji-custom" maxlength="3" style="font-size:20px;text-align:center" placeholder="📦"></div>`;
+    this.openSheet(`<div class="sheet-head"><h3>🎨 Pilih Ikon Produk</h3><button class="iconbtn" onclick="App.closeSheet()">${IC.x}</button></div><div class="sheet-body">${grid}<button class="btn green block" style="margin-top:8px" onclick="App.editProdSetEmoji(document.getElementById('edit-emoji-custom').value||'📦')">${IC.check} Pakai</button></div>`,true);
+  },
+  editProdSetEmoji(e){
+    const btn=document.getElementById('edit-emoji-btn'); if(btn) btn.textContent=e;
+    const inp=document.getElementById('edit-emoji-input'); if(inp) inp.value=e;
+    this.closeSheet();
+  },
+  editProdAutoEmoji(catId){
+    const cats=this.state._cats||[]; const cat=cats.find(c=>c.id===catId);
+    if(!cat)return; const inp=document.getElementById('edit-emoji-input'); const btn=document.getElementById('edit-emoji-btn');
+    if(inp&&(!inp.value||inp.value==='📦')){ inp.value=cat.icon||'📦'; if(btn)btn.textContent=cat.icon||'📦'; }
   },
 
   /* ---- IMPORT / EXPORT ---- */
@@ -3547,5 +3572,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#285FF4;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a267e37effbfca4b',t:'MTc4NTk1NDc5MA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a26b230ff9788f82',t:'MTc4NTk4ODg1MQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a267e37effbfca4b',t:'MTc4NTk1NDc5MA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a26d26b5ae766dd2',t:'MTc4NjAwOTk3Mg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
