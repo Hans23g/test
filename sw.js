@@ -1,14 +1,11 @@
-// Service Worker — OmniPOS Toko Hana (PWA, offline cache)
-const CACHE = 'omnipos-hana-v1';
+// Service Worker — HanaPOS CMS (PWA, offline cache)
+const CACHE = 'omnipos-hana-v2';
 const ASSETS = [
   './',
   './index.html',
   './manifest.webmanifest',
-  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
-  'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js',
-  'https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js',
-  'https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js',
-  'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js'
+  './favicon.png',
+  './html5-qrcode.min.js',
 ];
 
 self.addEventListener('install', (e) => {
@@ -28,7 +25,7 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET') return;
-  // Network-first untuk HTML, cache-first untuk aset lain
+  // Network-first untuk HTML (selalu ambil versi terbaru)
   if (req.mode === 'navigate' || req.destination === 'document') {
     e.respondWith(
       fetch(req).then((res) => {
@@ -39,6 +36,7 @@ self.addEventListener('fetch', (e) => {
     );
     return;
   }
+  // Cache-first untuk aset lain (CDN, gambar, dll)
   e.respondWith(
     caches.match(req).then((cached) =>
       cached || fetch(req).then((res) => {
