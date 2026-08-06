@@ -2433,8 +2433,9 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
         <div class="field row2"><div><label>Harga Modal (Rp)</label><input name="cost" type="number" value="${p.cost||0}"></div><div><label>Stok <span class="muted small">(dlm satuan dasar)</span></label><input name="stock" type="number" step="0.01" value="${p.stock||0}"></div></div>
         <div class="field row2"><div><label>Satuan</label><select name="unit" id="prod-unit" onchange="if(this.value==='_custom'){document.getElementById('prod-unit-custom-wrap').classList.remove('hide');}else{document.getElementById('prod-unit-custom-wrap').classList.add('hide');}"><option value="pcs" ${p.unit==='pcs'?'selected':''}>pcs — Pieces</option><option value="bks" ${p.unit==='bks'?'selected':''}>bks — Bungkus</option><option value="btg" ${p.unit==='btg'?'selected':''}>btg — Batang</option><option value="btl" ${p.unit==='btl'?'selected':''}>btl — Botol</option><option value="lbr" ${p.unit==='lbr'?'selected':''}>lbr — Lembar</option><option value="rcg" ${p.unit==='rcg'?'selected':''}>rcg — Renceng</option><option value="pack" ${p.unit==='pack'?'selected':''}>pack — Pack</option><option value="kg" ${p.unit==='kg'?'selected':''}>kg — Kilogram</option><option value="gr" ${p.unit==='gr'?'selected':''}>gr — Gram</option><option value="liter" ${p.unit==='liter'?'selected':''}>liter — Liter</option><option value="lusin" ${p.unit==='lusin'?'selected':''}>lusin — Lusin (12)</option><option value="ikat" ${p.unit==='ikat'?'selected':''}>ikat — Ikat</option><option value="kotak" ${p.unit==='kotak'?'selected':''}>kotak — Kotak</option><option value="sak" ${p.unit==='sak'?'selected':''}>sak — Sak/Karung</option><option value="bal" ${p.unit==='bal'?'selected':''}>bal — Bal</option><option value="peti" ${p.unit==='peti'?'selected':''}>peti — Peti</option><option value="mtr" ${p.unit==='mtr'?'selected':''}>mtr — Meter</option><option value="_custom" ${(p.unit&&!['pcs','bks','btg','btl','lbr','rcg','pack','kg','gr','liter','lusin','ikat','kotak','sak','bal','peti','mtr'].includes(p.unit))?'selected':''}>Lainnya…</option></select></div><div><label>Brand</label><input name="brand" value="${p.brand||''}"></div></div>
         <div class="field hide" id="prod-unit-custom-wrap"><label>Satuan Kustom</label><input id="prod-unit-custom" value="${p.unit||'pcs'}" placeholder="Ketik satuan sendiri"></div>
-        <div class="field"><label>Varian/Tier + Konversi Stok <span class="muted small">(utk curah)</span></label><textarea name="tiers_text" rows="4" placeholder="Format: label,harga,konversi&#10;1/4 kg,5000,0.25&#10;1/2 kg,9000,0.5&#10;1 kg,17000,1&#10;1 liter,14000,0.8">${(p.tiers||[]).map(t=>t.label+','+t.price+(t.conv?','+t.conv:'')).join('\n')}</textarea><div class="hint"><b>Konversi</b> = brp satuan dasar per 1 varian. 1/4kg=0.25, 1liter beras=0.8. Kosong=1.</div></div>
-        <div class="field"><label>Satuan Dasar Stok <span class="muted small">(tampil sisa: "50 kg", "240 butir")</span></label><input name="base_unit" value="${p.base_unit||''}" placeholder="kg, butir, mtr, dll (kosong = pcs)"></div>
+        <div class="field"><label>Varian/Tier Harga <span class="muted small">(utk curah: beras, telur, dll)</span></label><textarea name="tiers_text" rows="4" id="tiers-input" oninput="App.autoConvPreview()" placeholder="Format: label,harga per baris&#10;1/4 kg,5000&#10;1/2 kg,9000&#10;1 kg,17000&#10;1 karung,850000">${(p.tiers||[]).map(t=>t.label+','+t.price).join('\n')}</textarea><div class="hint">Cukup <b>label + harga</b>. Konversi stok otomatis dari label (1/4=0.25, 1/2=0.5, dll).</div></div>
+        <div class="field row2"><div><label>Satuan Dasar Stok <span class="muted small">(utk hitung sisa)</span></label><input name="base_unit" id="base-unit-input" value="${p.base_unit||''}" placeholder="kg, liter, butir" oninput="App.autoConvPreview()"></div><div id="conv-map-wrap"></div></div>
+        <div id="conv-preview" class="muted small" style="margin-top:-6px;margin-bottom:10px"></div>
         <div class="field"><label>📷 Foto Produk (galeri atau URL)</label><div class="row" style="gap:10px;align-items:center"><div id="prod-img-preview" style="width:60px;height:60px;border-radius:10px;background:var(--blue-ll);display:flex;align-items:center;justify-content:center;font-size:28px;flex:none;overflow:hidden;border:1.5px solid var(--line)">${p.image_url?`<img src="${p.image_url}" style="width:100%;height:100%;object-fit:cover">`:(p.emoji||'\U0001f4e6')}</div><div class="col"><input type="file" id="prod-img-file" accept="image/*" style="font-size:12px;margin-bottom:6px" onchange="App.previewProdImg(this)"><input name="image_url" value="${p.image_url||''}" placeholder="Atau URL https://…" style="font-size:12px;padding:9px"></div></div></div><div class="field"><label>Status</label><select name="is_active"><option value="1" ${p.is_active!==false?'selected':''}>Aktif</option><option value="0" ${p.is_active===false?'selected':''}>Nonaktif</option></select></div>
         <button class="btn green block" type="submit">${IC.check} Simpan</button>
       </form></div>`);
@@ -2444,7 +2445,7 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
         cost:Number(f.get('cost')), stock:Number(f.get('stock')),
         unit:(f.get('unit')==='_custom'?document.getElementById('prod-unit-custom')?.value||'pcs':f.get('unit'))||'pcs', brand:f.get('brand'), description:f.get('brand'), emoji:f.get('emoji')||'📦', image_url:f.get('image_url'),
         is_active:f.get('is_active')==='1',
-        tiers:(function(){const t=(f.get('tiers_text')||'').trim();if(!t)return null;return t.split('\n').map(l=>{const pts=l.split(',').map(s=>s.trim());return{label:pts[0],price:Number(pts[1])||0,conv:Number(pts[2])||1}}).filter(x=>x.label&&x.price>0);})(), base_unit:f.get('base_unit')||'' };
+        tiers:(function(){const t=(f.get('tiers_text')||'').trim();if(!t)return null;const bu=(f.get('base_unit')||'').trim();const cm={};document.querySelectorAll('.conv-map-input').forEach(el=>{if(el.value)cm[el.dataset.unit]=Number(el.value);});return t.split('\n').map(l=>{const pts=l.split(',').map(s=>s.trim());const lbl=pts[0]||'';const pr=Number(pts[1])||0;const conv=App.calcAutoConv(lbl,bu,cm);return{label:lbl,price:pr,conv}}).filter(x=>x.label&&x.price>0);})(), base_unit:f.get('base_unit')||'' };
       const imgFile=document.getElementById('prod-img-file')?.files[0];
       if(imgFile){ try{ obj.image_url=await this.readImageJpeg(imgFile,400); }catch(imgErr){ this.toast('Gambar tidak valid','err'); return; } }
       try{ await DB.saveProduct(obj); this.closeSheet(); this.toast('Produk disimpan ✓','ok'); this.viewProducts(); }catch(err){this.toast('Gagal: '+err.message,'err');} };
@@ -2473,6 +2474,40 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
         </div>
         <button class="btn green block" onclick="App.saveQuickEdit('${id}')">${IC.check} Simpan Perubahan</button>
       </div>`);
+  },
+
+  /* === AUTO KONVERSI SATUAN === */
+  parseTierLabel(label){
+    label=(label||'').trim();
+    const m=label.match(/^(\d+(?:\/\d+)?)\s*(.*)$/);
+    if(!m) return {qty:1, unit:label};
+    let qty; if(m[1].includes('/')){const[a,b]=m[1].split('/');qty=Number(a)/Number(b);}else{qty=Number(m[1]);}
+    return {qty, unit:(m[2]||'').trim()};
+  },
+  calcAutoConv(label, baseUnit, convMap){
+    const {qty, unit}=this.parseTierLabel(label);
+    if(!unit||unit===baseUnit||!baseUnit) return qty||1;
+    if(convMap&&convMap[unit]) return qty*convMap[unit];
+    return qty||1;
+  },
+  autoConvPreview(){
+    const tierText=document.getElementById('tiers-input')?.value||'';
+    const bu=(document.getElementById('base-unit-input')?.value||'').trim();
+    const wrap=document.getElementById('conv-map-wrap');
+    const prev=document.getElementById('conv-preview');
+    if(!bu){if(wrap)wrap.innerHTML='';if(prev)prev.innerHTML='';return;}
+    const lines=tierText.split('\n').map(l=>l.split(',')[0]?.trim()||'').filter(Boolean);
+    const nonBase={};
+    lines.forEach(lbl=>{const{unit}=this.parseTierLabel(lbl);if(unit&&unit!==bu)nonBase[unit]=true;});
+    const units=Object.keys(nonBase);
+    // generate conversion inputs
+    if(wrap){wrap.innerHTML=units.length?`<div><label>Konversi ke ${bu}</label>${units.map(u=>`<div class="row" style="gap:4px;margin-bottom:4px"><span class="small" style="min-width:60px">1 ${u} =</span><input class="conv-map-input" data-unit="${u}" type="number" step="0.001" placeholder="${bu}" style="flex:1;padding:8px 10px;font-size:13px"></div>`).join('')}</div>`:'';}
+    // preview
+    if(prev){
+      const existing={};document.querySelectorAll('.conv-map-input').forEach(el=>{if(el.value)existing[el.dataset.unit]=Number(el.value);});
+      const parts=lines.map(lbl=>{const{qty,unit}=this.parseTierLabel(lbl);let conv=qty;if(unit&&unit!==bu){conv=existing[unit]?qty*existing[unit]:'?';}return `${lbl} → kurang ${conv} ${bu}`;});
+      prev.innerHTML=parts.length?('📊 '+parts.join(' · ')):'';
+    }
   },
   async saveQuickEdit(id){
     const p=this.state._prods.find(x=>x.id===id); if(!p)return;
@@ -3590,5 +3625,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#285FF4;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a267e37effbfca4b',t:'MTc4NTk1NDc5MA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a26e4576393cce65',t:'MTc4NjAyMTcxNw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a267e37effbfca4b',t:'MTc4NTk1NDc5MA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a26e67654edace0e',t:'MTc4NjAyMzEwNw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
