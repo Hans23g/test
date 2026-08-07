@@ -115,6 +115,18 @@ h1,h2,h3,h4{margin:0;font-weight:800;letter-spacing:-.01em}
 .topbar .menu-btn{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:var(--ac2);flex:none}
 .topbar .menu-btn:hover{background:var(--blue-l)}
 .topbar .menu-btn svg{width:24px;height:24px}
+/* profil avatar buat desktop (ganti hamburger) */
+.topbar .topbar-profile{display:none;width:42px;height:42px;border-radius:50%;background:var(--navy);color:#fff;font-weight:800;font-size:16px;flex:none;cursor:pointer;align-items:center;justify-content:center;overflow:hidden;border:2px solid transparent;transition:.15s}
+.topbar .topbar-profile:hover{border-color:var(--blue);transform:scale(1.05)}
+.topbar .topbar-profile img{width:100%;height:100%;object-fit:cover}
+.topbar .topbar-login{display:none;padding:9px 18px;border-radius:11px;background:var(--navy);color:#fff;font-weight:700;font-size:13.5px;flex:none;cursor:pointer;transition:.15s}
+.topbar .topbar-login:hover{filter:brightness(1.1)}
+/* desktop: sembunyikan hamburger, tampilkan profil/login */
+@media(min-width:881px){
+  .topbar .menu-btn{display:none!important}
+  .topbar.is-staff .topbar-profile{display:flex}
+  .topbar.is-public .topbar-login{display:block}
+}
 .topbar .spacer{flex:1}
 .chip-points{display:inline-flex;align-items:center;gap:6px;background:var(--blue-l);color:var(--blue);padding:7px 13px;border-radius:999px;font-weight:800;font-size:13px;flex:none}
 .chip-points svg{width:16px;height:16px;color:var(--gold)}
@@ -1164,9 +1176,10 @@ const App = {
   renderPublicShell(){
     const root=document.getElementById('app-root'); root.classList.remove('hide'); root.style.opacity='0'; root.style.transition='opacity .4s ease';
     root.innerHTML=`
-      <div class="topbar"><div class="wrap">
+      <div class="topbar is-public"><div class="wrap">
         <div class="brand"><img class="logo-img" src="${LOGO}" alt="Toko Hana"></div>
         <div class="search-pill">${IC.search}<input id="psearch" placeholder="Cari produk…" oninput="App.applyFilter()"></div>
+        <button class="topbar-login" onclick="App.openDrawer()">${IC.user} Masuk</button>
         <button class="menu-btn" onclick="App.openDrawer()">${IC.menu}</button>
       </div></div>
       <main class="main" style="min-height:calc(100vh - var(--bar-h))"><div class="content" id="view"></div></main>`;
@@ -1258,10 +1271,11 @@ const App = {
   renderStaffShell(){
     const u=this.state.user;
     document.getElementById('app-root').innerHTML=`
-      <div class="topbar"><div class="wrap">
+      <div class="topbar is-staff"><div class="wrap">
         <div class="brand"><img class="logo-img" src="${LOGO}" alt="Toko Hana"><div class="brand-text">Toko Hana<small>${(u.role||'').toUpperCase()}</small></div></div>
         <div class="spacer"></div>
         <span class="tag ${u.role==='admin'?'green':'amber'}">${u.role==='admin'?'👑 Admin':'🧾 Kasir'}</span>
+        <div class="topbar-profile" onclick="App.openDrawer()" title="${u.full_name||''}">${u.avatar_url?`<img src="${u.avatar_url}">`:(u.full_name||'?')[0]}</div>
         <button class="menu-btn" onclick="App.openDrawer()" title="Menu">${IC.menu}</button>
       </div></div>
       <div class="shell">
@@ -1294,9 +1308,10 @@ const App = {
   renderMemberShell(){
     const u=this.state.user;
     document.getElementById('app-root').innerHTML=`
-      <div class="topbar"><div class="wrap">
+      <div class="topbar is-staff"><div class="wrap">
         <div class="brand"><img class="logo-img" src="${LOGO}" alt="Toko Hana"></div>
         <div class="search-pill">${IC.search}<input id="psearch" placeholder="Cari produk…" oninput="App.applyFilter()"></div>
+        <div class="topbar-profile" onclick="App.openDrawer()" title="${u.full_name||''}">${u.avatar_url?`<img src="${u.avatar_url}">`:(u.full_name||'?')[0]}</div>
         <button class="menu-btn" onclick="App.openDrawer()">${IC.menu}</button>
       </div></div>
       <main class="main" style="min-height:calc(100vh - var(--bar-h))"><div class="content" id="view"></div></main>
@@ -1313,10 +1328,11 @@ const App = {
   renderCourierShell(){
     const u=this.state.user;
     document.getElementById('app-root').innerHTML=`
-      <div class="topbar"><div class="wrap">
+      <div class="topbar is-staff"><div class="wrap">
         <div class="brand"><img class="logo-img" src="${LOGO}" alt="Toko Hana"><div class="brand-text">Toko Hana<small>KURIR</small></div></div>
         <div class="spacer"></div>
         <span class="tag amber">🛵 Kurir</span>
+        <div class="topbar-profile" onclick="App.openDrawer()" title="${u.full_name||''}">${u.avatar_url?`<img src="${u.avatar_url}">`:(u.full_name||'?')[0]}</div>
         <button class="menu-btn" onclick="App.openDrawer()" title="Menu">${IC.menu}</button>
       </div></div>
       <main class="main" style="min-height:calc(100vh - var(--bar-h))"><div class="content" id="view"></div></main>
@@ -3693,5 +3709,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#285FF4;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a267e37effbfca4b',t:'MTc4NTk1NDc5MA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a279974a2952ce05',t:'MTc4NjE0MDQxMg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a267e37effbfca4b',t:'MTc4NTk1NDc5MA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a279b281284afd03',t:'MTc4NjE0MTUyNw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
