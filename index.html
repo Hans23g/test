@@ -1149,9 +1149,8 @@ const App = {
   },
   hideSplash(){
     const ar=document.getElementById('auth-root'); if(!ar)return;
-    const sp=ar.querySelector('.splash');
-    if(sp){ sp.style.transition='opacity .32s ease'; sp.style.opacity='0'; setTimeout(()=>{ ar.classList.add('hide'); ar.innerHTML=''; },340); }
-    else { ar.classList.add('hide'); ar.innerHTML=''; }
+    ar.style.transition='opacity .4s ease'; ar.style.opacity='0';
+    setTimeout(()=>{ ar.classList.add('hide'); ar.style.opacity=''; ar.style.transition=''; ar.innerHTML=''; },420);
   },
   toast(msg,type=''){
     const t=document.createElement('div'); t.className='toast '+(type||''); t.innerHTML=msg;
@@ -1162,7 +1161,7 @@ const App = {
   /* ===================== AUTH ===================== */
   /* ---- PUBLIC SHELL: langsung tampil katalog, tanpa wajib login ---- */
   renderPublicShell(){
-    const root=document.getElementById('app-root'); root.classList.remove('hide');
+    const root=document.getElementById('app-root'); root.classList.remove('hide'); root.style.opacity='0'; root.style.transition='opacity .4s ease';
     root.innerHTML=`
       <div class="topbar"><div class="wrap">
         <div class="brand"><img class="logo-img" src="${LOGO}" alt="Toko Hana"></div>
@@ -1171,6 +1170,7 @@ const App = {
       </div></div>
       <main class="main" style="min-height:calc(100vh - var(--bar-h))"><div class="content" id="view"></div></main>`;
     this.route();
+    requestAnimationFrame(()=>{ root.style.opacity='1'; });
     this.hideSplash();
   },
   /* ---- LOGIN jadi MENU (sheet) ---- */
@@ -1245,12 +1245,13 @@ const App = {
 
   /* ===================== APP SHELL ===================== */
   renderApp(){
-    const root=document.getElementById('app-root'); root.classList.remove('hide');
+    const root=document.getElementById('app-root'); root.classList.remove('hide'); root.style.opacity='0'; root.style.transition='opacity .4s ease';
     const r=this.state.user.role;
     if(r==='admin'||r==='kasir') this.renderStaffShell();
     else if(r==='kurir') this.renderCourierShell();
     else this.renderMemberShell();
     this.route();
+    requestAnimationFrame(()=>{ root.style.opacity='1'; });
     this.hideSplash();
   },
   renderStaffShell(){
@@ -3685,5 +3686,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#285FF4;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a267e37effbfca4b',t:'MTc4NTk1NDc5MA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a27941298aee1a58',t:'MTc4NjEzNjg4NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a267e37effbfca4b',t:'MTc4NTk1NDc5MA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2796514bca9dc83',t:'MTc4NjEzODM1NQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
