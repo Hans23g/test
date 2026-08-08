@@ -1349,7 +1349,7 @@ const App = {
   viewCourierHome(){
     const v=document.getElementById('view'); const u=this.state.user;
     const active=u.courier_status!=='off';
-    v.innerHTML=`<div class="section-title"><h2>Halo, ${u.full_name?.split(' ')[0]||'Kurir'} 🛵</h2><span class="tag ${active?'green':'gray'}">${active?'Aktif':'Nonaktif'}</span></div>
+    v.innerHTML=`<div class="section-title"><h2>Halo, ${this.esc(u.full_name?.split(' ')[0]||'Kurir')} 🛵</h2><span class="tag ${active?'green':'gray'}">${active?'Aktif':'Nonaktif'}</span></div>
       <div class="card" style="text-align:center">
         <div style="font-size:48px">${active?'🟢':'🔴'}</div>
         <h3 style="margin:6px 0">Status: ${active?'Siap Pickup':'Tidak Aktif'}</h3>
@@ -1549,7 +1549,7 @@ const App = {
           ${out?`<span class="disc-badge" style="background:var(--ink-3)">HABIS</span>`:''}
         </div>
         <div class="info">
-          <div class="nm">${p.name}</div>
+          <div class="nm">${this.esc(p.name)}</div>
           <div class="unit">${p.brand||''}${p.brand&&p.unit?' · ':''}${p.unit||''}</div>
           ${hasDisc?`<div class="old"><span style="display:inline-block;background:var(--rose);color:#fff;font-size:8.5px;font-weight:600;padding:1px 5px;border-radius:4px;margin-right:4px;vertical-align:middle">HEMAT</span>${this.money(p.compare_price)}</div>`:''}
           <div class="pr">${hasTiers?'<span style="font-size:9px;font-weight:600;opacity:.7">mulai </span>':''}${this.money(showPrice)}</div>
@@ -1613,7 +1613,7 @@ const App = {
         <div class="card" id="ci-list">${c.map((it,i)=>`
           <div class="ci">
             <div class="ic">${it.emoji||'📦'}</div>
-            <div class="col"><div class="nm">${it.name}</div><div class="pr">${this.money(it.price)}</div>
+            <div class="col"><div class="nm">${this.esc(it.name)}</div><div class="pr">${this.money(it.price)}</div>
               <div class="qty"><button onclick="App.cartQty(${i},-1)">${IC.minus}</button><span>${it.qty}</span><button onclick="App.cartQty(${i},1)">${IC.plus}</button></div>
             </div>
             <div class="center"><b style="color:var(--navy)">${this.money(it.price*it.qty)}</b><button class="iconbtn" style="width:32px;height:32px;margin-top:6px" onclick="App.cartRemove(${i})">${IC.trash}</button></div>
@@ -1748,7 +1748,7 @@ const App = {
       await DB.awardOrderPoints(o.id).catch(()=>{});
       this.state.user.points=(this.state.user.points||0)-usePts;
       // 2) format WA
-      const itemList=items.map((it,i)=>`${i+1}. ${it.name}\n    ${it.qty} ${it.unit||'pcs'} × ${this.money(it.price)} = ${this.money(it.subtotal)}`).join('\n');
+      const itemList=items.map((it,i)=>`${i+1}. ${this.esc(it.name)}\n    ${it.qty} ${it.unit||'pcs'} × ${this.money(it.price)} = ${this.money(it.subtotal)}`).join('\n');
       const msg=
 `═══════════════
 🛒 *PESANAN BARU*
@@ -2102,10 +2102,10 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     if(dd){
       const list=r.filter(x=>x.is_active&&(x.name+' '+(x.barcode||'')+' '+(x.brand||'')).toLowerCase().includes(s)).slice(0,20);
       dd.classList.remove('hide');
-      dd.innerHTML=list.length?list.map(p=>`<div class="ddi" onclick="App.posAdd('${p.id}');App.posSearchDone()"><span class="em">${p.emoji||'📦'}</span><div class="col"><div class="nm">${p.name}</div><div class="sub">${p.brand||''}${p.brand&&p.barcode?' · ':''}${p.barcode||''} · stok ${App.fmtStock(p)}</div></div><b class="pr">${this.money(p.price)}</b></div>`).join(''):'<div class="ddi" style="color:var(--ink-3);justify-content:center">Tidak ditemukan</div>';
+      dd.innerHTML=list.length?list.map(p=>`<div class="ddi" onclick="App.posAdd('${p.id}');App.posSearchDone()"><span class="em">${p.emoji||'📦'}</span><div class="col"><div class="nm">${this.esc(p.name)}</div><div class="sub">${p.brand||''}${p.brand&&p.barcode?' · ':''}${p.barcode||''} · stok ${App.fmtStock(p)}</div></div><b class="pr">${this.money(p.price)}</b></div>`).join(''):'<div class="ddi" style="color:var(--ink-3);justify-content:center">Tidak ditemukan</div>';
     }
   },
-  posCard(p){ return `<div class="prod" onclick="App.posAdd('${p.id}')"><div class="ph"><div class="emoji">${p.emoji||'📦'}</div></div><div class="info"><div class="nm">${p.name}</div><div class="pr">${this.money(p.price)}</div><div class="muted small">stok ${App.fmtStock(p)}</div></div></div>`; },
+  posCard(p){ return `<div class="prod" onclick="App.posAdd('${p.id}')"><div class="ph"><div class="emoji">${p.emoji||'📦'}</div></div><div class="info"><div class="nm">${this.esc(p.name)}</div><div class="pr">${this.money(p.price)}</div><div class="muted small">stok ${App.fmtStock(p)}</div></div></div>`; },
   posSearchDone(){ const si=document.getElementById('pos-search'); if(si)si.value=''; this.posSearch(''); },
   async posBarcode(code){
     code=code.trim(); if(!code)return;
@@ -2170,7 +2170,7 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     const c=this.state.posCart; const box=document.getElementById('pos-items');
     if(!c.length){ box.innerHTML=`<div class="empty small">${IC.cart}<p>Keranjang kosong</p></div>`; }
     else box.innerHTML=c.map((it,i)=>`<div class="ci"><div class="ic">${it.emoji}</div>
-      <div class="col"><div class="nm">${it.name}</div><div class="pr">${this.money(it.price)}</div>
+      <div class="col"><div class="nm">${this.esc(it.name)}</div><div class="pr">${this.money(it.price)}</div>
       <div class="qty"><button onclick="App.posQty(${i},-1)">${IC.minus}</button><span>${it.qty}</span><button onclick="App.posQty(${i},1)">${IC.plus}</button></div></div>
       <div class="center"><b style="color:var(--navy)">${this.money(it.price*it.qty)}</b></div></div>`).join('');
     this.posTotals();
@@ -2228,7 +2228,7 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     const ep=document.getElementById('pos-est-pts'); if(ep){ const estPts=Math.floor((sub-disc)/CONFIG.EARN_PER_RP*tierMult); ep.innerHTML=cust?`<span class="tag green">🎁 +${estPts} poin${tierMult>1?` (tier x${tierMult})`:''}</span> <span class="muted small">— masuk setelah transaksi <b>selesai/dibayar</b></span>`:''; }
   },
   renderCustInfo(){ const c=this.state.posCustomer; const el=document.getElementById('cust-info');
-    if(c) el.innerHTML=`<div class="card" style="background:var(--blue-ll);padding:10px 12px;margin-top:8px"><div class="row between"><div class="row"><div style="width:36px;height:36px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800">${c.full_name[0]}</div><div><b style="font-size:13px">${c.full_name}</b><div class="muted small">${IC.coin} ${c.points} poin · ${c.referral_code||''}</div></div></div>${(c._bon||0)>0?`<div style="background:#FDE8EC;color:#E11D48;padding:8px 10px;border-radius:8px;margin-top:6px;font-size:12px;font-weight:700">⚠️ BON ${this.money(c._bon)} — belum lunas</div><button class="btn xs block" style="background:#E11D48;margin-top:6px" onclick="App.payBon()">💸 Bayar Bon</button>`:''}</div><button class="iconbtn" style="width:30px;height:30px" onclick="App.state.posCustomer=null;App.renderCustInfo();App.posTotals();document.getElementById('pts-field').style.display='none'">${IC.x}</button></div></div>`;
+    if(c) el.innerHTML=`<div class="card" style="background:var(--blue-ll);padding:10px 12px;margin-top:8px"><div class="row between"><div class="row"><div style="width:36px;height:36px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800">${this.esc(c.full_name[0])}</div><div><b style="font-size:13px">${this.esc(c.full_name)}</b><div class="muted small">${IC.coin} ${c.points} poin · ${c.referral_code||''}</div></div></div>${(c._bon||0)>0?`<div style="background:#FDE8EC;color:#E11D48;padding:8px 10px;border-radius:8px;margin-top:6px;font-size:12px;font-weight:700">⚠️ BON ${this.money(c._bon)} — belum lunas</div><button class="btn xs block" style="background:#E11D48;margin-top:6px" onclick="App.payBon()">💸 Bayar Bon</button>`:''}</div><button class="iconbtn" style="width:30px;height:30px" onclick="App.state.posCustomer=null;App.renderCustInfo();App.posTotals();document.getElementById('pts-field').style.display='none'">${IC.x}</button></div></div>`;
     else el.innerHTML='';
     document.getElementById('pts-field').style.display=c?'block':'none';
   },
@@ -2261,7 +2261,7 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     this.state.posCustomer=m; this.renderCustInfo(); this.posTotals();
     if(document.getElementById('pos-deliv-on')?.checked) this.fillDelivFromCust();
     this.closeSheet();
-    this.toast(m._bon>0?('Member: '+m.full_name+' — ⚠️ BON '+this.money(m._bon)):'Member: '+m.full_name,'ok');
+    this.toast(m._bon>0?('Member: '+this.esc(m.full_name)+' — ⚠️ BON '+this.money(m._bon)):'Member: '+m.full_name,'ok');
   },
   payBon(member){
     const c=member||this.state.posCustomer; if(!c||!(c._bon>0))return;
@@ -2551,6 +2551,8 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
       </div>`);
   },
 
+  /* escape HTML utk cegah XSS */
+  esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); },
   /* === AUTO KONVERSI SATUAN === */
   fmtStock(p){
     const s=Number(p.stock||0);
@@ -2799,13 +2801,13 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
         <div class="row between"><div><b class="kbd">${o.order_no}</b></div>${this.statusTag(o.status)}</div>
         <div class="card" style="background:var(--bg);margin-top:12px;padding:12px">
           <div class="row"><div style="width:38px;height:38px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center">${(o.customer_name||'?')[0]}</div>
-          <div class="col"><b style="font-size:14px">${o.customer_name}</b><div class="muted small">${o.channel==='online'?'Online':'Offline'} · ${o.payment_method||''}</div></div></div>
-          ${o.address?`<div class="muted small" style="margin-top:8px">📍 ${o.address}</div>`:''}
-          ${o.note?`<div class="muted small">📝 ${o.note}</div>`:''}
+          <div class="col"><b style="font-size:14px">${this.esc(o.customer_name)}</b><div class="muted small">${o.channel==='online'?'Online':'Offline'} · ${o.payment_method||''}</div></div></div>
+          ${o.address?`<div class="muted small" style="margin-top:8px">📍 ${this.esc(o.address)}</div>`:''}
+          ${o.note?`<div class="muted small">📝 ${this.esc(o.note)}</div>`:''}
         </div>
         ${dmLabel?`<div class="card" style="background:var(--blue-ll);margin-top:10px;padding:12px;font-size:12.5px"><b>🚚 Pengiriman</b><br>${dmLabel}${o.tracking_no?`<br>📦 No. Resi: <b class="kbd">${o.tracking_no}</b>`:''}${o.courier_name?`<br>🛵 Kurir: <b>${o.courier_name}</b>`:''}${o.courier_phone?`<br>📞 WA Pengantar: <b>${o.courier_phone}</b>`:''}${o.delivery_note?`<br>📝 ${o.delivery_note}`:''}</div>`:''}
         <h4 style="margin:14px 0 8px">Item (${items.length})</h4>
-        ${items.map(it=>`<div class="ci"><div class="ic">📦</div><div class="col"><div class="nm">${it.name}</div><div class="pr">${it.qty} × ${this.money(it.price)}</div></div><b style="color:var(--navy)">${this.money(it.subtotal)}</b></div>`).join('')}
+        ${items.map(it=>`<div class="ci"><div class="ic">📦</div><div class="col"><div class="nm">${this.esc(it.name)}</div><div class="pr">${it.qty} × ${this.money(it.price)}</div></div><b style="color:var(--navy)">${this.money(it.subtotal)}</b></div>`).join('')}
         <hr class="sep">
         <div class="sum-line"><span>Subtotal</span><span>${this.money(o.subtotal)}</span></div>
         <div class="sum-line"><span>Diskon poin</span><span>- ${this.money(o.discount)}</span></div>
@@ -2929,7 +2931,7 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
       <div class="l"><span>Bayar (${o.payment_method||''})</span><span>${this.money(paid)}</span></div>
       <div class="l b">${(Number(o.change_amount||0)<0)?'<span style="color:#c00">BON (Belum Lunas)</span><span style="color:#c00">'+this.money(Math.abs(Number(o.change_amount||0)))+'</span>':'<span>Kembali</span><span>'+this.money(o.change_amount||0)+'</span>'}</div>`}
       ${o.points_earned?`<div class="l"><span>Poin +</span><span>${o.points_earned}</span></div>`:''}
-      <div id="rcpt-note-line">${o.struk_note?`<hr><div class="b" style="text-align:center;border:1.5px dashed #000;padding:6px;margin:4px 0;font-size:13px">${(o.struk_note||'').replace(/</g,'&lt;')}</div>`:''}</div>
+      <div id="rcpt-note-line">${o.struk_note?`<hr><div class="b" style="text-align:center;border:1.5px dashed #000;padding:6px;margin:4px 0;font-size:13px">${this.esc(o.struk_note)}</div>`:''}</div>
       <hr>
       <div class="c">★ Terima kasih ★<br>Selamat berbelanja kembali<br><small>Simpan struk ini sebagai bukti</small></div>
     </div>`;
@@ -2973,8 +2975,8 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
           <div class="card" style="background:var(--blue-ll);padding:14px"><div class="muted small">Member Utang</div><div style="font-size:21px;font-weight:800;color:var(--navy);margin-top:2px">${debtors.length} orang</div></div>
         </div>
         ${debtors.length?debtors.map((d,i)=>`<div class="card" style="margin-bottom:10px"><div class="row between">
-          <div class="row"><div style="width:42px;height:42px;border-radius:50%;background:#E11D48;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px">${(d.full_name||'?')[0]}</div>
-          <div><b style="font-size:14px">${d.full_name}</b><div class="muted small">${d.phone||'-'}${d.referral_code?(' · '+d.referral_code):''}</div></div></div>
+          <div class="row"><div style="width:42px;height:42px;border-radius:50%;background:#E11D48;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px">${this.esc((d.full_name||'?')[0])}</div>
+          <div><b style="font-size:14px">${this.esc(d.full_name)}</b><div class="muted small">${d.phone||'-'}${d.referral_code?(' · '+d.referral_code):''}</div></div></div>
           <div style="text-align:right"><div style="color:#E11D48;font-weight:800;font-size:15px">${this.money(d._bon)}</div>
           <button class="btn xs green" style="margin-top:4px" onclick="App.payDebtor(${i})">💸 Lunasi</button></div>
         </div></div>`).join(''):`<div class="empty">${IC.check}<h3>Bersih! 🎉</h3><p class="muted">Nggak ada piutang tertunggak. Mantap!</p></div>`}`;
@@ -3007,7 +3009,7 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
   roleBadge(r){ const m={admin:['👑 Admin','green'],kasir:['🧾 Kasir','amber'],kurir:['🛵 Kurir','amber'],member:['🛒 Member','']}; const [t,c]=m[r]||[r,'gray']; return `<span class="tag ${c}">${t}</span>`; },
   renderMembers(m){ const body=document.getElementById('m-body');
     body.innerHTML=m.length?m.map(x=>{const bon=this.state._bonMap&&this.state._bonMap[x.id]||0;return `<tr>
-      <td><div class="row"><div style="width:34px;height:34px;border-radius:50%;background:${bon>0?'#E11D48':'var(--navy)'};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800">${(x.full_name||'?')[0]}</div><div><b style="font-size:13px">${x.full_name||'-'}</b><div class="muted small">${x.email}</div>${bon>0?`<div style="color:#E11D48;font-weight:700;font-size:11px;margin-top:2px">⚠️ BON ${this.money(bon)}</div>`:''}</div></div></td>
+      <td><div class="row"><div style="width:34px;height:34px;border-radius:50%;background:${bon>0?'#E11D48':'var(--navy)'};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800">${(x.full_name||'?')[0]}</div><div><b style="font-size:13px">${this.esc(x.full_name||'-')}</b><div class="muted small">${x.email}</div>${bon>0?`<div style="color:#E11D48;font-weight:700;font-size:11px;margin-top:2px">⚠️ BON ${this.money(bon)}</div>`:''}</div></div></td>
       <td>${this.roleBadge(x.role)}</td>
       <td class="small">${x.phone||'-'}${x.points?` · ${IC.coin}${x.points}`:''}</td>
       <td><div class="col" style="gap:4px">${bon>0?`<button class="btn xs" style="background:#E11D48;color:#fff" onclick="App.payMemberBon('${x.id}')">💸 Lunasi</button>`:''}<button class="btn xs" onclick="App.openStaffManage('${x.id}')">${IC.edit} Kelola</button></div></td>
@@ -3019,7 +3021,7 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     this.openSheet(`<div class="sheet-head"><h3>Kelola Akun</h3><button class="iconbtn" onclick="App.closeSheet()">${IC.x}</button></div>
       <div class="sheet-body">
         <div class="row" style="gap:12px"><div style="width:50px;height:50px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800">${(m.full_name||'?')[0]}</div>
-        <div class="col"><b style="font-size:15px">${m.full_name||'-'}</b><div class="muted small">${m.email}</div>${this.roleBadge(m.role)}</div></div>
+        <div class="col"><b style="font-size:15px">${this.esc(m.full_name||'-')}</b><div class="muted small">${m.email}</div>${this.roleBadge(m.role)}</div></div>
         <hr class="sep">
         <form id="staff-form">
           <div class="field"><label>Nama</label><input name="full_name" value="${m.full_name||''}"></div>
@@ -3696,7 +3698,7 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     const u=this.state.user;
     let head, body, isForm=false;
     if(u){
-      head=`<div class="row" style="gap:12px;min-width:0">${u.avatar_url?`<img src="${u.avatar_url}" style="width:42px;height:42px;border-radius:50%;object-fit:cover;flex:none">`:`<div class="av">${(u.full_name||'?')[0]}</div>`}<div class="col" style="min-width:0"><b style="font-size:15px">${u.full_name||'Pengguna'}</b><div style="opacity:.9;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.email||''}</div></div></div>`;
+      head=`<div class="row" style="gap:12px;min-width:0">${u.avatar_url?`<img src="${u.avatar_url}" style="width:42px;height:42px;border-radius:50%;object-fit:cover;flex:none">`:`<div class="av">${(u.full_name||'?')[0]}</div>`}<div class="col" style="min-width:0"><b style="font-size:15px">${this.esc(u.full_name||'Pengguna')}</b><div style="opacity:.9;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.email||''}</div></div></div>`;
       let items=[];
       if(this.state.user.role==='kurir') items=[['courier-home','Home',IC.home],['courier-orders','Antar',IC.bag],['courier-profile','Profil',IC.user]];
       else if(this.isAdmin()) items=[['store','Home',IC.home],['products','Produk',IC.box],['pos','Kasir',IC.scan],['online-orders','Order Online',IC.bag],['members','Member',IC.users],['reports','Laporan',IC.chart],['piutang','Piutang','💰'],['staff-profile','Profil',IC.user],...(this.state.user.role==='admin'?[['dashboard','Dashboard',IC.grid],['settings','Pengaturan',IC.settings]]:[])];
@@ -3745,5 +3747,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#285FF4;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a267e37effbfca4b',t:'MTc4NTk1NDc5MA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a279e45a6cfcf93e',t:'MTc4NjE0MzU2OQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a267e37effbfca4b',t:'MTc4NTk1NDc5MA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a27a5bdbab2e3e3d',t:'MTc4NjE0ODQ2Mw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
