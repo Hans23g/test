@@ -851,8 +851,8 @@ const DB = (() => {
     }
     const d=load(); const o=d.orders[id]; if(!o) return;
     if(o.points_awarded) return;
-    if(['pending','cancelled','rejected'].includes(o.status)) return;   // belum bayar / batal
-    if(Number(o.change_amount||0)<0) return;                            // masih bon -> defer
+    if(o.status!=='completed') return;                                  // poin EARN cuma saat completed (anti curang batal di 'paid')
+    if(Number(o.change_amount||0)<0) return;                            // masih bon -> defer (settle_bon yg urus)
     if(o.points_earned>0 && o.customer_id){ const m=d.profiles[o.customer_id]; if(m){ m.points=(m.points||0)+o.points_earned;
       d.points[uid()]={id:uid(),member_id:m.id,order_id:id,type:'earn',points:o.points_earned,note:'Belanja '+o.order_no,created_at:now()}; } }
     o.points_awarded=true; save(d);
@@ -904,18 +904,33 @@ const DB = (() => {
     save(d);
     return Object.values(d.orders).filter(o=>o.customer_id===memberId&&Number(o.change_amount||0)<0&&!['pending','cancelled','rejected'].includes(o.status)).reduce((s,o)=>s+Math.abs(Number(o.change_amount||0)),0);
   }
-  /* batalkan order + kembalikan stok */
+  /* batalkan order + balik stok + BALIK POIN (anti curang: batal = poin earn dicabut, redeem direfund) */
   async function cancelOrder(id){
     if(!isDemo){
-      const {data:items}=await sb.from('order_items').select('product_id,qty').eq('order_id',id);
-      await sb.from('orders').update({status:'cancelled'}).eq('id',id);
-      for(const it of (items||[])){ const {data:pr}=await sb.from('products').select('stock,sold').eq('id',it.product_id).maybeSingle();
-        if(pr) await sb.from('products').update({stock:(pr.stock||0)+Number(it.qty),sold:Math.max(0,(pr.sold||0)-Number(it.qty))}).eq('id',it.product_id).catch(()=>{}); }
+      // prioritas: RPC atomic cancel_order (batal + balik stok + balik poin server-side)
+      const {error}=await sb.rpc('cancel_order',{ p_order_id:id });
+      if(error && /Could not find|does not exist|cancel_order/i.test(error.message||'')){
+        // RPC belum dibuat → fallback lama (batal + stok doang, tanpa balik poin)
+        const {data:items}=await sb.from('order_items').select('product_id,qty').eq('order_id',id);
+        await sb.from('orders').update({status:'cancelled'}).eq('id',id);
+        for(const it of (items||[])){ const {data:pr}=await sb.from('products').select('stock,sold').eq('id',it.product_id).maybeSingle();
+          if(pr) await sb.from('products').update({stock:(pr.stock||0)+Number(it.qty),sold:Math.max(0,(pr.sold||0)-Number(it.qty))}).eq('id',it.product_id).catch(()=>{}); }
+        return;
+      }
+      if(error) throw error;
       return;
     }
-    const d=load(); if(d.orders[id]) d.orders[id].status='cancelled';
+    // DEMO: batal + balik stok + balik poin
+    const d=load(); const o=d.orders[id];
+    if(o) o.status='cancelled';
     Object.values(d.items).filter(x=>x.order_id===id).forEach(it=>{ const pr=Object.values(d.products).find(p=>p.id===it.product_id);
       if(pr){ pr.stock=(pr.stock||0)+Number(it.qty); pr.sold=Math.max(0,(pr.sold||0)-Number(it.qty)); } });
+    if(o && o.customer_id && d.profiles[o.customer_id]){
+      const m=d.profiles[o.customer_id];
+      if(o.points_awarded && o.points_earned>0){ m.points=Math.max(0,(m.points||0)-o.points_earned); d.points[uid()]={id:uid(),member_id:m.id,order_id:id,type:'adjust',points:-o.points_earned,note:'Tarik poin batal '+o.order_no,created_at:now()}; }
+      if(o.points_used>0){ m.points=(m.points||0)+o.points_used; d.points[uid()]={id:uid(),member_id:m.id,order_id:id,type:'adjust',points:o.points_used,note:'Refund poin batal '+o.order_no,created_at:now()}; }
+      o.points_awarded=false;
+    }
     save(d);
   }
 
@@ -3766,5 +3781,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#285FF4;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a267e37effbfca4b',t:'MTc4NTk1NDc5MA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a27a933b08a1fb86',t:'MTc4NjE1MDczMg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a267e37effbfca4b',t:'MTc4NTk1NDc5MA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a27abc6cfcf28333',t:'MTc4NjE1MjQxOQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
