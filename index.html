@@ -1036,7 +1036,19 @@ const DB = (() => {
   return {init,signIn,signUp,signOut,me,updateProfile,listProducts,getProductByBarcode,saveProduct,
     deleteProduct,bulkUpsertProducts,listCategories,saveCategory,deleteCategory,createOrder,listOrders,getOrder,updateOrderStatus,settleBon,listDebtors,cancelOrder,
     listMembers,getMember,listAllProfiles,deleteAccount,setRole,awardOrderPoints,listPoints,listReferrals,stats,getSettings,saveSettings,
-    resetPassword,setPassword,changeOwnPassword,changeOwnEmail,setEmail,demo,setForceDemo,resetDemo};
+    resetPassword,setPassword,changeOwnPassword,changeOwnEmail,setEmail,demo,setForceDemo,resetDemo,subscribeOrders};
+  /* REALTIME Supabase: push instan perubahan tabel orders (job baru/assign/status).
+     Butuh: realtime aktif di tabel orders (ALTER PUBLICATION supabase_realtime ADD TABLE orders).
+     demo / belum nyambung sb → no-op. return = fungsi unsubscribe. */
+  function subscribeOrders(cb){
+    if(isDemo||!sb) return ()=>{};
+    try{
+      const ch=sb.channel('hanapos-rt-orders')
+        .on('postgres_changes',{event:'*',schema:'public',table:'orders'},payload=>{ try{cb(payload);}catch(e){} })
+        .subscribe();
+      return ()=>{ try{ sb.removeChannel(ch); }catch(e){} };
+    }catch(e){ return ()=>{}; }
+  }
 })();
 
 /* =================================================================================
@@ -1322,7 +1334,7 @@ const App = {
     document.querySelectorAll('.nav-item,.bn-item').forEach(el=>el.onclick=()=>go(el.dataset.v));
     this.updateOnlineBadge();
     this.updatePiutangBadge();
-    if(this.state.user&&this.state.user.role==='kurir'){ this.updateCourierBadge(); this.startCourierPoll(); }
+    if(this.state.user&&this.state.user.role==='kurir'){ this.updateCourierBadge(); this.startCourierPoll(); this.startCourierRealtime(); } else { this.stopCourierRealtime(); }
   },
   renderMemberShell(){
     const u=this.state.user;
@@ -1424,7 +1436,7 @@ const App = {
         <div class="nav-item" style="color:var(--rose);margin-top:10px" onclick="App.doLogout()">${IC.logout} Keluar</div></div>`;
     document.getElementById('kurir-form').onsubmit=async e=>{ e.preventDefault(); const f=new FormData(e.target); try{ const p=await DB.updateProfile(u.id,{full_name:f.get('full_name'),phone:f.get('phone')}); this.state.user={...u,...p}; this.toast('Tersimpan ✓','ok'); }catch(err){this.toast('Gagal','err');} };
   },
-  async doLogout(){ await DB.signOut(); this.state.user=null; this.state.cart=[]; this.renderPublicShell(); },
+  async doLogout(){ this.stopCourierRealtime(); await DB.signOut(); this.state.user=null; this.state.cart=[]; this.renderPublicShell(); },
   goCart(){ location.hash='cart'; },
   focusSearch(){ const i=document.getElementById('psearch');
     if(i){ i.focus(); i.scrollIntoView({behavior:'smooth',block:'center'}); }
@@ -3007,6 +3019,9 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     }catch(e){}
   },
   startCourierPoll(){ if(this._courierPoll)clearInterval(this._courierPoll); this._courierPoll=setInterval(()=>{ this.updateCourierBadge(); },30000); },
+  /* REALTIME: push instan dari Supabase pas ada perubahan order (job baru/assign/status) → langsung refresh badge + bel. polling 30s jadi backup. */
+  startCourierRealtime(){ if(this._courierRT)return; this._courierRT=DB.subscribeOrders(()=>{ this.updateCourierBadge(); }); },
+  stopCourierRealtime(){ if(this._courierRT){ try{ this._courierRT(); }catch(e){} this._courierRT=null; } if(this._courierPoll){ clearInterval(this._courierPoll); this._courierPoll=null; } },
   courierBeep(){
     try{ if(navigator.vibrate)navigator.vibrate([200,80,200,80,300]); }catch(e){}   // getar selalu jalan di Android
     if(!this._courierAudioUnlocked){ this._pendingBell=true; return; }   // belum unlock (belum ada tap) → antri, bunyi pas interaksi pertama
@@ -3825,5 +3840,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#285FF4;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a267e37effbfca4b',t:'MTc4NTk1NDc5MA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a27b188d4cc6ff82',t:'MTc4NjE1NjE5Mg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a267e37effbfca4b',t:'MTc4NTk1NDc5MA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a27bb38d59f9819c',t:'MTc4NjE2MjU0MQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
