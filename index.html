@@ -1358,9 +1358,17 @@ const App = {
       <nav class="bottomnav">
         <div class="bn-item active" data-v="courier-home">${IC.home}Home</div>
         <div class="bn-item" data-v="courier-orders" style="position:relative">${IC.bag}<span class="bn-badge hide" id="nb-courier" style="position:absolute;top:0;right:20%"></span>Antar</div>
+        <div class="bn-item" data-v="courier-history">${IC.list}Riwayat</div>
         <div class="bn-item" data-v="courier-profile">${IC.user}Profil</div>
       </nav>`;
     document.querySelectorAll('.bn-item').forEach(el=>el.onclick=()=>location.hash=el.dataset.v);
+    this.courierUnlockAudio();   // unlock bel di interaksi pertama (kebijakan autoplay browser)
+  },
+  /* unlock AudioContext di interaksi pertama biar bel bisa bunyi (browser butuh gesture user) */
+  courierUnlockAudio(){
+    if(this._courierAudioUnlocked)return;
+    const unlock=()=>{ try{ this._audioCtx=this._audioCtx||new (window.AudioContext||window.webkitAudioContext)(); if(this._audioCtx.state==='suspended')this._audioCtx.resume(); }catch(e){} this._courierAudioUnlocked=true; ['touchstart','click','keydown'].forEach(t=>document.removeEventListener(t,unlock,true)); };
+    ['touchstart','click','keydown'].forEach(t=>document.addEventListener(t,unlock,true));
   },
   viewCourierHome(){
     const v=document.getElementById('view'); const u=this.state.user;
@@ -1428,7 +1436,7 @@ const App = {
     // TAMU (belum login): hanya katalog publik
     if(!this.state.user){ this.viewStore(); return; }
     if(this.state.user.role==='kurir'){
-      ({'courier-home':()=>this.viewCourierHome(),'courier-orders':()=>this.viewCourierOrders(),'courier-profile':()=>this.viewCourierProfile()}[h]||(()=>this.viewCourierHome()))();
+      ({'courier-home':()=>this.viewCourierHome(),'courier-orders':()=>this.viewCourierOrders(),'courier-history':()=>this.viewCourierHistory(),'courier-profile':()=>this.viewCourierProfile()}[h]||(()=>this.viewCourierHome()))();
       return;
     }
     if(this.isAdmin()){
@@ -2994,8 +3002,34 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
   },
   startCourierPoll(){ if(this._courierPoll)clearInterval(this._courierPoll); this._courierPoll=setInterval(()=>{ this.updateCourierBadge(); },30000); },
   courierBeep(){
-    try{ if(navigator.vibrate)navigator.vibrate([200,100,200]); }catch(e){}
-    try{ const ctx=new (window.AudioContext||window.webkitAudioContext)(); const osc=ctx.createOscillator(); const gain=ctx.createGain(); osc.connect(gain); gain.connect(ctx.destination); osc.type='sine'; osc.frequency.setValueAtTime(800,ctx.currentTime); osc.frequency.setValueAtTime(600,ctx.currentTime+0.15); gain.gain.setValueAtTime(0.3,ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01,ctx.currentTime+0.5); osc.start(ctx.currentTime); osc.stop(ctx.currentTime+0.5); }catch(e){}
+    try{ if(navigator.vibrate)navigator.vibrate([200,80,200,80,300]); }catch(e){}
+    try{
+      this._audioCtx=this._audioCtx||new (window.AudioContext||window.webkitAudioContext)();
+      const ctx=this._audioCtx; if(ctx.state==='suspended')ctx.resume();
+      const beep=(t0,freq,dur)=>{ const osc=ctx.createOscillator(); const gain=ctx.createGain(); osc.connect(gain); gain.connect(ctx.destination); osc.type='sine'; osc.frequency.setValueAtTime(freq,ctx.currentTime+t0); gain.gain.setValueAtTime(0.0001,ctx.currentTime+t0); gain.gain.exponentialRampToValueAtTime(0.35,ctx.currentTime+t0+0.02); gain.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+t0+dur); osc.start(ctx.currentTime+t0); osc.stop(ctx.currentTime+t0+dur); };
+      beep(0,880,0.18); beep(0.22,660,0.18); beep(0.44,990,0.25);   // dorong: ting-rendah-tinggi biar ngeh
+    }catch(e){}
+  },
+  async viewCourierHistory(){
+    const v=document.getElementById('view'); v.innerHTML=`<div class="spin"></div>`;
+    try{
+      const u=this.state.user;
+      const orders=(await DB.listOrders({})).filter(o=>o.courier_id===u.id);
+      const done=orders.filter(o=>['completed','delivered'].includes(o.status));   // riwayat patroli (selesai/serah)
+      const today=new Date().toISOString().slice(0,10);
+      const todayDone=done.filter(o=>(o.updated_at||o.created_at||'').slice(0,10)===today);
+      const totalValue=done.reduce((s,o)=>s+Number(o.total||0),0);
+      v.innerHTML=`<div class="section-title"><h2>🛵 Riwayat Patroli</h2></div>
+        <div class="stat-grid" style="grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px">
+          <div class="stat" style="padding:13px"><div class="lbl"><span class="ic">${IC.bag}</span> Total Antar</div><div class="val" style="font-size:20px">${done.length}×</div></div>
+          <div class="stat" style="padding:13px"><div class="lbl"><span class="ic" style="background:var(--green-l);color:var(--green)">${IC.check}</span> Hari Ini</div><div class="val" style="font-size:20px;color:var(--green)">${todayDone.length}×</div></div>
+          <div class="stat" style="padding:13px"><div class="lbl"><span class="ic">${IC.coin}</span> Nilai Antar</div><div class="val" style="font-size:15px">${this.money(totalValue)}</div></div>
+        </div>
+        ${done.length?done.map(o=>`<div class="card" style="margin-bottom:10px"><div class="row between">
+          <div class="col"><b class="kbd small">${o.order_no}</b><div class="muted small" style="margin-top:4px">📍 ${(this.esc(o.address)||'-').slice(0,60)}</div><div class="muted small">${this.esc(o.customer_name)||'-'} · ${new Date(o.updated_at||o.created_at).toLocaleString('id-ID',{dateStyle:'short',timeStyle:'short'})}</div></div>
+          <div style="text-align:right">${this.statusTag(o.status)}<div class="muted small" style="margin-top:4px">${this.money(o.total)}</div></div>
+        </div></div>`).join(''):`<div class="empty">${IC.bag}<h3>Belum ada riwayat</h3><p class="muted">Patroli antar yg kelar bakal muncul di sini. Gas terus! 🛵💨</p></div>`}`;
+    }catch(e){ v.innerHTML=`<div class="empty">${IC.bag}<h3>Gagal memuat riwayat</h3><p class="muted">${e.message||e}</p></div>`; }
   },
   async viewPiutang(){
     const v=document.getElementById('view'); v.innerHTML=`<div class="spin"></div>`;
@@ -3734,7 +3768,7 @@ _Pesan via HanaPOS CMS — ${o.order_no}_
     if(u){
       head=`<div class="row" style="gap:12px;min-width:0">${u.avatar_url?`<img src="${u.avatar_url}" style="width:42px;height:42px;border-radius:50%;object-fit:cover;flex:none">`:`<div class="av">${(u.full_name||'?')[0]}</div>`}<div class="col" style="min-width:0"><b style="font-size:15px">${this.esc(u.full_name||'Pengguna')}</b><div style="opacity:.9;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.email||''}</div></div></div>`;
       let items=[];
-      if(this.state.user.role==='kurir') items=[['courier-home','Home',IC.home],['courier-orders','Antar',IC.bag],['courier-profile','Profil',IC.user]];
+      if(this.state.user.role==='kurir') items=[['courier-home','Home',IC.home],['courier-orders','Antar',IC.bag],['courier-history','Riwayat',IC.list],['courier-profile','Profil',IC.user]];
       else if(this.isAdmin()) items=[['store','Home',IC.home],['products','Produk',IC.box],['pos','Kasir',IC.scan],['online-orders','Order Online',IC.bag],['members','Member',IC.users],['reports','Laporan',IC.chart],['piutang','Piutang','💰'],['staff-profile','Profil',IC.user],...(this.state.user.role==='admin'?[['dashboard','Dashboard',IC.grid],['settings','Pengaturan',IC.settings]]:[])];
       else items=[['store','Toko',IC.store],['cart','Keranjang',IC.cart],['orders','Pesanan',IC.list],['card','Kartu Member',IC.card],['points','Poin & Referral',IC.coin],['profile','Profil',IC.user]];
       body=items.map(([v,l,ic])=>`<div class="drawer-item" onclick="App.drawerGo('${v}')">${ic}<span>${l}</span>${v==='cart'?'<span class="cart-badge hide" id="cart-count" style="margin-left:auto;background:var(--rose)"></span>':''}</div>`).join('')
@@ -3781,5 +3815,5 @@ window.addEventListener('DOMContentLoaded',()=>App.start().catch(e=>{
   document.body.innerHTML='<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#10243B"><div style="font-size:48px">⚠️</div><h2>Gagal memuat aplikasi</h2><p style="color:#7C8CA0;margin:8px 0 20px">'+(e&&e.message?e.message:e)+'</p><button onclick="location.reload()" style="padding:10px 18px;border:none;border-radius:10px;background:#285FF4;color:#fff;font-weight:700">Muat Ulang</button><p style="margin-top:16px;font-size:12px;color:#7C8CA0">Cek koneksi internet (CDN) atau buka file via http. Buka Console (F12) untuk detail error.</p></div>';
 }));
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a267e37effbfca4b',t:'MTc4NTk1NDc5MA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a27abc6cfcf28333',t:'MTc4NjE1MjQxOQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a267e37effbfca4b',t:'MTc4NTk1NDc5MA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a27aea8fdc4b9d00',t:'MTc4NjE1NDMwOQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
